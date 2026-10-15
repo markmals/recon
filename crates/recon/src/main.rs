@@ -101,6 +101,12 @@ fn run_macos(command: &str, target: Option<&str>) -> Result<String, String> {
             serialize(&InspectResponse { application })
         }),
         "launch" => macos::with_target(target.unwrap(), |application| {
+            if application.executable_path.is_none() {
+                return Err(format!(
+                    "cannot launch {}: application executable is missing",
+                    application.path.display()
+                ));
+            }
             let pid = macos::launch(&application.path)?;
             serialize(&LaunchResponse { path: &application.path, pid })
         }),

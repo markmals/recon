@@ -28,6 +28,7 @@ export function registerLaunchTests(): void {
             expect(launch.stdout).toBe("");
             expect(launch.stderr).toContain("recon:");
             expect(launch.stderr).toContain("Broken App.app");
+            expect(launch.stderr).toContain("application executable is missing");
         },
     );
 
