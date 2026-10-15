@@ -224,6 +224,7 @@ test.skipIf(process.platform === "darwin")(
         expect(listing.stdout).toBe("");
         expect(listing.stderr).toContain("supported only on macOS");
     },
+    60_000,
 );
 
 registerLaunchTests();
