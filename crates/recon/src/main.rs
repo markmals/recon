@@ -1,9 +1,13 @@
 use std::env;
+#[cfg(target_os = "macos")]
 use std::path::PathBuf;
 
+#[cfg(target_os = "macos")]
 use recon::application::Application;
+#[cfg(target_os = "macos")]
 use serde::Serialize;
 
+#[cfg(target_os = "macos")]
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ListedApplication<'a> {
@@ -13,17 +17,20 @@ struct ListedApplication<'a> {
     running_pids: &'a [u32],
 }
 
+#[cfg(target_os = "macos")]
 #[derive(Serialize)]
 struct ListResponse<'a> {
     discovery: &'static str,
     applications: Vec<ListedApplication<'a>>,
 }
 
+#[cfg(target_os = "macos")]
 #[derive(Serialize)]
 struct InspectResponse<'a> {
     application: &'a Application,
 }
 
+#[cfg(target_os = "macos")]
 #[derive(Serialize)]
 struct LaunchResponse<'a> {
     path: &'a PathBuf,

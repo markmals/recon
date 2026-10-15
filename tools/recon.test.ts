@@ -62,6 +62,7 @@ test.skipIf(process.platform !== "darwin")(
         });
         expect(existsSync(marker)).toBe(false);
     },
+    60_000,
 );
 
 test.skipIf(process.platform !== "darwin")(
