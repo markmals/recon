@@ -54,7 +54,7 @@ Claims marked _observed_ come from direct experiments on 2026-10-15 on this Mac 
 
 **Privacy identity**
 
-- macOS's privacy system (TCC) attributes a permission request to the _responsible process_. By default, that is the GUI application from which a command-line tool was launched, such as a terminal or editor ([secondary](https://www.qt.io/blog/the-curious-case-of-the-responsible-process)). The private libSystem function `responsibility_spawnattrs_setdisclaim` makes a spawned child responsible for itself ([secondary](https://github.com/ghostty-org/ghostty/issues/9263)). Observed: a self-disclaimed winctl received none of its launcher's grants, even though its launcher, `omp`, holds Screen Recording. After winctl itself was granted, it worked.
+- macOS's privacy system (TCC) attributes a permission request to the _responsible process_. By default, that is the GUI application from which a command-line tool was launched, such as a terminal or editor ([secondary](https://www.qt.io/blog/the-curious-case-of-the-responsible-process)). The private libSystem function `responsibility_spawnattrs_setdisclaim` makes a spawned child responsible for itself ([secondary](https://github.com/ghostty-org/ghostty/issues/9263)). Observed: a self-disclaimed winctl received none of its launcher's grants, even though its launcher, `omp`, holds Screen Recording. After winctl itself was granted, it worked. The private `responsibility_get_pid_responsible_for_pid` reported another process as responsible for a test program launched from a shell, and the program's own process ID for its disclaimed child.
 - Grants are recorded against a client and its code-signing designated requirement ([Apple PPPC payload](https://support.apple.com/guide/deployment/privacy-preferences-policy-control-payload-dep38df53c2a/web)). Observed for a bare executable with an embedded Info.plist, signed with Developer ID so that its requirement names the identifier and team: the grant survived replacing the executable in place with a rebuild whose code hash differed. A copy at another path had no grant. System Settings listed it by its bundle name, "winctl", in both the Screen & System Audio Recording and Accessibility lists.
 - Ad-hoc signatures, which the Rust toolchain applies by default on Apple silicon, use the code hash as the designated requirement, so a rebuild loses the grant ([secondary](https://github.com/CapSoftware/Cap/issues/1722)). Observed: one attempt to wrap the probe in an app bundle produced no permission prompt, and the bundle was not listed.
 - Since macOS 15, macOS has periodically asked users to reconfirm screen-recording permission ([secondary](https://tidbits.com/2024/08/19/apple-reduces-excessive-sequoia-permission-requests-shifts-to-monthly/)). In macOS 26 and later, the pane is named "Screen & System Audio Recording" (observed).
@@ -155,19 +155,23 @@ recon ui screenshot "Logic Pro" --out bounce.png → PNG of the app's main windo
 
     If none matches, the command fails with `window <id> has no accessibility element reachable by Recon`.
 
-- Each node has this shape: `{"role":string|null,"subrole":string|null,"title":string|null,"description":string|null,"value":string|number|boolean|null,"identifier":string|null,"enabled":boolean|null,"focused":boolean|null,"frame":{"x":number,"y":number,"width":number,"height":number}|null,"actions":[string,...],"children":[node,...]}`.
-    - Fields come from the attributes `AXRole`, `AXSubrole`, `AXTitle`, `AXDescription`, `AXValue`, `AXIdentifier`, `AXEnabled`, `AXFocused`, `AXPosition` with `AXSize`, `AXActionNames`, and `AXChildren`.
+- Each element becomes a node with this shape: `{"role":string|null,"subrole":string|null,"title":string|null,"description":string|null,"value":string|number|boolean|null,"identifier":string|null,"enabled":boolean|null,"focused":boolean|null,"frame":{"x":number,"y":number,"width":number,"height":number}|null,"actions":[string,...],"children":[node,...]}`.
+    - Fields come from the attributes `AXRole`, `AXSubrole`, `AXTitle`, `AXDescription`, `AXValue`, `AXIdentifier`, `AXEnabled`, `AXFocused`, `AXPosition` with `AXSize`, and `AXChildren`, and from the element's action names.
     - A missing or unsupported attribute is `null`, or `[]` for `actions` and `children`.
     - A value that is not a string, number, or boolean is `null`.
-    - A string value longer than 4,096 characters is cut to its first 4,096 characters, and the node carries `"valueTruncated":true`.
+    - A string value longer than 4,096 Unicode scalar values is cut to its first 4,096, and the node carries `"valueTruncated":true`.
     - The frame is in global points and is `null` unless both position and size are available.
 - Traversal:
     - Recon follows only `AXChildren`, depth first, in the order the application reports.
-    - The root has depth 0. Children of nodes at depth 64 are not read, and the node carries `"childrenOmitted":true`.
-    - After 25,000 nodes, remaining children are not read, and the node at which reading stopped carries `"childrenOmitted":true`.
-    - An element already emitted in the same result appears again as a node containing only its `role` and `"repeated":true`, without children.
-    - An element that disappears during reading carries `"error":"element-unavailable"` and no children.
-- Recon sets a messaging timeout of two seconds per request. If any request times out, Recon stops reading. The node being read carries `"error":"timeout"`, and the partial tree is returned.
+    - The root has depth 0. Recon does not read the children of nodes at depth 64.
+    - A result holds at most 25,000 nodes, counting repeated and failed nodes. Once it holds 25,000, Recon reads no further elements.
+    - A node with any child that Recon did not read carries `"childrenOmitted":true`.
+    - An element already emitted in the same result appears again as `{"role":string|null,"repeated":true}`, with its role and without children.
+    - An element whose request fails becomes a failed node, without children:
+        - `{"error":"element-unavailable"}` when the element no longer exists (`kAXErrorInvalidUIElement`);
+        - `{"error":"timeout"}` when the request does not complete in time (`kAXErrorCannotComplete`);
+        - `{"error":"read-failed","axError":integer}` for any other failure, with the Accessibility error code.
+- Recon sets a messaging timeout of two seconds per request. After a timeout, Recon reads no further elements and returns the partial tree.
 - Output: `{"application":{"path":string,"pid":integer},"windowId":integer|null,"truncated":boolean,"root":node}`. `truncated` is `true` whenever any node carries `childrenOmitted` or a timeout ended reading.
 - Recon never sets an attribute, performs an action, or opens a menu.
 
@@ -189,9 +193,9 @@ recon ui screenshot "Logic Pro" --out bounce.png → PNG of the app's main windo
 ### Privacy identity and permissions
 
 - The `recon` executable embeds an Info.plist in its `__TEXT,__info_plist` section with `CFBundleIdentifier` set to `me.malstrom.recon` and `CFBundleName` set to `recon`, so System Settings lists it as "recon". Its code-signing identifier is the same identifier.
-- Every `ui` command first re-executes `recon` once with the private disclaim spawn attribute, so that the child process is responsible for itself.
+- Every `ui` command first ensures that `recon` is responsible for itself, as reported by the private `responsibility_get_pid_responsible_for_pid`. If it is not, `recon` re-executes itself once with the private disclaim spawn attribute.
     - The child receives the same arguments, environment, and standard streams, and `recon` exits with the child's status.
-    - If Recon cannot disclaim responsibility, the command fails rather than run under the launcher's permissions.
+    - If the disclaim interfaces are unavailable, spawning fails, or the child is still not responsible for itself, the command fails rather than run under the launcher's permissions.
     - `app` commands need no privacy permission and do not re-execute.
 - Before observing, a `ui` command checks each permission it needs, without prompting: Screen Recording with `CGPreflightScreenCaptureAccess` and Accessibility with `AXIsProcessTrusted`. If one is missing, Recon asks macOS to request it with `CGRequestScreenCaptureAccess` or `AXIsProcessTrustedWithOptions`. macOS may show a prompt, but will not if the user previously denied it. Recon then exits with a nonzero status and an error that names:
     - the permission;
