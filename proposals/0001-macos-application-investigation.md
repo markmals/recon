@@ -2,7 +2,7 @@
 id: proposal.0001
 title: macOS Application Investigation
 authors: [Mark Malstrom]
-status: awaiting-implementation
+status: active-review
 pull-request: https://github.com/markmals/recon/pull/1
 issues: []
 supersedes: []
@@ -126,4 +126,4 @@ None. `policies/` and `decisions/` currently contain only README files and no go
 
 ## Open questions
 
-None. The approval owner still decides when the draft's intended behavior is settled.
+None. Human acceptance of the implemented feature remains pending.
