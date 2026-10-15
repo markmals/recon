@@ -18,7 +18,7 @@ Add the first Recon CLI feature: list discoverable and running macOS application
 
 - Authority: Mark consented to a first feature proposal for macOS application investigation in the conversation on 2026-10-14, after reviewing the proposed scope of `recon app list`, `recon app inspect`, and `recon app launch`.
 - Fit: This proposal is limited to those three commands on the available macOS host. No build mandate applies.
-- Decisions recorded: None yet. The proposal remains a draft for human review; consent to propose is not approval to implement.
+- Decisions recorded: On 2026-10-15, Mark chose bundle and running-process metadata without focus changes for this proposal; background windows, UI trees, and capture belong to a separate UI observation proposal. This proposal remains a draft for human review, not authorization to implement.
 
 ## Motivation
 
@@ -126,4 +126,4 @@ None. `policies/` and `decisions/` currently contain only README files and no go
 
 ## Open questions
 
-- [NEEDS CLARIFICATION: Is the requested no-focus inspection in this first proposal limited to an application's bundle metadata and running process IDs, or should it include background window/UI contents and private SkyLight capture despite the separate UI observation feature boundary?]
+None. The approval owner still decides when the draft's intended behavior is settled.
