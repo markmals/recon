@@ -2,7 +2,7 @@
 id: proposal.0002
 title: macOS UI Observation
 authors: [Mark Malstrom]
-status: draft
+status: awaiting-implementation
 pull-request: https://github.com/markmals/recon/pull/26
 issues: ["#15"]
 supersedes: []
@@ -18,7 +18,7 @@ Add `recon ui windows`, `recon ui tree`, and `recon ui screenshot` so an agent c
 
 - Authority: Mark consented on 2026-10-15 to a proposal for issue #15, after reviewing the recommendation that UI observation be the next proposal. No build mandate applies.
 - Fit: This proposal is limited to read-only observation of running macOS application windows, the privacy identity those observations require, and the fixture that verifies them.
-- Decisions recorded: On 2026-10-15, Mark decided that (1) winctl's private techniques come first, with public-API support added only if they cannot be made to work on this Mac with SIP enabled; grounding showed they work, so public-API capture is out of scope; (2) Recon claims its own stable privacy identity, and Mark will help establish consistent signing; (3) a window selector is layered on top of proposal 0001's bundle target; (4) this proposal builds Recon's first purpose-built native macOS fixture.
+- Decisions recorded: On 2026-10-15, Mark decided that (1) winctl's private techniques come first, with public-API support added only if they cannot be made to work on this Mac with SIP enabled; grounding showed they work, so public-API capture is out of scope; (2) Recon claims its own stable privacy identity, and Mark will help establish consistent signing; (3) a window selector is layered on top of proposal 0001's bundle target; (4) this proposal builds Recon's first purpose-built native macOS fixture. Later on 2026-10-15, Mark chose `me.malstrom.recon` as Recon's identifier, following his `me.malstrom.*` convention for `malstrom.me`; chose local signing for now, deferring signing in CI until Recon has a Homebrew formula; and approved this proposal for implementation.
 
 ## Motivation
 
@@ -188,7 +188,7 @@ recon ui screenshot "Logic Pro" --out bounce.png → PNG of the app's main windo
 
 ### Privacy identity and permissions
 
-- The `recon` executable embeds an Info.plist in its `__TEXT,__info_plist` section with `CFBundleIdentifier` set to Recon's identifier and `CFBundleName` set to `recon`, so System Settings lists it as "recon". Its code-signing identifier is the same identifier.
+- The `recon` executable embeds an Info.plist in its `__TEXT,__info_plist` section with `CFBundleIdentifier` set to `me.malstrom.recon` and `CFBundleName` set to `recon`, so System Settings lists it as "recon". Its code-signing identifier is the same identifier.
 - Every `ui` command first re-executes `recon` once with the private disclaim spawn attribute, so that the child process is responsible for itself.
     - The child receives the same arguments, environment, and standard streams, and `recon` exits with the child's status.
     - If Recon cannot disclaim responsibility, the command fails rather than run under the launcher's permissions.
@@ -198,10 +198,11 @@ recon ui screenshot "Logic Pro" --out bounce.png → PNG of the app's main windo
     - the absolute path of the running `recon` executable;
     - the System Settings location: Privacy & Security → Screen & System Audio Recording, or Privacy & Security → Accessibility.
 
-    If the executable is ad-hoc signed, the error adds that macOS will forget the grant when this executable is rebuilt.
+    If the executable is ad-hoc signed, the error adds that macOS will forget the grant when this executable is rebuilt, and that signing it with a Developer ID Application identity keeps the grant across rebuilds.
 
-- Preview builds are signed with Mark's Developer ID Application certificate (team `647GR2UNM5`). The designated requirement names Recon's identifier and that team, so a grant survives a rebuild installed at the same path, and moving the executable requires granting again.
-- A repository task builds `recon` and signs it at `target/signed/recon` with a signing identity named by the `RECON_SIGNING_IDENTITY` environment variable, for local development and smoke testing. Without that variable, the task fails rather than produce an ad-hoc binary.
+- Recon is signed locally, not in CI. Builds produced by `cargo build` or CI are ad-hoc signed. Signing an executable with a Developer ID Application identity and the identifier `me.malstrom.recon` gives it a designated requirement that names that identifier and the identity's team, so a grant survives a rebuild signed the same way and installed at the same path. Moving the executable requires granting again.
+- The guide documents the `codesign` command that re-signs a built `recon` executable with a given identity and the identifier `me.malstrom.recon`.
+- A repository task builds `recon` and signs it at `target/signed/recon` with the signing identity named by the `RECON_SIGNING_IDENTITY` environment variable, for local development and smoke testing. Without that variable, the task fails rather than produce an ad-hoc binary.
 
 ### Fixture
 
@@ -215,12 +216,12 @@ recon ui screenshot "Logic Pro" --out bounce.png → PNG of the app's main windo
 
 ## Compatibility
 
-`app` commands keep their syntax and output. The `ui` group is new. The executable gains an embedded Info.plist, and preview builds a Developer ID signature; neither changes `app` behavior. Recon stores no data to migrate.
+`app` commands keep their syntax and output. The `ui` group is new. The executable gains an embedded Info.plist, which does not change `app` behavior. Recon stores no data to migrate.
 
 ## Implications on adoption
 
-- Users grant Screen Recording and Accessibility to `recon` once in System Settings. Grants belong to the executable at its installed path. An in-place upgrade signed with the same identifier and team keeps them; moving the executable requires granting again.
-- An ad-hoc–signed build from a plain `cargo build` works after granting, but loses its grants on every rebuild.
+- Users sign `recon` locally with their own Developer ID Application identity, using the documented command, and then grant Screen Recording and Accessibility to it once in System Settings. Grants belong to the executable at its installed path. An in-place upgrade signed with the same identifier and team keeps them; moving the executable requires granting again.
+- An ad-hoc–signed build from `cargo build` or CI works after granting, but loses its grants whenever it is rebuilt or replaced.
 - Since macOS 15, macOS has periodically asked users to reconfirm screen-recording permission, which may interrupt unattended use.
 - Recon depends on private macOS interfaces verified only on macOS 27.0.1 on Apple silicon. A macOS update can remove them; Recon then reports the capability as unavailable rather than misbehaving.
 - Adoption is reversible: revoke the grants in System Settings and remove the executable.
@@ -228,8 +229,8 @@ recon ui screenshot "Logic Pro" --out bounce.png → PNG of the app's main windo
 ## Scope
 
 - `recon ui windows`, `recon ui tree`, and `recon ui screenshot`, including instance and window selection, permission checks, and the errors described above.
-- The self-disclaiming re-execution, the embedded Info.plist, and the signing task.
-- The fixture application and its build task.
+- The self-disclaiming re-execution, the embedded Info.plist, the documented local signing command, and the signing task.
+- The fixture application and its build task. The existing macOS CI artifact gains the fixture alongside the ad-hoc–signed `recon`.
 - Tests:
     - CI tests, independent of macOS permissions, for instance and window selection, traversal limits, repeated and vanished elements, value truncation, `uniform` detection, output shapes, and error messages.
     - macOS integration tests that run only when explicitly enabled on a Mac where the signed `recon` holds both grants. They launch the fixture in the background and check its known titles, labels, values, and menu items; non-uniform screenshots of the expected size; an unchanged frontmost application; and an unchanged pointer location.
@@ -242,20 +243,21 @@ recon ui screenshot "Logic Pro" --out bounce.png → PNG of the app's main windo
 - Whole-display or region screenshots, video, and change notifications. None is needed to observe one window.
 - Enabling Chromium or Electron accessibility (#4), web pages (#5), and Windows (#16).
 - Persisting observations (#23).
+- Signing in CI and storing a signing certificate in CI. Mark deferred both until Recon has a Homebrew formula.
 - Release, notarization, package-manager distribution, and app-bundle packaging. None is authorized, and the bare signed executable already holds stable grants.
 - Including off-Space windows in the application-level tree, and identifying Spaces or minimized state in `ui windows`. Off-Space windows remain reachable with `--window`.
 
 ## Preview
 
-- Artifact: a Developer ID–signed `recon` executable for Apple silicon macOS and the built fixture, produced for the draft pull request. Where the signing certificate lives is an open question.
+- Artifact: the macOS CI artifact for the draft pull request, containing an ad-hoc–signed `recon` executable for Apple silicon and the built fixture. Recon is not signed in CI.
 
-    The reviewer installs `recon` at a stable path and grants both permissions once. They then launch the fixture with `open -g` and run all three commands while another application stays frontmost. Finally, they run `ui windows`, `ui tree --window`, and `ui screenshot` against a real application on another Space. The artifact keeps normal pull-request artifact expiration and is not published as a release.
+    The reviewer re-signs `recon` locally with their Developer ID Application identity using the command in the guide, installs it at a stable path, and grants both permissions once. They then launch the fixture with `open -g` and run all three commands while another application stays frontmost. Finally, they run `ui windows`, `ui tree --window`, and `ui screenshot` against a real application on another Space. The artifact keeps normal pull-request artifact expiration and is not published as a release.
 
-- Reason: privacy-identity behavior and private-interface behavior exist only on a real Mac running a signed executable. An unsigned CI build or rendered documentation cannot exercise either.
+- Reason: privacy-identity behavior and private-interface behavior exist only on a real Mac running a signed executable. Re-signing the CI build locally exercises the same signing path a user follows; rendered documentation cannot exercise either.
 
 ## Policies and decisions checked
 
-None. `policies/` and `decisions/` contain only README files. Recon's privacy identity (its identifier and signing team) is knowledge that outlives this change. At completion, it may warrant a decision record, with Mark's approval.
+None. `policies/` and `decisions/` contain only README files. Recon's privacy identifier, `me.malstrom.recon`, is knowledge that outlives this change. At completion, it may warrant a decision record, with Mark's approval.
 
 ## Future directions
 
@@ -264,6 +266,7 @@ None. `policies/` and `decisions/` contain only README files. Recon's privacy id
 - An evidence store (#23) could record screenshots and trees with their window, instance, application version, and capture conditions.
 - Off-Space windows could be added to application-level trees by element-number scanning, and Space membership could be reported in `ui windows`.
 - An app-bundle privacy identity could make grants independent of install path, alongside notarized distribution.
+- Signing in CI could produce ready-to-grant builds once a Homebrew formula distributes them.
 
 ## Alternatives considered
 
@@ -271,14 +274,14 @@ None. `policies/` and `decisions/` contain only README files. Recon's privacy id
 - **Keeping winctl's `CGWindowListCreateImage` fallback.** Rejected. The function is obsolete, and a second capture mechanism would need its own verification without a demonstrated need.
 - **Running winctl as a dependency.** Rejected. It is a single-author research tool with a hard-coded signing identity and no stable interface, and Recon needs its own identity regardless.
 - **Using the launcher's permissions.** Rejected. Grants would differ between terminals and harnesses, which is the problem this proposal removes.
+- **Signing pull-request previews in CI with a certificate stored in GitHub Actions secrets.** Deferred by Mark until Recon has a Homebrew formula. Local signing exercises the same identity without placing a certificate in CI.
 - **An app-bundle wrapper for the privacy identity.** Deferred. One attempt produced no prompt, while the bare signed executable is verified to work.
 - **Choosing the largest or frontmost window by default.** Rejected as arbitrary. The application's own main window is a choice the application makes, and is reachable even on another Space.
 - **Scanning element numbers for every window in `ui windows` or application trees.** Rejected. Scanning to the limit costs several seconds, and menu-bar windows never match, so every call would pay the worst case.
 
 ## Open questions
 
-- [NEEDS CLARIFICATION: Which identifier should Recon's privacy identity use? Proposed: `com.markmals.recon`. Changing it later invalidates every user's grants.]
-- [NEEDS CLARIFICATION: Where should the Developer ID certificate that signs pull-request previews live: (a) in GitHub Actions secrets as a `.p12` file and its password, added by Mark, so CI signs the preview; or (b) nowhere in CI, with CI producing an ad-hoc build that the reviewer re-signs locally with a documented command before granting permissions?]
+None.
 
 ## Acknowledgments
 
