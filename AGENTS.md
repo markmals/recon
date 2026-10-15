@@ -127,7 +127,7 @@ Delegated acceptance requires the readiness report, applicable fresh checks and 
 
 An in-scope uncertainty belongs to the strategist. A change to the mandate's boundaries or an uncertainty about authority belongs to the human: block the affected slice, record the question and evidence in Beads and the PR, and continue unrelated authorized work. Agents must not weaken security, remove a promised outcome, relax verification, or edit the mandate to manufacture permission.
 
-Merge authority does not grant public publication, production deployment, credential or access changes, branch deletion, force-push, or other destructive operations. Those require explicit human authorization for the action. Direct pushes to the default branch remain prohibited. Required delivery must be completed before `implemented`; a merge-only proposal may finish without a release, while an unperformed required release remains outstanding.
+Merge authority does not grant public publication, production deployment, credential or access changes, branch deletion, force-push, or other destructive operations. Those require explicit human authorization for the action. Direct pushes to the default branch remain prohibited. Set `implemented` in the accepted feature pull request before merge; it records completed implementation, not completed delivery. Track any required release separately until it is performed. A merge-only proposal needs no release.
 
 Human instructions override delegated authority immediately. Recheck the mandate before approval and integration decisions, and revert to individual human approval when it no longer applies.
 
@@ -139,7 +139,7 @@ human consent or active mandate → branch → draft PR
        → tests → guides → code → validation
        → excellence pass → inline reviews → cross-artifact review → adversarial review
        → preview → readiness report
-       → approval-owner review → revision → vision update → authorized merge/delivery → cleanup
+       → approval-owner review → revision → vision update → implemented record in feature PR → authorized merge/delivery → cleanup
 ```
 
 Grounding and baseline study are part of proposal development, not separate proposal statuses. Use them when the problem requires substantive conceptual understanding; do not manufacture research ceremony for a trivial or already-understood change.
@@ -317,7 +317,7 @@ The verdict sets `returned-for-revisions` or `accepted`. Under a mandate, the st
 
 ### 5. Completion and release
 
-Update `VISION.md` when completed work changes what the project is, perform the authorized merge and required delivery, update dependent projects where applicable, then perform authorized cleanup. Release and destructive cleanup require their own authority. Skill: `.agents/skills/completing-a-feature/`.
+Update `VISION.md` when completed work changes what the project is, set `implemented` on the accepted feature pull request before merge, verify that revision, perform the authorized merge and required delivery, update dependent projects where applicable, then perform authorized cleanup. Release and destructive cleanup require their own authority. Skill: `.agents/skills/completing-a-feature/`.
 
 ## Reframing hard problems
 

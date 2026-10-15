@@ -5,7 +5,7 @@ description: Use after a pull request has been reviewed and the change is accept
 
 # Completing a Feature
 
-**Phase 5.** Complete work in this order: **process feedback → record policies and decisions → update the vision → merge → release → dependent-repo updates → cleanup**.
+**Phase 5.** Complete work in this order: **process feedback → record policies and decisions → update the vision → record `implemented` in the feature PR → merge → release → dependent-repo updates → cleanup**.
 
 ## 1. Process feedback
 
@@ -61,27 +61,35 @@ Reread `VISION.md`. Update it when the accepted change alters the project's capa
 
 Consult the human before a substantial rewrite. Do not turn a narrow completion change into a new vision exercise.
 
-## 4. Merge
+## 4. Record the accepted implementation
+
+After acceptance and the vision update, set the proposal to `implemented` in the same feature pull request that contains the implementation. This status says the accepted implementation is complete. It does not assert that the pull request has merged or that a required release has happened. Record the acceptance authority and any outstanding delivery in the proposal or PR, then commit and verify the updated integration candidate before merging. Do not create a follow-up PR only to move the status.
+
+Confirm the record is present in the pull request revision before marking a draft PR ready or merging; a local file or unpushed commit is not proof. For an already merged pull request, inspect its merged revision before concluding a local `accepted` status means the record is missing. If absent, ask the approval owner how to reconcile it and keep any required delivery visible. Do not try to amend a merged pull request or open a status-only PR.
+
+## 5. Merge
 
 Merge only after acceptance is recorded, and only into the stated merge target through the pull request. Never push directly to the default branch. The human accepts the work; where a bounded build mandate explicitly delegates acceptance and merge ([`AGENTS.md`](../../../AGENTS.md#bounded-build-mandates)), the strategist may accept and merge after clean independent reviews of the latest relevant revision and fresh passing checks and smoke of the integration candidate. Fix unresolved defects and unmet outcomes within scope, then repeat verification and review. Disputed material findings and changes beyond the mandate require the human; all of these block autonomous merge while unresolved.
+
+If the accepted pull request is still draft, mark it ready and verify the updated revision before merging. Draft status never authorizes skipping readiness or review.
 
 Preserve the record of what was proposed, what was implemented, why decisions were made, what review found, and how the final state differs from earlier revisions.
 
 Choose a merge strategy that retains that context in the PR and its history. Do not squash the work into one opaque commit that discards the discussion.
 
-Set `implemented` only after the merge and the delivery the proposal or mandate requires, including a release where one is required and authorized — not before, because an unshipped proposal marked implemented misrepresents the record. Never mark an unperformed required release complete; merge-only work reaches `implemented` without publishing anything.
-
-## 5. Release
+## 6. Release
 
 When release is required and authorized, use the project's existing CI/CD process. Run `vp run` with no task to find the release path. Skip publication for approved merge-only delivery.
 
 **Never publish without explicit human confirmation.** Approval to merge is not approval to release. A mandate that delegates merging delegates nothing about publication, deployment, credentials, access, or any other destructive or outward-facing act; each of those needs the human's explicit authority for that act.
 
-## 6. Update dependent repositories
+The implementation record does not complete a required release. Keep that obligation visible in the PR and task tracker until the authorized release has actually happened; do not close the feature as delivered before then.
+
+## 7. Update dependent repositories
 
 After an authorized release, update any dependent draft PRs consuming a preview version to the production release, within the granted repository authority. Mark them ready for review when appropriate. No dependent-release update is required for merge-only delivery.
 
-## 7. Clean up
+## 8. Clean up
 
 After the required delivery, perform authorized cleanup of temporary files, preview configuration, and feature branches.
 
@@ -99,11 +107,12 @@ Cleanup runs when confidence is highest. Treat it as a separate destructive oper
 - You merged without preserving why the final state differs.
 - You released because the PR merged.
 - A dependent PR still uses a preview version after release.
-- A preview or prerelease artifact outlives its PR.
+- A preview or prerelease artifact outlives its PR without a tracked, authorized teardown plan.
 - You deleted a branch, force-pushed, or tore down a published prerelease artifact without explicit human confirmation.
 - You merged with stale or failing checks, an unresolved defect, or a disputed review finding still open.
 - You acted past a mandate's boundaries, or widened or renewed one yourself, instead of stopping and asking.
-- You marked `implemented` while a required release had not happened.
+- You left the status change until after merge and created a bookkeeping-only PR.
+- You treated `implemented` as proof that a required release has already happened.
 
 Any of these means stop and return to the relevant ordered step.
 
