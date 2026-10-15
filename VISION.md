@@ -1,6 +1,6 @@
 ---
 title: A Vision for Recon
-updated: 2026-10-14
+updated: 2026-10-15
 ---
 
 # A Vision for Recon
@@ -8,6 +8,10 @@ updated: 2026-10-14
 ## Introduction
 
 Recon is an agent-facing workbench for understanding how desktop applications behave when their implementation is unavailable. It is for researchers and developers who need to turn observations of macOS and Windows reference applications into reproducible behavioral specifications. A useful answer must say what was tried, what happened, and which evidence supports the claim, so another person or agent can challenge it.
+
+## Current capabilities
+
+Recon can list discovered and running macOS application bundles, inspect one bundle's metadata and running process IDs without activating it, and explicitly launch the selected bundle through its Rust CLI. UI observation, native analysis, experiments, behavioral specifications, verification, and Windows application investigation remain future work toward the minimum viable product.
 
 ## Goals
 
@@ -47,6 +51,7 @@ Native analysis through REA and supported UI adapters must report unavailable ca
 
 ## Revision history
 
-| Date       | Change                              | Related proposal |
-| ---------- | ----------------------------------- | ---------------- |
-| 2026-10-14 | Created the initial project vision. | N/A              |
+| Date       | Change                                                      | Related proposal |
+| ---------- | ----------------------------------------------------------- | ---------------- |
+| 2026-10-14 | Created the initial project vision.                         | N/A              |
+| 2026-10-15 | Added macOS application investigation through the Rust CLI. | proposal.0001    |
