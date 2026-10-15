@@ -2,7 +2,7 @@
 id: proposal.0001
 title: macOS Application Investigation
 authors: [Mark Malstrom]
-status: accepted
+status: implemented
 pull-request: https://github.com/markmals/recon/pull/1
 issues: []
 supersedes: []
@@ -20,6 +20,7 @@ Add the first Recon CLI feature: list discoverable and running macOS application
 - Fit: This proposal is limited to those three commands on the available macOS host. No build mandate applies.
 - Decisions recorded: On 2026-10-15, Mark chose bundle and running-process metadata without focus changes for this proposal; background windows, UI trees, and capture belong to a separate UI observation proposal. On 2026-10-15, Mark approved this intended behavior and chose to keep PR #1 as the feature workspace through implementation and review. Merge and branch cleanup were reserved for acceptance of the implemented feature.
 - Acceptance: On 2026-10-15, Mark accepted the reviewed implementation and instructed the agent to merge PR #1 into its `main` target and clean up the feature branch. This grants no publication or release authority.
+- Delivery: PR #1 merged into `main` on 2026-10-15 as commit `9e3797aa869a2535a86c4ab7dc30ca98dddd6514`. The approved delivery was merge-only; no production release was authorized or made.
 
 ## Motivation
 
