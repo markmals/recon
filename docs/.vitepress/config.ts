@@ -38,7 +38,7 @@ let baseAwareVoidZeroHeader = {
 let config = defineConfig<ReconThemeConfig>({
     base,
     title: "Recon",
-    description: "An agent-facing workbench for investigating desktop application behavior.",
+    description: "An agent-facing workbench for investigating application behavior.",
     srcDir: "..",
     srcExclude: [
         "**/node_modules/**",

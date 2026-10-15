@@ -3,11 +3,12 @@
         <div class="recon-hero__inner">
             <div class="recon-hero__intro">
                 <h1>Recon</h1>
-                <p class="recon-hero__lead">Evidence-led reverse engineering for desktop apps.</p>
+                <p class="recon-hero__lead">Evidence-led reverse engineering for apps.</p>
                 <p class="recon-hero__description">
-                    An agent-facing workbench for investigating macOS and Windows reference
-                    applications. The aim is to turn controlled observations into behavioral
-                    specifications that can be checked against an independent implementation.
+                    An agent-facing workbench for investigating reference applications, starting
+                    with native, Electron, and web apps on macOS. The aim is to turn controlled
+                    observations into behavioral specifications that can be checked against an
+                    independent implementation.
                 </p>
                 <a :href="visionLink" class="recon-hero__action">Read the vision</a>
             </div>

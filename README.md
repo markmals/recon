@@ -1,6 +1,6 @@
 # Recon
 
-Recon aims to give coding agents a repeatable way to investigate desktop applications and compare independent implementations with the originals. The [vision](VISION.md) describes the intended investigation loop. On macOS, the `recon` CLI can list application bundles, inspect their metadata and running process IDs, and launch a selected bundle.
+Recon aims to give coding agents a repeatable way to investigate applications and compare independent implementations with the originals, starting with native, Electron, and web applications on macOS. The [vision](VISION.md) describes the intended investigation loop. On macOS, the `recon` CLI can list application bundles, inspect their metadata and running process IDs, and launch a selected bundle.
 
 ## Investigate a macOS application
 

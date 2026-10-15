@@ -1,6 +1,6 @@
 ---
 title: Recon
-titleTemplate: Evidence-led reverse engineering of desktop apps
+titleTemplate: Evidence-led reverse engineering of apps
 layout: home
 ---
 
