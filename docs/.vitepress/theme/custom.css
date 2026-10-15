@@ -2,26 +2,14 @@
 
 @source './**/*.vue';
 
-/* Header logo — overrides the theme's default Tailwind `h-4` (16px) so the bento box reads as a
-   brand mark. The theme renders it with `logoAlt` from theme/index.ts as its alt text. */
-img[alt="Bento"] {
-    height: 40px;
+img[alt="Recon"] {
+    height: 24px;
     width: auto;
 }
 
-/* Brand: red accent matching the lacquered rim of the bento box.
-   Light mode uses a saturated red; dark mode lifts to red-400 for contrast. */
 :root {
-    --color-brand: #c81e1e;
-    --color-grey: #9ca3af;
-
-    --vp-c-brand-1: #c81e1e;
-    --vp-c-brand-2: #991b1b;
-    --vp-c-brand-3: #ef4444;
-
-    --vp-nav-logo-height: 40px;
+    --color-brand: #22577a;
     --vp-sidebar-width: 320px;
-
     --vp-font-family-base:
         Inter, -apple-system, BlinkMacSystemFont, "avenir next", avenir, "segoe ui",
         "helvetica neue", helvetica, Cantarell, Ubuntu, roboto, arial, sans-serif;
@@ -30,51 +18,13 @@ img[alt="Bento"] {
         Consolas, Monaco, "Liberation Mono", "Lucida Console", monospace;
 }
 
-/* Dark mode — saturated red that still reads against deep backgrounds without
-   going pink. red-500 is the sweet spot; red-600 anchors filled CTAs. */
 :root.dark:not([data-theme]),
 :root[data-theme="dark"] {
-    --color-brand: #ef4444;
-    --vp-c-brand-1: #ef4444;
-    --vp-c-brand-2: #dc2626;
-    --vp-c-brand-3: #f87171;
-    --vp-code-color: #ef4444;
+    --color-brand: #9fd7e7;
 }
 
-:root[data-theme="light"] {
-    --color-brand: #c81e1e;
-    --vp-c-brand-1: #c81e1e;
-    --vp-code-color: #991b1b;
-}
-
-/* Typography */
-@media (max-width: 640px) {
-    h1.heading > span.name {
-        line-height: 72px;
-        font-size: 52px;
-    }
-}
-
-h1.heading > span.text {
-    line-height: 34px;
-    font-size: 28px;
-}
-
-@media (min-width: 640px) {
-    h1.heading > span.text {
-        line-height: 50px;
-        font-size: 42px;
-    }
-}
-
-/* Layout fixes */
 .aside:has(.VPDocOutlineItem.root:empty) {
     display: none;
-}
-
-img.VPImage.image-src {
-    width: 300px;
-    height: 300px;
 }
 
 code {

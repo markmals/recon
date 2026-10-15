@@ -74,11 +74,10 @@ export default defineConfig({
         tasks: {
             check: {
                 command: "vp check",
-                dependsOn: ["validate", "deps:policy", "test", "docs:build"],
+                dependsOn: ["validate", "test", "docs:build", "rust"],
             },
-            "check:rust": {
-                command:
-                    "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace",
+            rust: {
+                command: "node tools/check-rust.ts",
                 cache: false,
             },
             validate: "node tools/validate.ts",

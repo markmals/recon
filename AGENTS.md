@@ -101,11 +101,7 @@ The adversary receives fresh context and attempts to falsify the finished work. 
 
 ## Orchestrating agents
 
-In Oh My Pi, `.omp/extensions/dynamic-workflows.ts` registers the `workflow` tool, whose runtime lives in `.omp/tools/dynamic-workflows/`. Use it when several independent agent branches feed a later decision or synthesis, or when a result determines which agents run next. A deterministic JavaScript script can call `agent`, `parallel` with zero-argument functions, and `pipeline`; it can label phases and return a final result.
-
-A run starts in the background: the call returns a run id at once, the result arrives later as a `workflow-result` message, and the strategist keeps working meanwhile. Each agent's label becomes its agent id (`runtime-core` → `RuntimeCore`), so agents and the strategist can message each other with `write agent://<id>`. `workflow_runs` lists runs, shows one run's live agent rows, blocks on a run with `action: "wait"` instead of polling, and cancels a run; `background: false` waits for the result instead, and `concurrency` bounds live agents.
-
-For a single bounded task, work inline or use one agent. For a fixed batch of independent slices with no dependent stages, use `task`. The workflow tool earns its overhead when the dependency graph, fan-out/fan-in, or result-driven branching matters. Give each agent a bounded brief and separate ownership of edited files; a final synthesis agent should reconcile independent findings. A failed branch returns `null`, so inspect it rather than treating it as success. The workflow tool coordinates execution; it does not approve proposals, replace the strategist, or bypass tests and review.
+Oh My Pi's built-in task delegation handles independent implementation slices. Work inline for a small bounded task; dispatch a fixed batch of independent slices in parallel and keep integration ownership with the strategist. For dependent stages, complete the prerequisite first and pass its verified result to the next agent. Give every agent bounded ownership and separate edited files. Delegation does not approve proposals, replace the strategist, or bypass tests and review.
 
 ## Bounded build mandates
 
@@ -387,13 +383,13 @@ Skill: `.agents/skills/tracking-defects/`.
 
 ```sh
 vp install           # dependencies, with the pinned pnpm
-vp run check         # the full gate: vp check, validate, test, docs:build
+vp run check         # full gate: vp check, validate, test, docs:build, rust
 vp fmt               # format
 vp check             # format check, lint, and type-check
 vp run validate      # artifact frontmatter, IDs, and cross-references
-vp run test          # the record tools' and the workflow tool's tests
-vp run docs:build    # the docs site builds
-vp run rust          # Rust formatting, clippy with warnings denied, and every crate's tests (macOS arm64)
+vp run test          # the record tooling tests
+vp run docs:build    # the documentation site builds
+vp run rust          # rejects unregistered crates; checks registered crates with fmt, clippy, tests
 ```
 
 Run project-specific gates (unit, integration, end-to-end) as they exist. `vp run` with no task lists everything available.
@@ -419,13 +415,14 @@ The process lives harness-neutral in `.agents/`, which stays the source of truth
 | --- | --- |
 | This contract | Loads `AGENTS.md` from the repository root |
 | Skills | Discovers `.agents/skills/` |
-| `workflow` and `workflow_runs` tools | `.omp/extensions/dynamic-workflows.ts`, runtime in `.omp/tools/dynamic-workflows/` |
+| Parallel agent delegation | Use the harness's built-in `task` tool for independent bounded slices |
 | Format after every edit | `.omp/extensions/format-after-edit.ts` runs `vp fmt` on each file the `edit` or `write` tool changed and reports a reformat or a parse failure |
 | Gate before the turn ends | `.omp/extensions/check-before-stop.ts` runs `vp run check`; a failure sends the agent back once with the output |
 
 Another harness wires the same lifecycle events, listed in [`.agents/hooks/README.md`](.agents/hooks/README.md), into its own configuration; do not fork `.agents/` for it. The commit-message hook is a Git hook that `vp install` installs. It checks only commits made from Oh My Pi, which it recognizes by the `OMPCODE=1` that Oh My Pi exports to every command; another harness needs its own marker added there.
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:1105d646 -->
+
 ## Beads Issue Tracker
 
 This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
@@ -463,24 +460,27 @@ This protocol applies when ending a Beads implementation workflow. It is subordi
 2. **Run quality gates** (if code changed) - Tests, linters, builds
 3. **Update issue status** - Close finished work, update in-progress items
 4. **Handle git/sync by active profile**:
-   ```bash
-   # Conservative/minimal/default: report status and proposed commands; wait for approval.
-   git status
+    ```bash
+    # Conservative/minimal/default: report status and proposed commands; wait for approval.
+    git status
 
-   # Team-maintainer opt-in only, unless current instructions forbid it:
-   git pull --rebase
-   git push
-   git status
-   ```
+    # Team-maintainer opt-in only, unless current instructions forbid it:
+    git pull --rebase
+    git push
+    git status
+    ```
 5. **Hand off** - Summarize changes, validation, issue status, and any blocked sync/commit/push step
 
 **Critical rules:**
+
 - Explicit user or orchestrator instructions override this Beads block.
 - Do not commit or push without clear authority from the active profile or the current user request.
 - If a required sync or push is blocked, stop and report the exact command and error.
+
 <!-- END BEADS INTEGRATION -->
 
 <!-- BEGIN BEADS CODEX SETUP: generated by bd setup codex -->
+
 ## Beads Issue Tracker
 
 Use Beads (`bd`) for durable task tracking in repositories that include it. Use the `beads` skill at `.agents/skills/beads/SKILL.md` (project install) or `~/.agents/skills/beads/SKILL.md` (global install) for Beads workflow guidance, then use the `bd` CLI for issue operations.

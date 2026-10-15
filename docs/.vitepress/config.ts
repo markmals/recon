@@ -7,7 +7,7 @@ import { clarificationMarkerPlugin } from "./markdown/clarification.ts";
 import { generateSidebar } from "./sidebar.ts";
 
 // RecordHeader.vue resolves record IDs to page links through this extra theme key.
-interface BentoThemeConfig extends DefaultTheme.Config {
+interface ReconThemeConfig extends DefaultTheme.Config {
     recordLinks: Record<string, string>;
 }
 
@@ -31,17 +31,14 @@ let baseAwareVoidZeroHeader = {
                 "import { useData, useRoute } from 'vitepress'",
                 "import { useData, useRoute, withBase } from 'vitepress'",
             )
-            .replace(
-                '<a href="/" class="flex flex-col items-start justify-center -mx-2 px-2">',
-                '<a :href="withBase(\'/\')" class="flex flex-col items-start justify-center -mx-2 px-2">',
-            );
+            .replaceAll('href="/"', ":href=\"withBase('/')\"");
     },
 };
 
-let config = defineConfig<BentoThemeConfig>({
+let config = defineConfig<ReconThemeConfig>({
     base,
-    title: "Bento",
-    description: "A TypeScript runtime that belongs to the application using it.",
+    title: "Recon",
+    description: "An agent-facing workbench for investigating desktop application behavior.",
     srcDir: "..",
     srcExclude: [
         "**/node_modules/**",
@@ -60,6 +57,7 @@ let config = defineConfig<BentoThemeConfig>({
         "README.md",
         "PROCESS.md",
         "AGENTS.md",
+        "CLAUDE.md",
     ],
     rewrites: {
         "docs/index.md": "index.md",
@@ -79,12 +77,9 @@ let config = defineConfig<BentoThemeConfig>({
         plugins: [baseAwareVoidZeroHeader, groupIconVitePlugin()],
     },
     themeConfig: {
-        logo: "/bento.png",
         outline: { level: "deep" },
-        socialLinks: [{ icon: "github", link: "https://github.com/markmals/bento" }],
         nav: [
             { text: "Vision", link: "/VISION" },
-            { text: "Architecture", link: "/ARCHITECTURE" },
             {
                 text: "Decisions",
                 link: sidebar.firstDecisionLink ?? "/decisions/README",
@@ -116,8 +111,6 @@ let config = defineConfig<BentoThemeConfig>({
         search: { provider: "local" },
     },
     head: [
-        // VitePress prefixes themeConfig paths with `base`, but not raw `head` hrefs.
-        ["link", { rel: "icon", type: "image/png", href: `${base}bento.png` }],
         ["link", { rel: "preconnect", href: "https://fonts.googleapis.com" }],
         [
             "link",

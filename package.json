@@ -1,9 +1,9 @@
 {
-    "name": "bento",
+    "name": "recon",
     "private": true,
     "type": "module",
     "scripts": {
-        "prepare": "vp config --hooks-dir .agents/hooks --no-agent"
+        "prepare": "vp config --hooks-dir .beads/hooks --no-agent"
     },
     "devDependencies": {
         "@oh-my-pi/pi-coding-agent": "latest",

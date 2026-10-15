@@ -124,7 +124,7 @@ Publication, production deployment, credential or access changes, and destructiv
 
 ### Agent orchestration
 
-The project's Oh My Pi `workflow` tool, registered by `.omp/extensions/dynamic-workflows.ts`, is for a dependency graph of agent work: independent branches that feed a later synthesis, or result-driven branches and pipelines. A single small task stays inline; a fixed batch of independent slices uses ordinary task delegation. A run goes to the background and reports back as a `workflow-result` message, so the strategist keeps working while it runs, addresses an agent by its label-derived id with `write agent://<id>`, and uses `workflow_runs` to inspect a run, block on it with `action: "wait"`, or cancel it. Workflow scripts orchestrate subagents deterministically and expose phases, but the agents still need bounded ownership and the strategist still owns intent and review. A failed branch yields `null`; treat it as a missing result, not evidence of success.
+For independent slices, dispatch a fixed batch through the harness's task delegation tool and integrate the results before starting dependent work. For dependent stages, finish and verify the prerequisite before passing its result to the next agent. A single small task stays inline. Every agent needs bounded ownership of edited files; the strategist owns synthesis, approval, and review.
 
 ## Preparation
 

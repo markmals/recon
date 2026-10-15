@@ -1,8 +1,7 @@
 ---
-title: Bento
-titleTemplate: A TypeScript runtime that belongs to the application using it
+title: Recon
+titleTemplate: Evidence-led reverse engineering of desktop apps
 layout: home
-theme: dark
 ---
 
 <script setup lang="ts">

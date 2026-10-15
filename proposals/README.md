@@ -16,7 +16,7 @@ Name each file `<NNNN>-<slug>.md`, using the next four-digit number and a kebab-
 | `withdrawn` | The author pulled it. Kept as record. | either | terminal |
 | `superseded` | A later proposal replaced it. | either | terminal |
 
-**Decided by** names the approval owner: the human, or the strategist for decisions delegated by [an active build mandate](https://github.com/markmals/bento/blob/main/AGENTS.md#bounded-build-mandates). Proposal approval requires settled intent and recorded authority. Acceptance of implementation additionally requires the readiness report, fresh checks, independent reviews, and an exercised preview. An implementer's completion claim alone cannot authorize acceptance.
+**Decided by** names the approval owner: the human, or the strategist for decisions delegated by [an active build mandate](https://github.com/markmals/recon/blob/main/AGENTS.md#bounded-build-mandates). Proposal approval requires settled intent and recorded authority. Acceptance of implementation additionally requires the readiness report, fresh checks, independent reviews, and an exercised preview. An implementer's completion claim alone cannot authorize acceptance.
 
 Every proposal records where its authority came from in `## Authorization`: the human's direct consent for this change, or the mandate proposal and approved revision it runs under, why the change fits inside it, and the approval decisions the strategist took. A proposal may also carry an optional `## Build mandate` section; once the human approves that proposal, it is what delegates a bounded set of decisions. Mandates need no separate directory, frontmatter key, or status — an ordinary proposal in this lifecycle carries them — and a mandate proposal cannot authorize itself.
 

@@ -15,6 +15,10 @@ jobs:
             - uses: voidzero-dev/setup-vp@v1.21.1
               with:
                   cache: true
+            - uses: dtolnay/rust-toolchain@stable
+              with:
+                  toolchain: 1.99.0
+                  components: rustfmt, clippy
             - run: vp run check
             - name: Validate pull request commit messages
               if: github.event_name == 'pull_request'

@@ -31,7 +31,7 @@ function readTemplate(name: string): string {
 }
 
 function temporaryRoot(): string {
-    let root = mkdtempSync(path.join(tmpdir(), "bento-validate-"));
+    let root = mkdtempSync(path.join(tmpdir(), "recon-validate-"));
     onTestFinished(() => rmSync(root, { force: true, recursive: true }));
     return root;
 }
@@ -101,7 +101,7 @@ function validArtifacts(): Artifact[] {
             describes: ["proposal.0002"],
         }),
         artifact("VISION.md", {
-            title: "Bento Vision",
+            title: "Recon Vision",
             updated: "2026-08-25",
         }),
     ];
@@ -242,7 +242,7 @@ test.each([
 test.each([
     { kind: "absent", issues: undefined },
     { kind: "empty", issues: [] },
-    { kind: "populated", issues: ["#12", "https://github.com/example/bento/issues/34"] },
+    { kind: "populated", issues: ["#12", "https://github.com/example/recon/issues/34"] },
 ])("rule 1 accepts an $kind proposal issues list", ({ issues }) => {
     let records = validArtifacts();
     if (issues !== undefined) records[0].frontmatter.issues = issues;
