@@ -2,7 +2,7 @@
 id: proposal.0001
 title: macOS Application Investigation
 authors: [Mark Malstrom]
-status: active-review
+status: awaiting-implementation
 pull-request: https://github.com/markmals/recon/pull/1
 issues: []
 supersedes: []
