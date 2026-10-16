@@ -77,7 +77,7 @@ Read `onScreen: false` carefully. It does not distinguish a window on another Sp
 
 Without `--window`, the root of the tree is the application element, and its children are whatever the application reports, typically its menu bar and its windows on the current Space. Windows on other Spaces are usually missing from that list, and Recon does not go looking for them here.
 
-With `--window`, the root is that window's accessibility element. Recon looks for the element in the application's `AXWindows`, then in its `AXMainWindow`, then by constructing elements from private remote tokens for element numbers 0 through 99,999 and matching their window IDs. A window that none of those reaches fails with `window <id> has no accessibility element reachable by Recon`.
+With `--window`, the root is that window's accessibility element. Recon looks for the element in the application's `AXWindows`, then in its `AXMainWindow`, then by constructing elements from private remote tokens for element numbers 0 through 99,999 and matching their window IDs. A window that none of those reaches fails with `window <id> has no accessibility element reachable by Recon`. An application that does not answer one of those requests within two seconds stops the search, and the command fails with `process <pid> did not answer an accessibility request within 2 seconds`.
 
 The object around the tree is `application` with `path` and `pid`, `windowId` holding the window ID you asked for or `null` when you did not, `truncated`, and `root`.
 
@@ -96,7 +96,7 @@ Any node whose children were not all read carries `"childrenOmitted": true`. The
 
 `--out` is required, and Recon never overwrites. A missing parent directory fails with `cannot write <path>: <parent> is not an existing directory`, and a path that already exists fails with `cannot write <path>: the file already exists; recon never overwrites`. The file is written as PNG whatever extension you give it.
 
-Without `--window`, Recon captures the window the application reports as its main window through Accessibility. An application that reports no main window, which happens for instance when its only window is minimized, makes the command fail with a suggestion to list the windows with `recon ui windows` and pick one with `--window`.
+Without `--window`, Recon captures the window the application reports as its main window through Accessibility. An application that reports no main window, which happens for instance when its only window is minimized, makes the command fail with a suggestion to list the windows with `recon ui windows` and pick one with `--window`. An application that does not answer within two seconds makes it fail with `process <pid> did not answer an accessibility request within 2 seconds`.
 
 Capture uses a private SkyLight hardware capture of exactly one window, at that window's backing pixel resolution, with no fallback mechanism. Two failures are reported plainly, and neither writes a file. If the private symbols are missing, the command fails with `window capture is unavailable on this macOS version (SkyLight capture API not found)`. If macOS returns no image, the command fails with `macOS returned no image for window <id>`.
 

@@ -153,7 +153,7 @@ recon ui screenshot "Logic Pro" --out bounce.png → PNG of the app's main windo
     2. its `AXMainWindow`;
     3. the private remote-token construction for element numbers 0 through 99,999, matched by `_AXUIElementGetWindow`.
 
-    If none matches, the command fails with `window <id> has no accessibility element reachable by Recon`.
+    If none matches, the command fails with `window <id> has no accessibility element reachable by Recon`. If the application does not answer one of these requests within the messaging timeout, Recon stops looking and the command fails with `process <pid> did not answer an accessibility request within 2 seconds`.
 
 - Each element becomes a node with this shape: `{"role":string|null,"subrole":string|null,"title":string|null,"description":string|null,"value":string|number|boolean|null,"identifier":string|null,"enabled":boolean|null,"focused":boolean|null,"frame":{"x":number,"y":number,"width":number,"height":number}|null,"actions":[string,...],"children":[node,...]}`.
     - Fields come from the attributes `AXRole`, `AXSubrole`, `AXTitle`, `AXDescription`, `AXValue`, `AXIdentifier`, `AXEnabled`, `AXFocused`, `AXPosition` with `AXSize`, and `AXChildren`, and from the element's action names.
@@ -178,7 +178,7 @@ recon ui screenshot "Logic Pro" --out bounce.png → PNG of the app's main windo
 ### `recon ui screenshot <target> [--pid <pid>] [--window <id>] --out <file>`
 
 - Requires Screen Recording.
-- Without `--window`, the window is the application's main window as reported by Accessibility and mapped to its window ID, so Accessibility is also required. If the application reports no main window, the command fails and suggests choosing one with `recon ui windows` and `--window`.
+- Without `--window`, the window is the application's main window as reported by Accessibility and mapped to its window ID, so Accessibility is also required. If the application reports no main window, the command fails and suggests choosing one with `recon ui windows` and `--window`. If it does not answer within the messaging timeout, the command fails with `process <pid> did not answer an accessibility request within 2 seconds`.
 - `--out` is required. Its parent directory must exist, and the file must not exist; Recon never overwrites. Recon writes a PNG file regardless of the file name's extension, and the output reports its absolute path.
 - Capture uses the private SkyLight hardware window capture of exactly one window, at that window's backing pixel resolution. There is no fallback mechanism.
     - If the private symbols are unavailable, the command fails with `window capture is unavailable on this macOS version (SkyLight capture API not found)`.
