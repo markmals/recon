@@ -165,13 +165,12 @@ fn read_failure(error: AXError) -> ReadFailure {
 }
 
 /// Whether the error a bulk read gave instead of one attribute's value is a failure of the whole
-/// element. An element that does not have the attribute is ordinary; an element that no longer
-/// exists, or that stopped answering while supplying it, is not.
+/// element. Only an attribute the element does not have is ordinary; any other error means the
+/// application could not supply the value, which a node reporting `null` or `[]` would hide.
 fn attribute_failure(error: AXError) -> Option<ReadFailure> {
     match error {
-        AXError::InvalidUIElement => Some(ReadFailure::Unavailable),
-        AXError::CannotComplete => Some(ReadFailure::Timeout),
-        _ => None,
+        AXError::NoValue | AXError::AttributeUnsupported => None,
+        other => Some(read_failure(other)),
     }
 }
 
@@ -216,17 +215,17 @@ mod tests {
     }
 
     #[test]
-    fn an_attribute_an_element_does_not_have_leaves_the_element_readable() {
+    fn only_a_truly_absent_attribute_leaves_the_element_readable() {
         assert_eq!(attribute_failure(AXError::NoValue), None);
         assert_eq!(attribute_failure(AXError::AttributeUnsupported), None);
-        assert_eq!(attribute_failure(AXError::Failure), None);
-        assert_eq!(attribute_failure(AXError::NotImplemented), None);
     }
 
     #[test]
-    fn an_attribute_that_timed_out_or_vanished_fails_the_element() {
+    fn an_attribute_the_application_could_not_supply_fails_the_element() {
         assert_eq!(attribute_failure(AXError::CannotComplete), Some(ReadFailure::Timeout));
         assert_eq!(attribute_failure(AXError::InvalidUIElement), Some(ReadFailure::Unavailable));
+        assert_eq!(attribute_failure(AXError::Failure), Some(ReadFailure::Failed(-25200)));
+        assert_eq!(attribute_failure(AXError::NotImplemented), Some(ReadFailure::Failed(-25208)));
     }
 
     #[test]
