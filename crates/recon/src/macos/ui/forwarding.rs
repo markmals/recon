@@ -17,24 +17,47 @@ const FORWARDED: [c_int; 4] = [libc::SIGHUP, libc::SIGINT, libc::SIGQUIT, libc::
 /// The disclaimed child, which is all the signal handler is allowed to read.
 static CHILD: AtomicI32 = AtomicI32::new(0);
 
-/// The forwarded signals, held back until there is a child to forward them to.
+/// The stop signals Recon forwards, held back until there is a child to forward them to.
 ///
 /// Blocking them closes the window between spawning the child and installing the handler: a
 /// signal that arrives in between stays pending, and is delivered to the handler once the mask
 /// is restored, which happens when this is dropped.
-pub struct Held(libc::sigset_t);
+pub struct Held {
+    previous: libc::sigset_t,
+    forwarded: Vec<c_int>,
+}
 
 pub fn hold() -> Held {
-    let mut forwarded = no_signals();
-    let mut held = no_signals();
+    let forwarded = forwardable(FORWARDED.map(is_ignored));
+    let mut blocked = no_signals();
+    let mut previous = no_signals();
     // SAFETY: every set is a live local.
     unsafe {
-        for signal in FORWARDED {
-            libc::sigaddset(&mut forwarded, signal);
+        for signal in &forwarded {
+            libc::sigaddset(&mut blocked, *signal);
         }
-        libc::sigprocmask(libc::SIG_BLOCK, &forwarded, &mut held);
+        libc::sigprocmask(libc::SIG_BLOCK, &blocked, &mut previous);
     }
-    Held(held)
+    Held { previous, forwarded }
+}
+
+/// Which stop signals to forward, given which ones the launcher set to be ignored. An ignored
+/// signal stays ignored by both processes: the child inherits `SIG_IGN` across the spawn, so a
+/// parent that handled it would react to something its child is deaf to.
+fn forwardable(ignored: [bool; FORWARDED.len()]) -> Vec<c_int> {
+    FORWARDED
+        .iter()
+        .zip(ignored)
+        .filter(|(_, ignored)| !ignored)
+        .map(|(signal, _)| *signal)
+        .collect()
+}
+
+fn is_ignored(signal: c_int) -> bool {
+    let mut current = empty_action();
+    // SAFETY: a null new action only reads the signal's current disposition.
+    unsafe { libc::sigaction(signal, ptr::null(), &mut current) };
+    current.sa_sigaction == libc::SIG_IGN
 }
 
 impl Held {
@@ -43,17 +66,17 @@ impl Held {
         CHILD.store(child, Ordering::Relaxed);
         let mut action = empty_action();
         action.sa_sigaction = forward_to_child as *const () as libc::sighandler_t;
-        for signal in FORWARDED {
+        for signal in &self.forwarded {
             // SAFETY: the handler is async-signal-safe and `action` is a live local.
-            unsafe { libc::sigaction(signal, &action, ptr::null_mut()) };
+            unsafe { libc::sigaction(*signal, &action, ptr::null_mut()) };
         }
     }
 }
 
 impl Drop for Held {
     fn drop(&mut self) {
-        // SAFETY: `self.0` is the mask this process ran with before the signals were blocked.
-        unsafe { libc::sigprocmask(libc::SIG_SETMASK, &self.0, ptr::null_mut()) };
+        // SAFETY: `previous` is the mask this process ran with before the signals were blocked.
+        unsafe { libc::sigprocmask(libc::SIG_SETMASK, &self.previous, ptr::null_mut()) };
     }
 }
 
@@ -120,5 +143,25 @@ fn empty_action() -> libc::sigaction {
         let mut action = mem::zeroed::<libc::sigaction>();
         libc::sigemptyset(&mut action.sa_mask);
         action
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_stop_signal_is_forwarded_when_the_launcher_ignores_none() {
+        assert_eq!(forwardable([false; FORWARDED.len()]), FORWARDED.to_vec());
+    }
+
+    #[test]
+    fn a_signal_the_launcher_ignores_is_not_forwarded() {
+        assert_eq!(
+            forwardable([true, false, true, false]),
+            vec![libc::SIGINT, libc::SIGTERM],
+            "nohup-style ignoring of SIGHUP and SIGQUIT leaves the rest forwarded"
+        );
+        assert!(forwardable([true; FORWARDED.len()]).is_empty());
     }
 }
