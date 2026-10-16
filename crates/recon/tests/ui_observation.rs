@@ -83,6 +83,29 @@ fn the_window_tree_exposes_the_controls_of_the_main_window() {
 
 #[test]
 #[ignore = "needs target/signed/recon with Screen Recording and Accessibility granted; run vp run test:ui"]
+fn a_window_without_an_accessibility_element_is_reported_unreachable() {
+    let fixture = Fixture::launch();
+    let observation = run_ui(&["windows", fixture.target()]);
+    let untitled = observation["windows"]
+        .as_array()
+        .expect("a windows array")
+        .iter()
+        .find(|window| window["title"].is_null())
+        .unwrap_or_else(|| panic!("AppKit gave the fixture no untitled window: {observation}"));
+    let id = untitled["id"].as_u64().expect("a window id").to_string();
+
+    let output = run_recon(&["ui", "tree", fixture.target(), "--window", &id]);
+
+    assert!(!output.status.success());
+    assert!(output.stdout.is_empty());
+    assert_eq!(
+        String::from_utf8_lossy(&output.stderr),
+        format!("recon: window {id} has no accessibility element reachable by Recon\n")
+    );
+}
+
+#[test]
+#[ignore = "needs target/signed/recon with Screen Recording and Accessibility granted; run vp run test:ui"]
 fn a_window_screenshot_is_written_at_the_backing_pixel_size_of_its_bounds() {
     let fixture = Fixture::launch();
     let main_window = main_window_id(&fixture);
@@ -122,6 +145,26 @@ fn a_screenshot_without_a_window_captures_the_applications_main_window() {
 
     assert_eq!(capture["window"]["title"], MAIN_WINDOW_TITLE);
     assert_eq!(capture["window"]["id"].as_u64(), Some(main_window_id(&fixture)));
+}
+
+#[test]
+#[ignore = "needs target/signed/recon with Screen Recording and Accessibility granted; run vp run test:ui"]
+fn a_screenshot_is_written_as_png_whatever_the_file_extension() {
+    let fixture = Fixture::launch();
+    let main_window = main_window_id(&fixture);
+    let directory = TemporaryDirectory::new();
+    let out = directory.file("capture.jpg");
+
+    run_ui(&[
+        "screenshot",
+        fixture.target(),
+        "--window",
+        &main_window.to_string(),
+        "--out",
+        path_argument(&out),
+    ]);
+
+    png_pixel_size(&out);
 }
 
 #[test]

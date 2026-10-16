@@ -73,6 +73,20 @@ fn an_unresolvable_target_fails_before_any_permission_is_checked() {
     assert!(!diagnostic.contains("permission"), "{diagnostic}");
 }
 
+#[cfg(target_os = "macos")]
+#[test]
+fn the_executable_identifies_itself_to_macos_privacy_settings_as_recon() {
+    let output = Command::new("/bin/launchctl")
+        .args(["plist", "__TEXT,__info_plist", env!("CARGO_BIN_EXE_recon")])
+        .output()
+        .expect("start launchctl");
+
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    let embedded = String::from_utf8(output.stdout).expect("UTF-8 property list");
+    assert!(embedded.contains(r#""CFBundleIdentifier" = "me.malstrom.recon";"#), "{embedded}");
+    assert!(embedded.contains(r#""CFBundleName" = "recon";"#), "{embedded}");
+}
+
 #[cfg(not(target_os = "macos"))]
 #[test]
 fn ui_observation_reports_the_host_it_supports() {

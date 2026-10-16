@@ -127,6 +127,7 @@ recon ui screenshot "Logic Pro" --out bounce.png → PNG of the app's main windo
 
 ### Selecting an instance and a window
 
+- Flags may come before or after the target. A missing target, an extra positional argument, a repeated flag, a flag the command does not take, or a missing or malformed flag value is a usage error.
 - Every `ui` command takes a target that is resolved under proposal 0001's rules, including its ambiguity and not-found errors. Recon then selects one running instance of that bundle:
     - If the bundle has exactly one running process, Recon selects it.
     - If it has none, Recon fails with `<path> is not running; recon ui does not launch applications`.
