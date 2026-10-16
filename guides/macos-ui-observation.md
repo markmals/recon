@@ -43,7 +43,7 @@ Ad-hoc signing is what `cargo build` and CI produce on Apple silicon, and the de
 
 Since macOS 15, macOS periodically asks you to reconfirm screen-recording permission. Expect that to interrupt long unattended runs.
 
-Every `ui` command first makes sure `recon` is responsible for its own privacy requests. If it is not, `recon` re-executes itself once with the same arguments, environment, and standard streams, and exits with the child's status; you see nothing but the result. If that re-execution is impossible, the command fails instead of quietly running under the launcher's permissions. The `app` commands need no permission and never re-execute.
+Every `ui` command first makes sure `recon` is responsible for its own privacy requests. If it is not, `recon` re-executes itself once with the same arguments, environment, and standard streams, and exits with the child's status; you see nothing but the result. Stopping `recon` with SIGHUP, SIGINT, SIGQUIT, or SIGTERM stops the re-executed child too, and a child ended by a signal ends `recon` with the same signal. If that re-execution is impossible, the command fails instead of quietly running under the launcher's permissions. The `app` commands need no permission and never re-execute.
 
 Working on Recon itself, build and sign a local copy in one step:
 
