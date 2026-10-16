@@ -108,12 +108,18 @@ pub fn size(value: &CFType) -> Option<CGSize> {
     geometry(value, AXValueType::CGSize, NonNull::from(&mut size).cast()).then_some(size)
 }
 
+/// The accessibility elements among an element's children. An application controls what it puts
+/// in `AXChildren`, so anything that is not an element is left out rather than trusted.
 pub fn elements(children: &CFType) -> Option<Vec<Element>> {
     let children = children.downcast_ref::<CFArray>()?.retain();
-    // SAFETY: the children of an accessibility element are accessibility elements.
-    let children: CFRetained<CFArray<AXUIElement>> =
-        unsafe { CFRetained::cast_unchecked(children) };
-    Some(children.iter().map(Element::new).collect())
+    // SAFETY: the members of a Core Foundation array are Core Foundation values.
+    let children: CFRetained<CFArray<CFType>> = unsafe { CFRetained::cast_unchecked(children) };
+    Some(
+        children
+            .iter()
+            .filter_map(|child| child.downcast::<AXUIElement>().ok().map(Element::new))
+            .collect(),
+    )
 }
 
 fn geometry(value: &CFType, kind: AXValueType, into: NonNull<c_void>) -> bool {
@@ -157,6 +163,16 @@ mod tests {
         );
         assert_eq!(attribute_error(&CFString::from_str("AXButton")), None);
         assert_eq!(attribute_error(&CFNumber::new_i64(7)), None);
+    }
+
+    #[test]
+    fn a_child_that_is_not_an_accessibility_element_is_left_out() {
+        let text = CFString::from_str("not an element");
+        let number = CFNumber::new_i64(7);
+        let children = CFArray::from_objects(&[&*text as &CFType, &number]);
+
+        assert_eq!(elements(&children), Some(Vec::new()));
+        assert_eq!(elements(&text), None);
     }
 
     #[test]

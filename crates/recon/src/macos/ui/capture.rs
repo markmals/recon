@@ -57,13 +57,17 @@ fn window_image(window_id: u32) -> Result<CFRetained<CGImage>, String> {
 /// A capture of an invisible or fully transparent window is uniform; Recon records that rather
 /// than treating it as a failure.
 fn uniform(image: &CGImage, width: usize, height: usize, window_id: u32) -> Result<bool, String> {
+    let bits_per_pixel = CGImage::bits_per_pixel(Some(image));
+    if bits_per_pixel == 0 || !bits_per_pixel.is_multiple_of(8) {
+        return Err(format!("macOS returned window {window_id} in an unsupported pixel format"));
+    }
     let provider = CGImage::data_provider(Some(image));
     let pixels = CGDataProvider::data(provider.as_deref())
         .ok_or_else(|| format!("macOS returned no pixels for window {window_id}"))?;
-    let bytes_per_pixel = CGImage::bits_per_pixel(Some(image)) / 8;
     // SAFETY: the copied pixels are not mutated while they are read.
     let pixels = unsafe { pixels.as_bytes_unchecked() };
-    Ok(is_uniform(pixels, width, height, CGImage::bytes_per_row(Some(image)), bytes_per_pixel))
+    let bytes_per_row = CGImage::bytes_per_row(Some(image));
+    Ok(is_uniform(pixels, width, height, bytes_per_row, bits_per_pixel / 8))
 }
 
 fn png(image: &CGImage, window_id: u32) -> Result<Vec<u8>, String> {

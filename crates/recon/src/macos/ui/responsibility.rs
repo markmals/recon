@@ -4,17 +4,20 @@
 //! and behave the same under every launcher.
 
 use std::env;
-use std::ffi::{CString, c_char, c_int};
+use std::ffi::{CString, OsStr, c_char, c_int, c_short};
 use std::io;
+use std::mem;
 use std::os::unix::ffi::OsStrExt;
 use std::process::exit;
 use std::ptr;
+use std::sync::atomic::{AtomicI32, Ordering};
 
 use libc::{pid_t, posix_spawnattr_t};
 
 use super::private;
 
-/// Marks the re-executed child, so that responsibility is taken exactly once.
+/// Marks the re-executed child. Its value is the process ID of the `recon` that spawned it, so a
+/// marker some other launcher set cannot make Recon believe it has already re-executed.
 const MARKER: &str = "RECON_RESPONSIBILITY_DISCLAIMED";
 
 type ResponsibleForPid = unsafe extern "C" fn(pid_t) -> pid_t;
@@ -24,8 +27,11 @@ type SetDisclaim = unsafe extern "C" fn(*mut posix_spawnattr_t, c_int) -> c_int;
 ///
 /// When a re-execution happens this never returns: the parent exits with the child's status.
 pub fn take_responsibility() -> Result<(), String> {
-    let relaunched = env::var_os(MARKER).is_some();
-    if relaunched {
+    let marker = env::var_os(MARKER);
+    // SAFETY: reading this process's parent cannot fail.
+    let parent = unsafe { libc::getppid() };
+    let relaunched = relaunched_by(marker.as_deref().and_then(OsStr::to_str), parent);
+    if marker.is_some() {
         // SAFETY: Recon is single threaded at startup, before anything else reads the environment.
         unsafe { env::remove_var(MARKER) };
     }
@@ -41,6 +47,11 @@ pub fn take_responsibility() -> Result<(), String> {
         );
     }
     relaunch_disclaimed()
+}
+
+/// Whether the marker in the environment is the one this process's parent set for it.
+fn relaunched_by(marker: Option<&str>, parent: pid_t) -> bool {
+    marker.and_then(|value| value.parse::<pid_t>().ok()) == Some(parent)
 }
 
 fn responsible_for_self() -> Result<bool, String> {
@@ -64,8 +75,18 @@ fn relaunch_disclaimed() -> Result<(), String> {
         .collect::<Result<Vec<_>, _>>()?;
     let environment = disclaimed_environment()?;
 
-    let child = spawn(&program, &arguments, &environment, set_disclaim)?;
-    exit(wait_for(child)?)
+    // Blocking first closes the window between the spawn and the handler: a signal that arrives
+    // in between stays pending and is delivered, to the installed handler, once both are done.
+    let held = block_forwarded();
+    let spawned = spawn(&program, &arguments, &environment, set_disclaim);
+    if let Ok(child) = spawned {
+        CHILD.store(child, Ordering::Relaxed);
+        install_forwarding();
+    }
+    restore_mask(&held);
+
+    let child = spawned?;
+    exit_like(wait_for(child)?)
 }
 
 fn spawn(
@@ -84,8 +105,13 @@ fn spawn(
     if initialized != 0 {
         return Err(spawn_failure(io::Error::from_raw_os_error(initialized)));
     }
-    // SAFETY: the attributes were just initialized.
-    let disclaimed = unsafe { set_disclaim(&mut attributes, 1) };
+    // SAFETY: the attributes were just initialized; the child must not inherit the mask the
+    // parent holds while it installs its handlers, or it could never be stopped.
+    let disclaimed = unsafe {
+        libc::posix_spawnattr_setsigmask(&mut attributes, &empty_signals());
+        libc::posix_spawnattr_setflags(&mut attributes, libc::POSIX_SPAWN_SETSIGMASK as c_short);
+        set_disclaim(&mut attributes, 1)
+    };
     let spawned = if disclaimed == 0 {
         // SAFETY: both pointer vectors are null terminated and outlive the call, and without file
         // actions the child inherits Recon's standard streams.
@@ -117,7 +143,7 @@ fn spawn(
     Ok(child)
 }
 
-fn wait_for(child: pid_t) -> Result<i32, String> {
+fn wait_for(child: pid_t) -> Result<c_int, String> {
     let mut status: c_int = 0;
     // SAFETY: `child` is the process just spawned, and `status` is a live local.
     while unsafe { libc::waitpid(child, &mut status, 0) } < 0 {
@@ -126,10 +152,93 @@ fn wait_for(child: pid_t) -> Result<i32, String> {
             return Err(format!("cannot wait for the disclaimed recon process: {error}"));
         }
     }
+    Ok(status)
+}
+
+/// Ends `recon` the way its child ended, so a caller that stopped the observation sees the signal
+/// it sent rather than an ordinary exit code.
+fn exit_like(status: c_int) -> ! {
     if libc::WIFSIGNALED(status) {
-        return Ok(128 + libc::WTERMSIG(status));
+        let signal = libc::WTERMSIG(status);
+        reraise(signal);
+        // Only reached if the signal did not end this process after all.
+        exit(128 + signal);
     }
-    Ok(libc::WEXITSTATUS(status))
+    exit(libc::WEXITSTATUS(status));
+}
+
+fn reraise(signal: c_int) {
+    let mut action: libc::sigaction = empty_action();
+    action.sa_sigaction = libc::SIG_DFL;
+    let mut only = empty_signals();
+    // SAFETY: restores the signal's default disposition, unblocks it, and sends it to this
+    // process; all three take live locals or a signal number.
+    unsafe {
+        libc::sigaction(signal, &action, ptr::null_mut());
+        libc::sigaddset(&mut only, signal);
+        libc::sigprocmask(libc::SIG_UNBLOCK, &only, ptr::null_mut());
+        libc::raise(signal);
+    }
+}
+
+/// Signals that stop a command. The parent forwards them, so stopping `recon` stops the
+/// observation the disclaimed child is doing.
+const FORWARDED: [c_int; 4] = [libc::SIGHUP, libc::SIGINT, libc::SIGQUIT, libc::SIGTERM];
+
+/// The disclaimed child, which is all the signal handler is allowed to read.
+static CHILD: AtomicI32 = AtomicI32::new(0);
+
+extern "C" fn forward_to_child(signal: c_int) {
+    let child = CHILD.load(Ordering::Relaxed);
+    if child > 0 {
+        // SAFETY: `kill` is async-signal-safe, and the handler touches nothing else.
+        unsafe { libc::kill(child, signal) };
+    }
+}
+
+fn install_forwarding() {
+    let mut action: libc::sigaction = empty_action();
+    action.sa_sigaction = forward_to_child as *const () as libc::sighandler_t;
+    for signal in FORWARDED {
+        // SAFETY: the handler is async-signal-safe and `action` is a live local.
+        unsafe { libc::sigaction(signal, &action, ptr::null_mut()) };
+    }
+}
+
+fn block_forwarded() -> libc::sigset_t {
+    let mut forwarded = empty_signals();
+    let mut held = empty_signals();
+    // SAFETY: every set is a live local.
+    unsafe {
+        for signal in FORWARDED {
+            libc::sigaddset(&mut forwarded, signal);
+        }
+        libc::sigprocmask(libc::SIG_BLOCK, &forwarded, &mut held);
+    }
+    held
+}
+
+fn restore_mask(held: &libc::sigset_t) {
+    // SAFETY: `held` is the mask this process ran with before blocking.
+    unsafe { libc::sigprocmask(libc::SIG_SETMASK, held, ptr::null_mut()) };
+}
+
+fn empty_signals() -> libc::sigset_t {
+    // SAFETY: `sigemptyset` initializes the set it is given.
+    unsafe {
+        let mut set = mem::zeroed::<libc::sigset_t>();
+        libc::sigemptyset(&mut set);
+        set
+    }
+}
+
+fn empty_action() -> libc::sigaction {
+    // SAFETY: a zeroed `sigaction` with an emptied mask and no flags.
+    unsafe {
+        let mut action = mem::zeroed::<libc::sigaction>();
+        libc::sigemptyset(&mut action.sa_mask);
+        action
+    }
 }
 
 fn disclaimed_environment() -> Result<Vec<CString>, String> {
@@ -141,7 +250,9 @@ fn disclaimed_environment() -> Result<Vec<CString>, String> {
             argument(&entry)
         })
         .collect::<Result<Vec<_>, _>>()?;
-    environment.push(argument(format!("{MARKER}=1").as_bytes())?);
+    // SAFETY: reading this process's own ID cannot fail; the child matches it against its parent.
+    let own = unsafe { libc::getpid() };
+    environment.push(argument(format!("{MARKER}={own}").as_bytes())?);
     Ok(environment)
 }
 
@@ -166,4 +277,24 @@ fn unavailable(symbol: &str) -> String {
         "recon cannot take responsibility for its own privacy permissions on this macOS version \
          ({symbol} not found)"
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_the_marker_this_parent_set_means_recon_already_re_executed() {
+        assert!(relaunched_by(Some("412"), 412));
+        assert!(!relaunched_by(Some("412"), 413));
+    }
+
+    #[test]
+    fn a_marker_another_launcher_set_is_ignored() {
+        assert!(!relaunched_by(None, 412));
+        assert!(!relaunched_by(Some("1"), 412));
+        assert!(!relaunched_by(Some(""), 412));
+        assert!(!relaunched_by(Some("yes"), 412));
+        assert!(!relaunched_by(Some("412 "), 412));
+    }
 }

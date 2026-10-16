@@ -29,14 +29,16 @@ pub fn write_new(path: &Path, bytes: &[u8]) -> Result<(), String> {
     write_or_remove(path, file, bytes)
 }
 
-/// A partly written file is not a result, so a failed write leaves nothing behind.
+/// A partly written file is not a result, so a failed write leaves nothing behind. A removal that
+/// fails too is part of the error, because then a partial file does remain.
 fn write_or_remove(path: &Path, mut sink: impl Write, bytes: &[u8]) -> Result<(), String> {
-    match sink.write_all(bytes).and_then(|()| sink.flush()) {
-        Ok(()) => Ok(()),
-        Err(error) => {
-            let _ = fs::remove_file(path);
-            Err(cannot_write(path, &error))
-        }
+    let Err(error) = sink.write_all(bytes).and_then(|()| sink.flush()) else {
+        return Ok(());
+    };
+    let failure = cannot_write(path, &error);
+    match fs::remove_file(path) {
+        Ok(()) => Err(failure),
+        Err(removal) => Err(format!("{failure}; the partial file could not be removed: {removal}")),
     }
 }
 
@@ -77,5 +79,17 @@ mod tests {
 
         assert!(error.contains("no space left on device"), "{error}");
         assert!(!path.exists(), "{} was left behind", path.display());
+    }
+
+    #[test]
+    fn a_partial_file_that_cannot_be_removed_is_named_in_the_error() {
+        let path =
+            std::env::temp_dir().join(format!("recon-output-{}-gone.png", std::process::id()));
+        let _ = fs::remove_file(&path);
+
+        let error = write_or_remove(&path, Full, b"a partial capture").unwrap_err();
+
+        assert!(error.contains("no space left on device"), "{error}");
+        assert!(error.contains("the partial file could not be removed"), "{error}");
     }
 }

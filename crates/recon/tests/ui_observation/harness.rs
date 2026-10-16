@@ -85,6 +85,7 @@ pub fn run_ui(arguments: &[&str]) -> Value {
 /// during the run trips these checks too, so the suite must run hands-off.
 pub fn run_recon(arguments: &[&str]) -> Output {
     let frontmost = frontmost_pid();
+    assert!(frontmost.is_some(), "no application is frontmost; these checks need one to compare");
     let pointer = pointer_location();
 
     let output = Command::new(signed_recon()).args(arguments).output().expect("start recon");
