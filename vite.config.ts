@@ -82,6 +82,22 @@ export default defineConfig({
             },
             validate: "node tools/validate.ts",
             test: "vp test run",
+            // These three observe the live Mac: the signing keychain, a built app bundle, and a
+            // running fixture. Disabling the cache also lifts the task runner's environment
+            // filter, so RECON_SIGNING_IDENTITY reaches the signing script.
+            "fixture:build": {
+                command: "node tools/build-fixture.ts",
+                cache: false,
+            },
+            "recon:sign": {
+                command: "node tools/sign-recon.ts",
+                cache: false,
+            },
+            "test:ui": {
+                command: "cargo test -p recon --test ui_observation -- --ignored --test-threads=1",
+                dependsOn: ["fixture:build", "recon:sign"],
+                cache: false,
+            },
             // Reads live git and GitHub state, so a replayed result would be stale.
             status: {
                 command: "node tools/status.ts",

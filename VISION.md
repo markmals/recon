@@ -11,7 +11,7 @@ Recon is an agent-facing workbench for understanding how applications behave whe
 
 ## Current capabilities
 
-Recon can list discovered and running macOS application bundles, inspect one bundle's metadata and running process IDs without activating it, and explicitly launch the selected bundle through its Rust CLI. UI observation, native analysis, Electron and web application investigation, experiments, behavioral specifications, and verification remain future work toward the minimum viable product. Windows and Android investigation come after it.
+Recon can list discovered and running macOS application bundles, inspect one bundle's metadata and running process IDs without activating it, and explicitly launch the selected bundle through its Rust CLI. It can also observe a running macOS application without activating it, changing focus, or sending input: list its windows, read the accessibility tree of the application or of one window, including windows on other Spaces, and capture one window to a PNG file. Those observations use Screen Recording and Accessibility permissions that belong to the locally signed `recon` executable rather than to the program that launched it. UI interaction, native analysis, Electron and web application investigation, experiments, behavioral specifications, verification, and persistent evidence remain future work toward the minimum viable product. Windows and Android investigation come after it.
 
 ## Goals
 
@@ -57,3 +57,4 @@ Native analysis through REA and supported UI adapters must report unavailable ca
 | 2026-10-14 | Created the initial project vision. | N/A |
 | 2026-10-15 | Added macOS application investigation through the Rust CLI. | proposal.0001 |
 | 2026-10-15 | Limited the minimum viable product to macOS, including Electron and web applications; moved Windows and Android beyond it. | N/A |
+| 2026-10-15 | Added macOS UI observation of windows, accessibility trees, and window screenshots. | proposal.0002 |
