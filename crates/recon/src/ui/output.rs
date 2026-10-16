@@ -29,16 +29,23 @@ pub fn write_new(path: &Path, bytes: &[u8]) -> Result<(), String> {
     write_or_remove(path, file, bytes)
 }
 
-/// A partly written file is not a result, so a failed write leaves nothing behind. A removal that
-/// fails too is part of the error, because then a partial file does remain.
+/// A partly written file is not a result, so a failed write leaves nothing behind.
 fn write_or_remove(path: &Path, mut sink: impl Write, bytes: &[u8]) -> Result<(), String> {
     let Err(error) = sink.write_all(bytes).and_then(|()| sink.flush()) else {
         return Ok(());
     };
-    let failure = cannot_write(path, &error);
-    match fs::remove_file(path) {
-        Ok(()) => Err(failure),
-        Err(removal) => Err(format!("{failure}; the partial file could not be removed: {removal}")),
+    // A file that is already gone was never left behind, so only a real refusal is reported.
+    let refused =
+        fs::remove_file(path).err().filter(|removal| removal.kind() != ErrorKind::NotFound);
+    Err(write_failure(path, &error, refused.as_ref()))
+}
+
+/// Names the partial file only when macOS refused to remove it, because only then does it remain.
+fn write_failure(path: &Path, error: &std::io::Error, refused: Option<&std::io::Error>) -> String {
+    let failure = cannot_write(path, error);
+    match refused {
+        None => failure,
+        Some(refused) => format!("{failure}; the partial file could not be removed: {refused}"),
     }
 }
 
@@ -82,14 +89,33 @@ mod tests {
     }
 
     #[test]
-    fn a_partial_file_that_cannot_be_removed_is_named_in_the_error() {
+    fn a_file_that_was_never_created_is_not_reported_as_left_behind() {
         let path =
-            std::env::temp_dir().join(format!("recon-output-{}-gone.png", std::process::id()));
+            std::env::temp_dir().join(format!("recon-output-{}-absent.png", std::process::id()));
         let _ = fs::remove_file(&path);
 
         let error = write_or_remove(&path, Full, b"a partial capture").unwrap_err();
 
         assert!(error.contains("no space left on device"), "{error}");
-        assert!(error.contains("the partial file could not be removed"), "{error}");
+        assert!(!error.contains("could not be removed"), "{error}");
+    }
+
+    #[test]
+    fn a_partial_file_that_could_not_be_removed_is_named_in_the_error() {
+        let path = Path::new("/recon/capture.png");
+        let write = io::Error::new(ErrorKind::StorageFull, "no space left on device");
+        let refused = io::Error::new(ErrorKind::PermissionDenied, "operation not permitted");
+
+        let error = write_failure(path, &write, Some(&refused));
+
+        assert_eq!(
+            error,
+            "cannot write /recon/capture.png: no space left on device; the partial file could \
+             not be removed: operation not permitted"
+        );
+        assert_eq!(
+            write_failure(path, &write, None),
+            "cannot write /recon/capture.png: no space left on device"
+        );
     }
 }

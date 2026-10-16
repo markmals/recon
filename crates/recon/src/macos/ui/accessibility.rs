@@ -9,7 +9,7 @@ use libc::pid_t;
 use objc2_application_services::{AXCopyMultipleAttributeOptions, AXError, AXUIElement};
 use objc2_core_foundation::{CFArray, CFRetained, CFString, CFType};
 
-use super::attributes::{self, Attribute};
+use super::attributes::{self, Attribute, Children};
 use crate::ui::tree::{ElementAttributes, ElementSource, ReadFailure};
 use crate::ui::window::Bounds;
 
@@ -95,6 +95,10 @@ impl ElementSource for Accessibility {
         };
         let position = value_of(Attribute::Position).and_then(|value| attributes::point(&value));
         let size = value_of(Attribute::Size).and_then(|value| attributes::size(&value));
+        let Children { elements: children, unreadable: unreadable_children } =
+            value_of(Attribute::Children)
+                .and_then(|children| attributes::children_of(&children))
+                .unwrap_or_default();
 
         Ok(ElementAttributes {
             role: value_of(Attribute::Role).and_then(|value| attributes::text(&value)),
@@ -113,9 +117,8 @@ impl ElementSource for Accessibility {
                 height: size.height,
             }),
             actions: actions_of(element)?,
-            children: value_of(Attribute::Children)
-                .and_then(|children| attributes::elements(&children))
-                .unwrap_or_default(),
+            children,
+            unreadable_children,
         })
     }
 }

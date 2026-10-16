@@ -43,6 +43,9 @@ pub struct ElementAttributes<E> {
     pub frame: Option<Bounds>,
     pub actions: Vec<String>,
     pub children: Vec<E>,
+    /// Set when the element listed a child the source could not read at all, so the node must say
+    /// its children are incomplete.
+    pub unreadable_children: bool,
 }
 
 impl<E> Default for ElementAttributes<E> {
@@ -59,6 +62,7 @@ impl<E> Default for ElementAttributes<E> {
             frame: None,
             actions: Vec::new(),
             children: Vec::new(),
+            unreadable_children: false,
         }
     }
 }
@@ -184,7 +188,8 @@ impl<S: ElementSource> Reading<'_, S> {
         };
         self.emitted.insert(element, attributes.role.clone());
 
-        let (children, children_omitted) = self.visit_children(attributes.children, depth);
+        let (children, omitted) = self.visit_children(attributes.children, depth);
+        let children_omitted = omitted || attributes.unreadable_children;
         self.omitted_children |= children_omitted;
         let (value, value_truncated) = cut_long_text(attributes.value);
         Node::Element(Box::new(ElementNode {

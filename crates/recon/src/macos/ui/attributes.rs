@@ -108,18 +108,27 @@ pub fn size(value: &CFType) -> Option<CGSize> {
     geometry(value, AXValueType::CGSize, NonNull::from(&mut size).cast()).then_some(size)
 }
 
-/// The accessibility elements among an element's children. An application controls what it puts
-/// in `AXChildren`, so anything that is not an element is left out rather than trusted.
-pub fn elements(children: &CFType) -> Option<Vec<Element>> {
+/// The children of an element: the accessibility elements it lists, and whether it listed
+/// anything else. An application controls what goes in `AXChildren`, so a member that is not an
+/// element is a child Recon could not read rather than one it quietly drops.
+#[derive(Default)]
+pub struct Children {
+    pub elements: Vec<Element>,
+    pub unreadable: bool,
+}
+
+pub fn children_of(children: &CFType) -> Option<Children> {
     let children = children.downcast_ref::<CFArray>()?.retain();
     // SAFETY: the members of a Core Foundation array are Core Foundation values.
     let children: CFRetained<CFArray<CFType>> = unsafe { CFRetained::cast_unchecked(children) };
-    Some(
-        children
-            .iter()
-            .filter_map(|child| child.downcast::<AXUIElement>().ok().map(Element::new))
-            .collect(),
-    )
+    let mut read = Children::default();
+    for child in children.iter() {
+        match child.downcast::<AXUIElement>() {
+            Ok(element) => read.elements.push(Element::new(element)),
+            Err(_) => read.unreadable = true,
+        }
+    }
+    Some(read)
 }
 
 fn geometry(value: &CFType, kind: AXValueType, into: NonNull<c_void>) -> bool {
@@ -166,13 +175,21 @@ mod tests {
     }
 
     #[test]
-    fn a_child_that_is_not_an_accessibility_element_is_left_out() {
+    fn a_child_that_is_not_an_accessibility_element_is_a_child_recon_could_not_read() {
         let text = CFString::from_str("not an element");
         let number = CFNumber::new_i64(7);
-        let children = CFArray::from_objects(&[&*text as &CFType, &number]);
+        let mixed = CFArray::from_objects(&[&*text as &CFType, &number]);
 
-        assert_eq!(elements(&children), Some(Vec::new()));
-        assert_eq!(elements(&text), None);
+        let children = children_of(&mixed).expect("a child array");
+        assert!(children.elements.is_empty());
+        assert!(children.unreadable);
+
+        let empty = CFArray::<CFType>::from_objects(&[]);
+        let children = children_of(&empty).expect("a child array");
+        assert!(children.elements.is_empty());
+        assert!(!children.unreadable);
+
+        assert!(children_of(&text).is_none());
     }
 
     #[test]

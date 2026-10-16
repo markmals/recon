@@ -31,6 +31,15 @@ impl RecordedSource {
         self.elements.insert(element, Err(failure));
         self
     }
+
+    /// Marks an element that listed a child the source could not read, as the macOS adapter does
+    /// for an `AXChildren` member that is not an accessibility element.
+    fn unreadable_children(mut self, element: u32) -> Self {
+        if let Some(Ok(attributes)) = self.elements.get_mut(&element) {
+            attributes.unreadable_children = true;
+        }
+        self
+    }
 }
 
 impl ElementSource for RecordedSource {
@@ -132,6 +141,7 @@ fn every_attribute_the_application_reports_reaches_the_node() {
             frame: Some(Bounds { x: 1.0, y: 2.0, width: 3.0, height: 4.0 }),
             actions: vec!["AXPress".to_owned()],
             children: Vec::new(),
+            unreadable_children: false,
         }),
     );
 
@@ -264,6 +274,22 @@ fn a_timeout_truncates_even_when_no_children_remain() {
 
     assert_eq!(source.reads, vec![1, 2]);
     assert!(!element_of(&tree.root).children_omitted);
+    assert!(tree.truncated);
+}
+
+#[test]
+fn a_child_the_source_could_not_read_is_reported_as_an_omitted_child() {
+    let mut source = RecordedSource::default()
+        .with(1, "AXApplication", &[2])
+        .with(2, "AXWindow", &[])
+        .unreadable_children(1);
+
+    let tree = read_tree(&mut source, 1);
+
+    let root = element_of(&tree.root);
+    assert_eq!(root.children.len(), 1);
+    assert!(root.children_omitted);
+    assert!(!element_of(&root.children[0]).children_omitted);
     assert!(tree.truncated);
 }
 
