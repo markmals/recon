@@ -40,6 +40,7 @@ This second command may foreground Calculator. If you only need to identify the 
 
 - Discovery relies on the host's indexed and accessible locations plus running apps with bundle locations. If indexing is unavailable, `list` reports an error instead of returning a misleading partial inventory. Explicit app paths remain usable.
 - A missing, unreadable, or non-application path, an unmatched or ambiguous name or identifier, or a launch refusal produces a diagnostic on standard error, a nonzero exit status, and no success JSON.
+- Recon treats a directory as an application when its extension is `.app`, in any case, and it contains a readable `Contents/Info.plist`. As with macOS, the bundle's declared package type does not matter, so system apps such as Finder and Passwords resolve like any other app.
 - If a bundle has no executable file, `launch` reports `application executable is missing` before asking macOS to open it.
 - Process IDs can disappear or be reused after the command returns. Use the app's absolute bundle path when referring to a particular installed copy.
 - On a non-macOS host these commands explicitly report that this implementation is unavailable; they do not return an empty success result.
