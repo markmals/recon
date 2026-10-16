@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 #[cfg(target_os = "macos")]
 use recon::application::Application;
+use recon::ui::request::{USAGE, parse_ui_arguments};
 #[cfg(target_os = "macos")]
 use serde::Serialize;
 
@@ -48,39 +49,52 @@ fn main() {
 }
 
 fn run() -> Result<String, String> {
-    let mut args = env::args_os();
-    let _program = args.next();
-    let parse = |argument: Option<std::ffi::OsString>| {
-        argument
-            .map(|argument| argument.into_string().map_err(|_| "invalid UTF-8 argument".to_owned()))
-            .transpose()
-    };
-    let group = parse(args.next())?;
-    let command = parse(args.next())?;
-    let target = parse(args.next())?;
-    let syntax =
-        match (group.as_deref(), command.as_deref(), target.as_deref(), parse(args.next())?) {
-            (Some("app"), Some("list"), None, None) => "list",
-            (Some("app"), Some("inspect"), Some(_), None) => "inspect",
-            (Some("app"), Some("launch"), Some(_), None) => "launch",
-            _ => {
-                return Err("usage: recon app list | inspect <target> | launch <target>".to_owned());
-            }
-        };
+    let arguments = arguments()?;
+    let words: Vec<&str> = arguments.iter().map(String::as_str).collect();
+    match words.as_slice() {
+        ["ui", ..] => run_ui(&arguments[1..]),
+        ["app", "list"] => run_app("list", None),
+        ["app", "inspect", target] => run_app("inspect", Some(target)),
+        ["app", "launch", target] => run_app("launch", Some(target)),
+        _ => Err(USAGE.to_owned()),
+    }
+}
+
+fn arguments() -> Result<Vec<String>, String> {
+    env::args_os()
+        .skip(1)
+        .map(|argument| argument.into_string().map_err(|_| "invalid UTF-8 argument".to_owned()))
+        .collect()
+}
+
+fn run_ui(arguments: &[String]) -> Result<String, String> {
+    let request = parse_ui_arguments(arguments)?;
 
     #[cfg(not(target_os = "macos"))]
     {
-        let _ = (syntax, target);
+        let _ = request;
+        Err("UI observation is supported only on macOS".to_owned())
+    }
+    #[cfg(target_os = "macos")]
+    {
+        recon::macos::ui::observe(&request)
+    }
+}
+
+fn run_app(command: &str, target: Option<&str>) -> Result<String, String> {
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (command, target);
         Err("application investigation is supported only on macOS".to_owned())
     }
     #[cfg(target_os = "macos")]
     {
-        run_macos(syntax, target.as_deref())
+        run_app_macos(command, target)
     }
 }
 
 #[cfg(target_os = "macos")]
-fn run_macos(command: &str, target: Option<&str>) -> Result<String, String> {
+fn run_app_macos(command: &str, target: Option<&str>) -> Result<String, String> {
     use recon::macos;
 
     match command {

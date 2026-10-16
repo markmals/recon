@@ -1,4 +1,5 @@
 mod metadata;
+pub mod ui;
 mod workspace;
 
 use std::ffi::OsStr;

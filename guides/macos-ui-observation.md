@@ -53,6 +53,8 @@ RECON_SIGNING_IDENTITY="Developer ID Application: <Your Name> (<TEAMID>)" vp run
 
 The task builds the release executable, signs it at `target/signed/recon`, and fails outright when `RECON_SIGNING_IDENTITY` is unset rather than leaving you an ad-hoc binary that appears to work.
 
+Once `target/signed/recon` holds both permissions, `vp run test:ui` with the same variable builds the purpose-built fixture app at `target/fixtures/ReconFixture.app`, re-signs `recon`, and runs the integration tests against the fixture in the background. Those tests check that the frontmost application and the pointer do not change, so leave the keyboard and mouse alone while they run.
+
 ### Choose an instance and a window
 
 Every `ui` command takes the same target as `recon app inspect`: an exact displayed name, an exact bundle identifier, or an absolute `.app` path, resolved under the rules in the [macOS application investigation guide](macos-application-investigation.md), including its not-found and ambiguity errors.
