@@ -3,33 +3,16 @@
 #![cfg(target_os = "macos")]
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, Output};
 
 use serde_json::Value;
+use tempfile::TempDir;
 
 const BUNDLE_ID: &str = "test.recon.bundle";
 
-struct Scratch(PathBuf);
-
-impl Scratch {
-    fn new(name: &str) -> Scratch {
-        let directory =
-            std::env::temp_dir().join(format!("recon-cli-app-{}-{name}", std::process::id()));
-        let _ = fs::remove_dir_all(&directory);
-        fs::create_dir_all(&directory).expect("create the scratch directory");
-        Scratch(directory)
-    }
-
-    fn join(&self, name: &str) -> PathBuf {
-        self.0.join(name)
-    }
-}
-
-impl Drop for Scratch {
-    fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.0);
-    }
+fn scratch() -> TempDir {
+    tempfile::tempdir().expect("create the scratch directory")
 }
 
 fn write_bundle(path: &Path, package_type: Option<&str>) {
@@ -72,9 +55,9 @@ fn rejection(path: &Path) -> String {
 
 #[test]
 fn a_bundle_is_an_application_whatever_package_type_it_declares() {
-    let scratch = Scratch::new("package-types");
+    let scratch = scratch();
     for (name, package_type) in [("Finder.app", Some("FNDR")), ("Untyped.app", None)] {
-        let path = scratch.join(name);
+        let path = scratch.path().join(name);
         write_bundle(&path, package_type);
 
         let application = inspected(&path);
@@ -85,8 +68,8 @@ fn a_bundle_is_an_application_whatever_package_type_it_declares() {
 
 #[test]
 fn the_app_extension_is_matched_without_regard_to_case() {
-    let scratch = Scratch::new("extension-case");
-    let path = scratch.join("Shouting.APP");
+    let scratch = scratch();
+    let path = scratch.path().join("Shouting.APP");
     write_bundle(&path, Some("APPL"));
 
     assert_eq!(inspected(&path)["bundleId"], BUNDLE_ID);
@@ -94,10 +77,10 @@ fn the_app_extension_is_matched_without_regard_to_case() {
 
 #[test]
 fn a_path_that_is_not_an_application_bundle_is_rejected() {
-    let scratch = Scratch::new("not-applications");
-    let plugin = scratch.join("Plugin.bundle");
+    let scratch = scratch();
+    let plugin = scratch.path().join("Plugin.bundle");
     write_bundle(&plugin, Some("APPL"));
-    let file = scratch.join("Flat.app");
+    let file = scratch.path().join("Flat.app");
     fs::write(&file, "").expect("create the file");
 
     for path in [plugin, file] {
