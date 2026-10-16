@@ -115,7 +115,7 @@ fn screenshot(selection: &Selection, window: Option<u32>, out: &Path) -> Result<
 fn main_window(application: &Application, pid: u32) -> Result<Window, String> {
     accessibility::bound_messaging();
     let application_element = accessibility::application_element(pid)?;
-    let id = window_element::main_window_id(&application_element)?.ok_or_else(|| {
+    let id = window_element::main_window_id(&application_element, pid)?.ok_or_else(|| {
         format!(
             "{} reports no main window; choose a window from recon ui windows and pass --window",
             application.path.display()

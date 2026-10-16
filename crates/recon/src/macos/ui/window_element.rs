@@ -28,14 +28,13 @@ pub fn window_element(
 ) -> Result<CFRetained<AXUIElement>, String> {
     let get_window = window_id_lookup()?;
 
-    if let Some(element) = listed_windows(application)
-        .into_iter()
-        .find(|element| window_id_of(element, get_window) == Some(window_id))
-    {
-        return Ok(element);
+    for element in listed_windows(application, pid)? {
+        if window_id_of(&element, get_window, pid)? == Some(window_id) {
+            return Ok(element);
+        }
     }
-    if let Some(element) = main_window(application)
-        .filter(|element| window_id_of(element, get_window) == Some(window_id))
+    if let Some(element) = main_window(application, pid)?
+        && window_id_of(&element, get_window, pid)? == Some(window_id)
     {
         return Ok(element);
     }
@@ -48,14 +47,43 @@ pub fn window_element(
             unreachable_window(window_id)
         ));
     };
-    scanned_window(pid, window_id, from_token, get_window)
+    scanned_window(pid, window_id, from_token, get_window)?
         .ok_or_else(|| unreachable_window(window_id))
 }
 
 /// The window ID of the window the application reports as its main one.
-pub fn main_window_id(application: &AXUIElement) -> Result<Option<u32>, String> {
+pub fn main_window_id(application: &AXUIElement, pid: u32) -> Result<Option<u32>, String> {
     let get_window = window_id_lookup()?;
-    Ok(main_window(application).and_then(|window| window_id_of(&window, get_window)))
+    match main_window(application, pid)? {
+        Some(window) => window_id_of(&window, get_window, pid),
+        None => Ok(None),
+    }
+}
+
+/// What a lookup request that did not answer means for the search.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum Lookup {
+    /// This element is not the one, or has no such attribute: keep looking.
+    Continue,
+    /// The application did not answer within the messaging timeout. Every further request would
+    /// wait just as long, so Recon stops rather than scan for hours.
+    Unresponsive,
+}
+
+fn lookup_outcome(error: AXError) -> Lookup {
+    match error {
+        AXError::CannotComplete => Lookup::Unresponsive,
+        _ => Lookup::Continue,
+    }
+}
+
+fn keep_looking(error: AXError, pid: u32) -> Result<(), String> {
+    match lookup_outcome(error) {
+        Lookup::Continue => Ok(()),
+        Lookup::Unresponsive => {
+            Err(format!("process {pid} did not answer an accessibility request within 2 seconds"))
+        }
+    }
 }
 
 fn window_id_lookup() -> Result<GetWindow, String> {
@@ -66,27 +94,44 @@ fn window_id_lookup() -> Result<GetWindow, String> {
     })
 }
 
-fn listed_windows(application: &AXUIElement) -> Vec<CFRetained<AXUIElement>> {
-    let Some(windows) = attribute(application, "AXWindows") else {
-        return Vec::new();
+fn listed_windows(
+    application: &AXUIElement,
+    pid: u32,
+) -> Result<Vec<CFRetained<AXUIElement>>, String> {
+    let windows = match attribute(application, "AXWindows") {
+        Ok(windows) => windows,
+        Err(error) => return keep_looking(error, pid).map(|()| Vec::new()),
     };
     let Ok(windows) = windows.downcast::<CFArray>() else {
-        return Vec::new();
+        return Ok(Vec::new());
     };
     // SAFETY: the windows of an application are accessibility elements.
     let windows: CFRetained<CFArray<AXUIElement>> = unsafe { CFRetained::cast_unchecked(windows) };
-    windows.to_vec()
+    Ok(windows.to_vec())
 }
 
-fn main_window(application: &AXUIElement) -> Option<CFRetained<AXUIElement>> {
-    attribute(application, "AXMainWindow")?.downcast::<AXUIElement>().ok()
+fn main_window(
+    application: &AXUIElement,
+    pid: u32,
+) -> Result<Option<CFRetained<AXUIElement>>, String> {
+    match attribute(application, "AXMainWindow") {
+        Ok(window) => Ok(window.downcast::<AXUIElement>().ok()),
+        Err(error) => keep_looking(error, pid).map(|()| None),
+    }
 }
 
-fn window_id_of(element: &AXUIElement, get_window: GetWindow) -> Option<u32> {
+fn window_id_of(
+    element: &AXUIElement,
+    get_window: GetWindow,
+    pid: u32,
+) -> Result<Option<u32>, String> {
     let mut id: CGWindowID = 0;
     // SAFETY: the private lookup writes the window ID of an accessibility window.
     let error = unsafe { get_window(element, &raw mut id) };
-    (error == AXError::Success).then_some(id)
+    if error == AXError::Success {
+        return Ok(Some(id));
+    }
+    keep_looking(error, pid).map(|()| None)
 }
 
 fn scanned_window(
@@ -94,14 +139,20 @@ fn scanned_window(
     window_id: u32,
     from_token: CreateWithRemoteToken,
     get_window: GetWindow,
-) -> Option<CFRetained<AXUIElement>> {
-    let pid = i32::try_from(pid).ok()?;
-    ELEMENT_NUMBERS.filter_map(|number| element_from_token(pid, number, from_token)).find(
-        |element| {
-            window_id_of(element, get_window) == Some(window_id)
-                && role_of(element).as_deref() == Some(WINDOW_ROLE)
-        },
-    )
+) -> Result<Option<CFRetained<AXUIElement>>, String> {
+    let token_pid = i32::try_from(pid).map_err(|_| format!("{pid} is not a process id"))?;
+    for number in ELEMENT_NUMBERS {
+        let Some(element) = element_from_token(token_pid, number, from_token) else {
+            continue;
+        };
+        if window_id_of(&element, get_window, pid)? != Some(window_id) {
+            continue;
+        }
+        if role_of(&element, pid)?.as_deref() == Some(WINDOW_ROLE) {
+            return Ok(Some(element));
+        }
+    }
+    Ok(None)
 }
 
 fn element_from_token(
@@ -116,8 +167,11 @@ fn element_from_token(
     Some(unsafe { CFRetained::from_raw(element) })
 }
 
-fn role_of(element: &AXUIElement) -> Option<String> {
-    Some(attribute(element, "AXRole")?.downcast::<CFString>().ok()?.to_string())
+fn role_of(element: &AXUIElement, pid: u32) -> Result<Option<String>, String> {
+    match attribute(element, "AXRole") {
+        Ok(role) => Ok(role.downcast::<CFString>().ok().map(|role| role.to_string())),
+        Err(error) => keep_looking(error, pid).map(|()| None),
+    }
 }
 
 /// The remote token of one element of one process: a process ID, a reserved word, the magic word
@@ -154,5 +208,19 @@ mod tests {
     fn element_numbers_cover_the_documented_range() {
         assert_eq!(ELEMENT_NUMBERS.count(), 100_000);
         assert_eq!(remote_token(1, 99_999)[12..20], 99_999u64.to_le_bytes());
+    }
+
+    #[test]
+    fn an_application_that_stops_answering_ends_the_search() {
+        assert_eq!(lookup_outcome(AXError::CannotComplete), Lookup::Unresponsive);
+    }
+
+    #[test]
+    fn an_element_that_is_absent_or_wrong_only_fails_to_match() {
+        assert_eq!(lookup_outcome(AXError::Success), Lookup::Continue);
+        assert_eq!(lookup_outcome(AXError::NoValue), Lookup::Continue);
+        assert_eq!(lookup_outcome(AXError::AttributeUnsupported), Lookup::Continue);
+        assert_eq!(lookup_outcome(AXError::InvalidUIElement), Lookup::Continue);
+        assert_eq!(lookup_outcome(AXError::NotImplemented), Lookup::Continue);
     }
 }

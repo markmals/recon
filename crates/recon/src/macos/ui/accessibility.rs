@@ -102,7 +102,7 @@ impl ElementSource for Accessibility {
                 width: size.width,
                 height: size.height,
             }),
-            actions: actions_of(element),
+            actions: actions_of(element)?,
             children: value_of(Attribute::Children)
                 .and_then(|children| attributes::elements(&children))
                 .unwrap_or_default(),
@@ -127,19 +127,22 @@ pub fn application_element(pid: u32) -> Result<CFRetained<AXUIElement>, String> 
     Ok(unsafe { AXUIElement::new_application(pid) })
 }
 
-/// The value of one attribute, or `None` when the element does not have it.
-pub fn attribute(element: &AXUIElement, name: &str) -> Option<CFRetained<CFType>> {
+/// The value of one attribute. The error tells the caller why there is none: `kAXErrorNoValue`
+/// and `kAXErrorAttributeUnsupported` mean the element simply does not have the attribute, while
+/// `kAXErrorCannotComplete` means the application did not answer.
+pub fn attribute(element: &AXUIElement, name: &str) -> Result<CFRetained<CFType>, AXError> {
     let mut value: *const CFType = ptr::null();
     // SAFETY: on success `value` owns the attribute's value.
     let error = unsafe {
         element.copy_attribute_value(&CFString::from_str(name), NonNull::from(&mut value))
     };
     if error != AXError::Success {
-        return None;
+        return Err(error);
     }
-    let value = NonNull::new(value.cast_mut())?;
-    // SAFETY: the value is owned by this process.
-    Some(unsafe { CFRetained::from_raw(value) })
+    NonNull::new(value.cast_mut())
+        // SAFETY: the value is owned by this process.
+        .map(|value| unsafe { CFRetained::from_raw(value) })
+        .ok_or(AXError::NoValue)
 }
 
 /// How a failed request to one element is reported: the tree keeps going around it.
@@ -151,17 +154,32 @@ fn read_failure(error: AXError) -> ReadFailure {
     }
 }
 
-fn actions_of(element: &Element) -> Vec<String> {
+/// Whether an action-name request that did not return names is a failure of the whole element.
+/// An element that advertises no action is ordinary; an element that stopped answering is not.
+fn action_failure(error: AXError) -> Option<ReadFailure> {
+    match error {
+        AXError::Success
+        | AXError::NoValue
+        | AXError::AttributeUnsupported
+        | AXError::ActionUnsupported => None,
+        other => Some(read_failure(other)),
+    }
+}
+
+fn actions_of(element: &Element) -> Result<Vec<String>, ReadFailure> {
     let mut names: *const CFArray = ptr::null();
     // SAFETY: on success `names` owns an array of action names.
     let error = unsafe { element.0.copy_action_names(NonNull::from(&mut names)) };
-    let Some(names) = NonNull::new(names.cast_mut()).filter(|_| error == AXError::Success) else {
-        return Vec::new();
+    if let Some(failure) = action_failure(error) {
+        return Err(failure);
+    }
+    let Some(names) = NonNull::new(names.cast_mut()) else {
+        return Ok(Vec::new());
     };
     // SAFETY: the array is owned, and action names are strings.
     let names: CFRetained<CFArray<CFString>> =
         unsafe { CFRetained::cast_unchecked(CFRetained::from_raw(names)) };
-    names.iter().map(|name| name.to_string()).collect()
+    Ok(names.iter().map(|name| name.to_string()).collect())
 }
 
 #[cfg(test)]
@@ -174,5 +192,20 @@ mod tests {
         assert_eq!(read_failure(AXError::CannotComplete), ReadFailure::Timeout);
         assert_eq!(read_failure(AXError::NotImplemented), ReadFailure::Failed(-25208));
         assert_eq!(read_failure(AXError::APIDisabled), ReadFailure::Failed(-25211));
+    }
+
+    #[test]
+    fn an_element_that_advertises_no_action_is_not_a_failed_read() {
+        assert_eq!(action_failure(AXError::Success), None);
+        assert_eq!(action_failure(AXError::NoValue), None);
+        assert_eq!(action_failure(AXError::AttributeUnsupported), None);
+        assert_eq!(action_failure(AXError::ActionUnsupported), None);
+    }
+
+    #[test]
+    fn an_action_request_that_fails_fails_the_whole_element() {
+        assert_eq!(action_failure(AXError::CannotComplete), Some(ReadFailure::Timeout));
+        assert_eq!(action_failure(AXError::InvalidUIElement), Some(ReadFailure::Unavailable));
+        assert_eq!(action_failure(AXError::Failure), Some(ReadFailure::Failed(-25200)));
     }
 }
