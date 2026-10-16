@@ -131,7 +131,7 @@ recon ui tree /System/Applications/Calculator.app --window <id>
 Capture the same window:
 
 ```sh
-recon ui screenshot /System/Applications/Calculator.app --window <id> --out ~/Desktop/calculator.png
+recon ui screenshot /System/Applications/Calculator.app --window <id> --out calculator.png
 ```
 
 The result reports the absolute path of the PNG, its pixel width and height, and whether the image is uniform. Omit `--window` to capture Calculator's main window instead, which also needs Accessibility. Calculator stays in the background through all three commands, the frontmost application does not change, and the pointer does not move.
