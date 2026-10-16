@@ -10,12 +10,26 @@ use serde_json::Value;
 
 const BUNDLE_ID: &str = "test.recon.bundle";
 
-fn scratch(name: &str) -> PathBuf {
-    let directory =
-        std::env::temp_dir().join(format!("recon-cli-app-{}-{name}", std::process::id()));
-    let _ = fs::remove_dir_all(&directory);
-    fs::create_dir_all(&directory).expect("create the scratch directory");
-    directory
+struct Scratch(PathBuf);
+
+impl Scratch {
+    fn new(name: &str) -> Scratch {
+        let directory =
+            std::env::temp_dir().join(format!("recon-cli-app-{}-{name}", std::process::id()));
+        let _ = fs::remove_dir_all(&directory);
+        fs::create_dir_all(&directory).expect("create the scratch directory");
+        Scratch(directory)
+    }
+
+    fn join(&self, name: &str) -> PathBuf {
+        self.0.join(name)
+    }
+}
+
+impl Drop for Scratch {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
 }
 
 fn write_bundle(path: &Path, package_type: Option<&str>) {
@@ -58,9 +72,9 @@ fn rejection(path: &Path) -> String {
 
 #[test]
 fn a_bundle_is_an_application_whatever_package_type_it_declares() {
-    let directory = scratch("package-types");
+    let scratch = Scratch::new("package-types");
     for (name, package_type) in [("Finder.app", Some("FNDR")), ("Untyped.app", None)] {
-        let path = directory.join(name);
+        let path = scratch.join(name);
         write_bundle(&path, package_type);
 
         let application = inspected(&path);
@@ -71,7 +85,8 @@ fn a_bundle_is_an_application_whatever_package_type_it_declares() {
 
 #[test]
 fn the_app_extension_is_matched_without_regard_to_case() {
-    let path = scratch("extension-case").join("Shouting.APP");
+    let scratch = Scratch::new("extension-case");
+    let path = scratch.join("Shouting.APP");
     write_bundle(&path, Some("APPL"));
 
     assert_eq!(inspected(&path)["bundleId"], BUNDLE_ID);
@@ -79,12 +94,12 @@ fn the_app_extension_is_matched_without_regard_to_case() {
 
 #[test]
 fn a_path_that_is_not_an_application_bundle_is_rejected() {
-    let directory = scratch("not-applications");
-    let plugin = directory.join("Plugin.bundle");
+    let scratch = Scratch::new("not-applications");
+    let plugin = scratch.join("Plugin.bundle");
     write_bundle(&plugin, Some("APPL"));
-    let without_info = directory.join("Hollow.app");
+    let without_info = scratch.join("Hollow.app");
     fs::create_dir_all(&without_info).expect("create the empty bundle");
-    let file = directory.join("Flat.app");
+    let file = scratch.join("Flat.app");
     fs::write(&file, "").expect("create the file");
 
     for path in [plugin, without_info, file] {
