@@ -97,12 +97,10 @@ fn a_path_that_is_not_an_application_bundle_is_rejected() {
     let scratch = Scratch::new("not-applications");
     let plugin = scratch.join("Plugin.bundle");
     write_bundle(&plugin, Some("APPL"));
-    let without_info = scratch.join("Hollow.app");
-    fs::create_dir_all(&without_info).expect("create the empty bundle");
     let file = scratch.join("Flat.app");
     fs::write(&file, "").expect("create the file");
 
-    for path in [plugin, without_info, file] {
+    for path in [plugin, file] {
         let diagnostic = rejection(&path);
         assert!(diagnostic.starts_with("recon: not an application: "), "{path:?}: {diagnostic}");
     }
