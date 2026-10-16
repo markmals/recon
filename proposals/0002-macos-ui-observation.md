@@ -2,7 +2,7 @@
 id: proposal.0002
 title: macOS UI Observation
 authors: [Mark Malstrom]
-status: active-review
+status: implemented
 pull-request: https://github.com/markmals/recon/pull/26
 issues: ["#15"]
 supersedes: []
@@ -19,6 +19,8 @@ Add `recon ui windows`, `recon ui tree`, and `recon ui screenshot` so an agent c
 - Authority: Mark consented on 2026-10-15 to a proposal for issue #15, after reviewing the recommendation that UI observation be the next proposal. No build mandate applies.
 - Fit: This proposal is limited to read-only observation of running macOS application windows, the privacy identity those observations require, and the fixture that verifies them.
 - Decisions recorded: On 2026-10-15, Mark decided that (1) winctl's private techniques come first, with public-API support added only if they cannot be made to work on this Mac with SIP enabled; grounding showed they work, so public-API capture is out of scope; (2) Recon claims its own stable privacy identity, and Mark will help establish consistent signing; (3) a window selector is layered on top of proposal 0001's bundle target; (4) this proposal builds Recon's first purpose-built native macOS fixture. Later on 2026-10-15, Mark chose `me.malstrom.recon` as Recon's identifier, following his `me.malstrom.*` convention for `malstrom.me`; chose local signing for now, deferring signing in CI until Recon has a Homebrew formula; and approved this proposal for implementation.
+- Acceptance: On 2026-10-15, Mark reviewed the readiness report on PR #26, including the design refinements made during implementation review, accepted the implementation, and instructed the agent to merge PR #26 into its `main` target. This grants no publication, release, or branch-deletion authority.
+- Delivery: Merge-only. No production release is authorized or required.
 
 ## Motivation
 
