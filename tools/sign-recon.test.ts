@@ -24,3 +24,19 @@ test.for([["unset", undefined] as const, ["blank", "   "] as const])(
         expect(existsSync(path.join(root, "target"))).toBe(false);
     },
 );
+
+test("refuses the ad-hoc identity, which signs without a Developer ID", () => {
+    let root = mkdtempSync(path.join(tmpdir(), "recon-sign-"));
+    onTestFinished(() => rmSync(root, { force: true, recursive: true }));
+
+    let signing = spawnSync(process.execPath, [signRecon], {
+        cwd: root,
+        encoding: "utf8",
+        env: { ...process.env, RECON_SIGNING_IDENTITY: "-" },
+    });
+
+    expect(signing.status).not.toBe(0);
+    expect(signing.stderr).toContain("ad-hoc signature");
+    expect(signing.stderr).toContain("never produces an ad-hoc binary");
+    expect(existsSync(path.join(root, "target"))).toBe(false);
+});
