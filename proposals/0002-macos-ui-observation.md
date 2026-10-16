@@ -2,7 +2,7 @@
 id: proposal.0002
 title: macOS UI Observation
 authors: [Mark Malstrom]
-status: awaiting-implementation
+status: active-review
 pull-request: https://github.com/markmals/recon/pull/26
 issues: ["#15"]
 supersedes: []
