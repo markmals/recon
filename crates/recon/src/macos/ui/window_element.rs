@@ -52,12 +52,14 @@ pub fn window_element(
 }
 
 /// The window ID of the window the application reports as its main one.
+///
+/// An application that reports no main window needs no window ID lookup, so it is told that it
+/// has none rather than that a private interface is missing.
 pub fn main_window_id(application: &AXUIElement, pid: u32) -> Result<Option<u32>, String> {
-    let get_window = window_id_lookup()?;
-    match main_window(application, pid)? {
-        Some(window) => window_id_of(&window, get_window, pid),
-        None => Ok(None),
-    }
+    let Some(window) = main_window(application, pid)? else {
+        return Ok(None);
+    };
+    window_id_of(&window, window_id_lookup()?, pid)
 }
 
 /// What a lookup request that did not answer means for the search.

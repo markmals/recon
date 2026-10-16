@@ -80,8 +80,18 @@ impl ElementSource for Accessibility {
 
     fn read(&mut self, element: &Element) -> Result<ElementAttributes<Element>, ReadFailure> {
         let values = self.values_of(element)?;
+        if let Some(failure) = values
+            .iter()
+            .filter_map(|value| attributes::attribute_error(value))
+            .find_map(attribute_failure)
+        {
+            return Err(failure);
+        }
         let value_of = |attribute: Attribute| {
-            values.get(attribute as usize).filter(|value| !attributes::is_missing(value)).cloned()
+            values
+                .get(attribute as usize)
+                .filter(|value| attributes::attribute_error(value).is_none())
+                .cloned()
         };
         let position = value_of(Attribute::Position).and_then(|value| attributes::point(&value));
         let size = value_of(Attribute::Size).and_then(|value| attributes::size(&value));
@@ -154,6 +164,17 @@ fn read_failure(error: AXError) -> ReadFailure {
     }
 }
 
+/// Whether the error a bulk read gave instead of one attribute's value is a failure of the whole
+/// element. An element that does not have the attribute is ordinary; an element that no longer
+/// exists, or that stopped answering while supplying it, is not.
+fn attribute_failure(error: AXError) -> Option<ReadFailure> {
+    match error {
+        AXError::InvalidUIElement => Some(ReadFailure::Unavailable),
+        AXError::CannotComplete => Some(ReadFailure::Timeout),
+        _ => None,
+    }
+}
+
 /// Whether an action-name request that did not return names is a failure of the whole element.
 /// An element that advertises no action is ordinary; an element that stopped answering is not.
 fn action_failure(error: AXError) -> Option<ReadFailure> {
@@ -192,6 +213,20 @@ mod tests {
         assert_eq!(read_failure(AXError::CannotComplete), ReadFailure::Timeout);
         assert_eq!(read_failure(AXError::NotImplemented), ReadFailure::Failed(-25208));
         assert_eq!(read_failure(AXError::APIDisabled), ReadFailure::Failed(-25211));
+    }
+
+    #[test]
+    fn an_attribute_an_element_does_not_have_leaves_the_element_readable() {
+        assert_eq!(attribute_failure(AXError::NoValue), None);
+        assert_eq!(attribute_failure(AXError::AttributeUnsupported), None);
+        assert_eq!(attribute_failure(AXError::Failure), None);
+        assert_eq!(attribute_failure(AXError::NotImplemented), None);
+    }
+
+    #[test]
+    fn an_attribute_that_timed_out_or_vanished_fails_the_element() {
+        assert_eq!(attribute_failure(AXError::CannotComplete), Some(ReadFailure::Timeout));
+        assert_eq!(attribute_failure(AXError::InvalidUIElement), Some(ReadFailure::Unavailable));
     }
 
     #[test]

@@ -4,7 +4,7 @@
 use std::ffi::c_void;
 use std::ptr::NonNull;
 
-use objc2_application_services::{AXUIElement, AXValue, AXValueType};
+use objc2_application_services::{AXError, AXUIElement, AXValue, AXValueType};
 use objc2_core_foundation::{
     CFArray, CFBoolean, CFNumber, CFRetained, CFString, CFType, CGPoint, CGSize, Type,
 };
@@ -60,12 +60,19 @@ impl Attribute {
     }
 }
 
-/// macOS reports an attribute an element does not have as an `AXValue` holding an error.
-pub fn is_missing(value: &CFType) -> bool {
-    value
-        .downcast_ref::<AXValue>()
-        // SAFETY: reading the kind of an AXValue does not message the application.
-        .is_some_and(|value| unsafe { value.r#type() } == AXValueType::AXError)
+/// The error macOS returned instead of a value, or `None` when there is a value. A bulk read
+/// reports each attribute it could not supply as an `AXValue` holding the error for that one
+/// attribute, which is not always the same as the element having no such attribute.
+pub fn attribute_error(value: &CFType) -> Option<AXError> {
+    let value = value.downcast_ref::<AXValue>()?;
+    // SAFETY: reading the kind of an AXValue does not message the application.
+    if unsafe { value.r#type() } != AXValueType::AXError {
+        return None;
+    }
+    let mut error = AXError::Failure;
+    // SAFETY: an AXValue of kind AXError wraps an AXError, which `error` is.
+    unsafe { value.value(AXValueType::AXError, NonNull::from(&mut error).cast()) };
+    Some(error)
 }
 
 pub fn text(value: &CFType) -> Option<String> {
@@ -119,17 +126,19 @@ fn geometry(value: &CFType, kind: AXValueType, into: NonNull<c_void>) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use objc2_application_services::AXError;
     use objc2_core_foundation::CFRetained;
 
     use super::*;
 
-    fn unsupported_attribute() -> CFRetained<AXValue> {
-        let error = AXError::AttributeUnsupported;
-        // SAFETY: an AXValue of kind AXError wraps an AXError, which is what macOS returns for an
-        // attribute an element does not have.
+    fn error_value(error: AXError) -> CFRetained<AXValue> {
+        // SAFETY: an AXValue of kind AXError wraps an AXError, which is what a bulk read returns
+        // for an attribute it could not supply.
         unsafe { AXValue::new(AXValueType::AXError, NonNull::from(&error).cast()) }
             .expect("an AXValue")
+    }
+
+    fn unsupported_attribute() -> CFRetained<AXValue> {
+        error_value(AXError::AttributeUnsupported)
     }
 
     #[test]
@@ -140,10 +149,14 @@ mod tests {
     }
 
     #[test]
-    fn an_attribute_an_element_does_not_have_reads_as_missing() {
-        assert!(is_missing(&unsupported_attribute()));
-        assert!(!is_missing(&CFString::from_str("AXButton")));
-        assert!(!is_missing(&CFNumber::new_i64(7)));
+    fn an_attribute_that_has_no_value_reports_the_error_macos_gave_instead() {
+        assert_eq!(attribute_error(&unsupported_attribute()), Some(AXError::AttributeUnsupported));
+        assert_eq!(
+            attribute_error(&error_value(AXError::CannotComplete)),
+            Some(AXError::CannotComplete)
+        );
+        assert_eq!(attribute_error(&CFString::from_str("AXButton")), None);
+        assert_eq!(attribute_error(&CFNumber::new_i64(7)), None);
     }
 
     #[test]
