@@ -92,8 +92,8 @@ fn screenshot(selection: &Selection, window: Option<u32>, out: &Path) -> Result<
         };
 
         let captured = capture::capture(window.id)?;
-        write_new(&out, &captured.png)?;
-        encode(&ScreenshotResponse::new(
+        // Encoding first keeps the promise that a failed command writes no file.
+        let response = encode(&ScreenshotResponse::new(
             observed(application, pid),
             CapturedWindow {
                 id: window.id,
@@ -107,7 +107,9 @@ fn screenshot(selection: &Selection, window: Option<u32>, out: &Path) -> Result<
                 height: captured.height,
                 uniform: captured.uniform,
             },
-        ))
+        ))?;
+        write_new(&out, &captured.png)?;
+        Ok(response)
     })
 }
 

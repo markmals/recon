@@ -80,8 +80,9 @@ fn spawn(
     let mut child: pid_t = 0;
 
     // SAFETY: `attributes` is a live local, destroyed below.
-    if unsafe { libc::posix_spawnattr_init(&mut attributes) } != 0 {
-        return Err(spawn_failure(io::Error::last_os_error()));
+    let initialized = unsafe { libc::posix_spawnattr_init(&mut attributes) };
+    if initialized != 0 {
+        return Err(spawn_failure(io::Error::from_raw_os_error(initialized)));
     }
     // SAFETY: the attributes were just initialized.
     let disclaimed = unsafe { set_disclaim(&mut attributes, 1) };
