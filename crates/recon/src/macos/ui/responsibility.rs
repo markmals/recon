@@ -6,15 +6,12 @@
 use std::env;
 use std::ffi::{CString, OsStr, c_char, c_int, c_short};
 use std::io;
-use std::mem;
 use std::os::unix::ffi::OsStrExt;
-use std::process::exit;
 use std::ptr;
-use std::sync::atomic::{AtomicI32, Ordering};
 
 use libc::{pid_t, posix_spawnattr_t};
 
-use super::private;
+use super::{forwarding, private};
 
 /// Marks the re-executed child. Its value is the process ID of the `recon` that spawned it, so a
 /// marker some other launcher set cannot make Recon believe it has already re-executed.
@@ -75,18 +72,14 @@ fn relaunch_disclaimed() -> Result<(), String> {
         .collect::<Result<Vec<_>, _>>()?;
     let environment = disclaimed_environment()?;
 
-    // Blocking first closes the window between the spawn and the handler: a signal that arrives
-    // in between stays pending and is delivered, to the installed handler, once both are done.
-    let held = block_forwarded();
-    let spawned = spawn(&program, &arguments, &environment, set_disclaim);
-    if let Ok(child) = spawned {
-        CHILD.store(child, Ordering::Relaxed);
-        install_forwarding();
-    }
-    restore_mask(&held);
-
-    let child = spawned?;
-    exit_like(wait_for(child)?)
+    let child = {
+        // Holding the stop signals until the child exists means none is lost or mishandled.
+        let held = forwarding::hold();
+        let child = spawn(&program, &arguments, &environment, set_disclaim)?;
+        held.forward_to(child);
+        child
+    };
+    forwarding::exit_like(forwarding::wait_for(child)?)
 }
 
 fn spawn(
@@ -108,7 +101,7 @@ fn spawn(
     // SAFETY: the attributes were just initialized; the child must not inherit the mask the
     // parent holds while it installs its handlers, or it could never be stopped.
     let disclaimed = unsafe {
-        libc::posix_spawnattr_setsigmask(&mut attributes, &empty_signals());
+        libc::posix_spawnattr_setsigmask(&mut attributes, &forwarding::no_signals());
         libc::posix_spawnattr_setflags(&mut attributes, libc::POSIX_SPAWN_SETSIGMASK as c_short);
         set_disclaim(&mut attributes, 1)
     };
@@ -141,104 +134,6 @@ fn spawn(
         return Err(spawn_failure(io::Error::from_raw_os_error(spawned)));
     }
     Ok(child)
-}
-
-fn wait_for(child: pid_t) -> Result<c_int, String> {
-    let mut status: c_int = 0;
-    // SAFETY: `child` is the process just spawned, and `status` is a live local.
-    while unsafe { libc::waitpid(child, &mut status, 0) } < 0 {
-        let error = io::Error::last_os_error();
-        if error.kind() != io::ErrorKind::Interrupted {
-            return Err(format!("cannot wait for the disclaimed recon process: {error}"));
-        }
-    }
-    Ok(status)
-}
-
-/// Ends `recon` the way its child ended, so a caller that stopped the observation sees the signal
-/// it sent rather than an ordinary exit code.
-fn exit_like(status: c_int) -> ! {
-    if libc::WIFSIGNALED(status) {
-        let signal = libc::WTERMSIG(status);
-        reraise(signal);
-        // Only reached if the signal did not end this process after all.
-        exit(128 + signal);
-    }
-    exit(libc::WEXITSTATUS(status));
-}
-
-fn reraise(signal: c_int) {
-    let mut action: libc::sigaction = empty_action();
-    action.sa_sigaction = libc::SIG_DFL;
-    let mut only = empty_signals();
-    // SAFETY: restores the signal's default disposition, unblocks it, and sends it to this
-    // process; all three take live locals or a signal number.
-    unsafe {
-        libc::sigaction(signal, &action, ptr::null_mut());
-        libc::sigaddset(&mut only, signal);
-        libc::sigprocmask(libc::SIG_UNBLOCK, &only, ptr::null_mut());
-        libc::raise(signal);
-    }
-}
-
-/// Signals that stop a command. The parent forwards them, so stopping `recon` stops the
-/// observation the disclaimed child is doing.
-const FORWARDED: [c_int; 4] = [libc::SIGHUP, libc::SIGINT, libc::SIGQUIT, libc::SIGTERM];
-
-/// The disclaimed child, which is all the signal handler is allowed to read.
-static CHILD: AtomicI32 = AtomicI32::new(0);
-
-extern "C" fn forward_to_child(signal: c_int) {
-    let child = CHILD.load(Ordering::Relaxed);
-    if child > 0 {
-        // SAFETY: `kill` is async-signal-safe, and the handler touches nothing else.
-        unsafe { libc::kill(child, signal) };
-    }
-}
-
-fn install_forwarding() {
-    let mut action: libc::sigaction = empty_action();
-    action.sa_sigaction = forward_to_child as *const () as libc::sighandler_t;
-    for signal in FORWARDED {
-        // SAFETY: the handler is async-signal-safe and `action` is a live local.
-        unsafe { libc::sigaction(signal, &action, ptr::null_mut()) };
-    }
-}
-
-fn block_forwarded() -> libc::sigset_t {
-    let mut forwarded = empty_signals();
-    let mut held = empty_signals();
-    // SAFETY: every set is a live local.
-    unsafe {
-        for signal in FORWARDED {
-            libc::sigaddset(&mut forwarded, signal);
-        }
-        libc::sigprocmask(libc::SIG_BLOCK, &forwarded, &mut held);
-    }
-    held
-}
-
-fn restore_mask(held: &libc::sigset_t) {
-    // SAFETY: `held` is the mask this process ran with before blocking.
-    unsafe { libc::sigprocmask(libc::SIG_SETMASK, held, ptr::null_mut()) };
-}
-
-fn empty_signals() -> libc::sigset_t {
-    // SAFETY: `sigemptyset` initializes the set it is given.
-    unsafe {
-        let mut set = mem::zeroed::<libc::sigset_t>();
-        libc::sigemptyset(&mut set);
-        set
-    }
-}
-
-fn empty_action() -> libc::sigaction {
-    // SAFETY: a zeroed `sigaction` with an emptied mask and no flags.
-    unsafe {
-        let mut action = mem::zeroed::<libc::sigaction>();
-        libc::sigemptyset(&mut action.sa_mask);
-        action
-    }
 }
 
 fn disclaimed_environment() -> Result<Vec<CString>, String> {

@@ -4,6 +4,7 @@
 mod accessibility;
 mod attributes;
 mod capture;
+mod forwarding;
 mod permissions;
 mod private;
 mod responsibility;
