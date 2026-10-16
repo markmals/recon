@@ -90,7 +90,7 @@ Two other node shapes appear in a tree:
 
 Reading is bounded in four ways. Recon follows only `AXChildren`, depth first, in the order the application reports them. The root is depth 0, and Recon does not read the children of nodes at depth 64. A result holds at most 25,000 nodes, counting repeated and failed ones, and reading stops there. Each request gets a two-second messaging timeout, and after one request times out Recon reads no further elements and returns the partial tree.
 
-Any node whose children were not all read carries `"childrenOmitted": true`. The top-level `truncated` is `true` whenever some node carries `childrenOmitted` or a timeout ended the read, so one field tells you whether the tree is the whole story.
+Any node whose children were not all read carries `"childrenOmitted": true`, including a node that listed a child that is not an accessibility element. The top-level `truncated` is `true` whenever some node carries `childrenOmitted` or a timeout ended the read, so one field tells you whether the tree is the whole story.
 
 ### `recon ui screenshot <target> [--pid <pid>] [--window <id>] --out <file>`
 
@@ -98,7 +98,7 @@ Any node whose children were not all read carries `"childrenOmitted": true`. The
 
 Without `--window`, Recon captures the window the application reports as its main window through Accessibility. An application that reports no main window, which happens for instance when its only window is minimized, makes the command fail with a suggestion to list the windows with `recon ui windows` and pick one with `--window`. An application that does not answer within two seconds makes it fail with `process <pid> did not answer an accessibility request within 2 seconds`.
 
-Capture uses a private SkyLight hardware capture of exactly one window, at that window's backing pixel resolution, with no fallback mechanism. Two failures are reported plainly, and neither writes a file. If the private symbols are missing, the command fails with `window capture is unavailable on this macOS version (SkyLight capture API not found)`. If macOS returns no image, the command fails with `macOS returned no image for window <id>`.
+Capture uses a private SkyLight hardware capture of exactly one window, at that window's backing pixel resolution, with no fallback mechanism. Two failures are reported plainly, and neither writes a file. If the private symbols are missing, the command fails with `window capture is unavailable on this macOS version (SkyLight capture API not found)`. If macOS returns no image, the command fails with `macOS returned no image for window <id>`. If writing the PNG itself fails, Recon removes the partial file, and if macOS refuses even that, the error names the file left behind.
 
 On success the object holds `application` with `path` and `pid`; `window` with the `id`, `title`, `bounds`, and `onScreen` of the window as it was at the moment of capture; `image` with the absolute `path` written, the `width` and `height` in pixels, and `uniform`; and `method`, always `"skylight-hardware-capture"`. Pixel dimensions are the window's backing resolution, so on a Retina display they are larger than the point dimensions in `bounds`. `uniform` is `true` when every pixel has the same RGBA value, as in an entirely transparent or entirely black capture; Recon records that fact instead of calling it an error.
 

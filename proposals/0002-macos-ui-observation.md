@@ -166,7 +166,7 @@ recon ui screenshot "Logic Pro" --out bounce.png → PNG of the app's main windo
     - Recon follows only `AXChildren`, depth first, in the order the application reports.
     - The root has depth 0. Recon does not read the children of nodes at depth 64.
     - A result holds at most 25,000 nodes, counting repeated and failed nodes. Once it holds 25,000, Recon reads no further elements.
-    - A node with any child that Recon did not read carries `"childrenOmitted":true`.
+    - A node with any child that Recon did not read carries `"childrenOmitted":true`. A child that is not an accessibility element is not read.
     - An element already emitted in the same result appears again as `{"role":string|null,"repeated":true}`, with its role and without children.
     - An element whose request fails becomes a failed node, without children:
         - `{"error":"element-unavailable"}` when the element no longer exists (`kAXErrorInvalidUIElement`);
@@ -184,7 +184,7 @@ recon ui screenshot "Logic Pro" --out bounce.png → PNG of the app's main windo
 - Capture uses the private SkyLight hardware window capture of exactly one window, at that window's backing pixel resolution. There is no fallback mechanism.
     - If the private symbols are unavailable, the command fails with `window capture is unavailable on this macOS version (SkyLight capture API not found)`.
     - If macOS returns no image, for example for a minimized window whose content has changed, the command fails with `macOS returned no image for window <id>`.
-    - No file is written on failure.
+    - No file is written when the command fails before writing. If writing the PNG itself fails, Recon removes the partial file; if macOS refuses that removal, the error names the file left behind.
 - Output: `{"application":{"path":string,"pid":integer},"window":{"id":integer,"title":string|null,"bounds":{...},"onScreen":boolean},"image":{"path":string,"width":integer,"height":integer,"uniform":boolean},"method":"skylight-hardware-capture"}`.
     - `width` and `height` are in pixels.
     - `uniform` is `true` when every pixel has the same RGBA value, as in an entirely transparent or entirely black image. Recon records this rather than treating it as an error.
