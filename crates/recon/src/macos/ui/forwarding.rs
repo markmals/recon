@@ -61,15 +61,28 @@ fn is_ignored(signal: c_int) -> bool {
 }
 
 impl Held {
-    /// Sends the forwarded signals to `child` from now on.
-    pub fn forward_to(&self, child: pid_t) {
+    /// The mask the launcher ran with, which the child must start with: Recon neither unblocks
+    /// what the launcher blocked nor passes on the block it holds while installing its handlers.
+    pub fn launcher_mask(&self) -> &libc::sigset_t {
+        &self.previous
+    }
+
+    /// Sends the stop signals to `child` until the returned forwarding is stopped.
+    pub fn forward_to(&self, child: pid_t) -> Forwarding {
         CHILD.store(child, Ordering::Relaxed);
         let mut action = empty_action();
         action.sa_sigaction = forward_to_child as *const () as libc::sighandler_t;
-        for signal in &self.forwarded {
-            // SAFETY: the handler is async-signal-safe and `action` is a live local.
-            unsafe { libc::sigaction(*signal, &action, ptr::null_mut()) };
-        }
+        let previous = self
+            .forwarded
+            .iter()
+            .map(|signal| {
+                let mut replaced = empty_action();
+                // SAFETY: the handler is async-signal-safe, and both actions are live locals.
+                unsafe { libc::sigaction(*signal, &action, &mut replaced) };
+                (*signal, replaced)
+            })
+            .collect();
+        Forwarding { mask: self.previous, previous }
     }
 }
 
@@ -80,9 +93,37 @@ impl Drop for Held {
     }
 }
 
-/// An empty signal set, which a spawned child also needs so that it does not inherit the mask its
-/// parent holds while installing handlers.
-pub fn no_signals() -> libc::sigset_t {
+/// The stop signals while they belong to the child.
+pub struct Forwarding {
+    mask: libc::sigset_t,
+    previous: Vec<(c_int, libc::sigaction)>,
+}
+
+impl Forwarding {
+    /// Stops forwarding once the child is gone: blocks the stop signals so none is handled while
+    /// the handler is being taken down, forgets the child, puts each disposition back, and then
+    /// restores the launcher's mask.
+    pub fn stop(self) {
+        let mut blocked = no_signals();
+        // SAFETY: every set and action here is a live local.
+        unsafe {
+            for (signal, _) in &self.previous {
+                libc::sigaddset(&mut blocked, *signal);
+            }
+            libc::sigprocmask(libc::SIG_BLOCK, &blocked, ptr::null_mut());
+        }
+        CHILD.store(0, Ordering::Relaxed);
+        // SAFETY: each action is the one this process had before forwarding began.
+        unsafe {
+            for (signal, previous) in &self.previous {
+                libc::sigaction(*signal, previous, ptr::null_mut());
+            }
+            libc::sigprocmask(libc::SIG_SETMASK, &self.mask, ptr::null_mut());
+        }
+    }
+}
+
+fn no_signals() -> libc::sigset_t {
     // SAFETY: `sigemptyset` initializes the set it is given.
     unsafe {
         let mut set = mem::zeroed::<libc::sigset_t>();

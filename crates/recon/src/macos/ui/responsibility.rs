@@ -72,14 +72,17 @@ fn relaunch_disclaimed() -> Result<(), String> {
         .collect::<Result<Vec<_>, _>>()?;
     let environment = disclaimed_environment()?;
 
-    let child = {
+    let (child, forwarder) = {
         // Holding the stop signals until the child exists means none is lost or mishandled.
         let held = forwarding::hold();
-        let child = spawn(&program, &arguments, &environment, set_disclaim)?;
-        held.forward_to(child);
-        child
+        let child = spawn(&program, &arguments, &environment, set_disclaim, held.launcher_mask())?;
+        let forwarder = held.forward_to(child);
+        (child, forwarder)
     };
-    forwarding::exit_like(forwarding::wait_for(child)?)
+
+    let status = forwarding::wait_for(child);
+    forwarder.stop();
+    forwarding::exit_like(status?)
 }
 
 fn spawn(
@@ -87,53 +90,84 @@ fn spawn(
     arguments: &[CString],
     environment: &[CString],
     set_disclaim: SetDisclaim,
+    launcher_mask: &libc::sigset_t,
 ) -> Result<pid_t, String> {
     let argv = pointers(arguments);
     let envp = pointers(environment);
-    let mut attributes: posix_spawnattr_t = ptr::null_mut();
     let mut child: pid_t = 0;
 
-    // SAFETY: `attributes` is a live local, destroyed below.
-    let initialized = unsafe { libc::posix_spawnattr_init(&mut attributes) };
-    if initialized != 0 {
-        return Err(spawn_failure(io::Error::from_raw_os_error(initialized)));
-    }
-    // SAFETY: the attributes were just initialized; the child must not inherit the mask the
-    // parent holds while it installs its handlers, or it could never be stopped.
-    let disclaimed = unsafe {
-        libc::posix_spawnattr_setsigmask(&mut attributes, &forwarding::no_signals());
-        libc::posix_spawnattr_setflags(&mut attributes, libc::POSIX_SPAWN_SETSIGMASK as c_short);
-        set_disclaim(&mut attributes, 1)
-    };
-    let spawned = if disclaimed == 0 {
-        // SAFETY: both pointer vectors are null terminated and outlive the call, and without file
-        // actions the child inherits Recon's standard streams.
-        unsafe {
-            libc::posix_spawn(
-                &mut child,
-                program.as_ptr(),
-                ptr::null(),
-                &attributes,
-                argv.as_ptr(),
-                envp.as_ptr(),
-            )
-        }
-    } else {
-        0
-    };
-    // SAFETY: the attributes were initialized above and are not used afterwards.
-    unsafe { libc::posix_spawnattr_destroy(&mut attributes) };
+    let mut attributes = SpawnAttributes::new()?;
+    attributes.start_with_mask(launcher_mask)?;
+    attributes.disclaim(set_disclaim)?;
 
-    if disclaimed != 0 {
-        return Err(format!(
-            "cannot disclaim recon's responsibility: {}",
-            io::Error::from_raw_os_error(disclaimed)
-        ));
-    }
+    // SAFETY: both pointer vectors are null terminated and outlive the call, and without file
+    // actions the child inherits Recon's standard streams.
+    let spawned = unsafe {
+        libc::posix_spawn(
+            &mut child,
+            program.as_ptr(),
+            ptr::null(),
+            &attributes.0,
+            argv.as_ptr(),
+            envp.as_ptr(),
+        )
+    };
     if spawned != 0 {
         return Err(spawn_failure(io::Error::from_raw_os_error(spawned)));
     }
     Ok(child)
+}
+
+/// Spawn attributes, destroyed when they go out of scope so that no failure path leaks them.
+struct SpawnAttributes(posix_spawnattr_t);
+
+impl SpawnAttributes {
+    fn new() -> Result<Self, String> {
+        let mut attributes: posix_spawnattr_t = ptr::null_mut();
+        // SAFETY: `attributes` is a live local, taken over by the returned value.
+        let initialized = unsafe { libc::posix_spawnattr_init(&mut attributes) };
+        if initialized != 0 {
+            return Err(spawn_failure(io::Error::from_raw_os_error(initialized)));
+        }
+        Ok(Self(attributes))
+    }
+
+    /// Starts the child with the mask the launcher ran with, rather than the one Recon holds
+    /// while it installs its handlers, and without unblocking what the launcher blocked.
+    fn start_with_mask(&mut self, mask: &libc::sigset_t) -> Result<(), String> {
+        // SAFETY: the attributes are initialized and the mask is live.
+        let masked = unsafe { libc::posix_spawnattr_setsigmask(&mut self.0, mask) };
+        if masked != 0 {
+            return Err(spawn_failure(io::Error::from_raw_os_error(masked)));
+        }
+        // SAFETY: the attributes are initialized.
+        let flagged = unsafe {
+            libc::posix_spawnattr_setflags(&mut self.0, libc::POSIX_SPAWN_SETSIGMASK as c_short)
+        };
+        if flagged != 0 {
+            return Err(spawn_failure(io::Error::from_raw_os_error(flagged)));
+        }
+        Ok(())
+    }
+
+    fn disclaim(&mut self, set_disclaim: SetDisclaim) -> Result<(), String> {
+        // SAFETY: the private setter takes initialized spawn attributes.
+        let disclaimed = unsafe { set_disclaim(&mut self.0, 1) };
+        if disclaimed != 0 {
+            return Err(format!(
+                "cannot disclaim recon's responsibility: {}",
+                io::Error::from_raw_os_error(disclaimed)
+            ));
+        }
+        Ok(())
+    }
+}
+
+impl Drop for SpawnAttributes {
+    fn drop(&mut self) {
+        // SAFETY: initialized in `new` and not used after this.
+        unsafe { libc::posix_spawnattr_destroy(&mut self.0) };
+    }
 }
 
 fn disclaimed_environment() -> Result<Vec<CString>, String> {
