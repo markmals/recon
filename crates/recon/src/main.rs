@@ -1,7 +1,7 @@
 use std::env;
 
 #[cfg(target_os = "macos")]
-use recon::macos::{investigate, ui::observe};
+use recon::macos::{investigate, observe};
 #[cfg(not(target_os = "macos"))]
 use recon::request::AppRequest;
 use recon::request::{Request, parse_arguments};

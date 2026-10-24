@@ -22,12 +22,12 @@ static CHILD: AtomicI32 = AtomicI32::new(0);
 /// Blocking them closes the window between spawning the child and installing the handler: a
 /// signal that arrives in between stays pending, and is delivered to the handler once the mask
 /// is restored, which happens when this is dropped.
-pub struct Held {
+pub(super) struct Held {
     previous: libc::sigset_t,
     forwarded: Vec<c_int>,
 }
 
-pub fn hold() -> Held {
+pub(super) fn hold() -> Held {
     let forwarded = forwardable(FORWARDED.map(is_ignored));
     let mut blocked = no_signals();
     let mut previous = no_signals();
@@ -63,12 +63,12 @@ fn is_ignored(signal: c_int) -> bool {
 impl Held {
     /// The mask the launcher ran with, which the child must start with: Recon neither unblocks
     /// what the launcher blocked nor passes on the block it holds while installing its handlers.
-    pub fn launcher_mask(&self) -> &libc::sigset_t {
+    pub(super) fn launcher_mask(&self) -> &libc::sigset_t {
         &self.previous
     }
 
     /// Sends the stop signals to `child` until the returned forwarding is stopped.
-    pub fn forward_to(&self, child: pid_t) -> Forwarding {
+    pub(super) fn forward_to(&self, child: pid_t) -> Forwarding {
         CHILD.store(child, Ordering::Relaxed);
         let mut action = empty_action();
         action.sa_sigaction = forward_to_child as *const () as libc::sighandler_t;
@@ -96,7 +96,7 @@ impl Drop for Held {
 }
 
 /// The stop signals while they belong to the child.
-pub struct Forwarding {
+pub(super) struct Forwarding {
     mask: libc::sigset_t,
     previous: Vec<(c_int, libc::sigaction)>,
 }
@@ -105,7 +105,7 @@ impl Forwarding {
     /// Stops forwarding once the child is gone: blocks the stop signals so none is handled while
     /// the handler is being taken down, forgets the child, puts each disposition back, and then
     /// restores the launcher's mask.
-    pub fn stop(self) {
+    pub(super) fn stop(self) {
         let mut blocked = no_signals();
         // SAFETY: every set and action here is a live local.
         unsafe {
@@ -134,7 +134,7 @@ fn no_signals() -> libc::sigset_t {
     }
 }
 
-pub fn wait_for(child: pid_t) -> Result<c_int, String> {
+pub(super) fn wait_for(child: pid_t) -> Result<c_int, String> {
     let mut status: c_int = 0;
     // SAFETY: `child` is the process this one spawned, and `status` is a live local.
     while unsafe { libc::waitpid(child, &mut status, 0) } < 0 {
@@ -148,7 +148,7 @@ pub fn wait_for(child: pid_t) -> Result<c_int, String> {
 
 /// Ends `recon` the way its child ended, so a caller that stopped the observation sees the signal
 /// it sent rather than an ordinary exit code.
-pub fn exit_like(status: c_int) -> ! {
+pub(super) fn exit_like(status: c_int) -> ! {
     if libc::WIFSIGNALED(status) {
         let signal = libc::WTERMSIG(status);
         reraise(signal);

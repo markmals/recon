@@ -1,6 +1,6 @@
 mod investigation;
 mod metadata;
-pub mod ui;
+mod ui;
 mod workspace;
 
 use std::ffi::OsStr;
@@ -13,8 +13,9 @@ use serde::Serialize;
 use crate::application::{Application, normalize_applications, resolve_target};
 
 pub use investigation::investigate;
+pub use ui::observe;
 
-pub fn applications() -> Result<Vec<Application>, String> {
+fn applications() -> Result<Vec<Application>, String> {
     let output = Command::new("/usr/bin/mdfind")
         .args(["-0", "kMDItemContentTypeTree == 'com.apple.application-bundle'"])
         .output()
@@ -53,7 +54,7 @@ fn checked_indexed_output(output: &Output) -> Result<&[u8], String> {
     Ok(&output.stdout)
 }
 
-pub fn with_target<T>(
+fn with_target<T>(
     selector: &str,
     use_application: impl FnOnce(&Application) -> Result<T, String>,
 ) -> Result<T, String> {

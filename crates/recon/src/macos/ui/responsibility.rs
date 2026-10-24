@@ -23,7 +23,7 @@ type SetDisclaim = unsafe extern "C" fn(*mut posix_spawnattr_t, c_int) -> c_int;
 /// Makes `recon` responsible for its own privacy requests, re-executing it once if it is not.
 ///
 /// When a re-execution happens this never returns: the parent exits with the child's status.
-pub fn take_responsibility() -> Result<(), String> {
+pub(super) fn take_responsibility() -> Result<(), String> {
     let marker = env::var_os(MARKER);
     // SAFETY: reading this process's parent cannot fail.
     let parent = unsafe { libc::getppid() };

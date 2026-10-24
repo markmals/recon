@@ -23,7 +23,7 @@ const ELEMENT_NUMBERS: std::ops::RangeInclusive<u64> = 0..=99_999;
 const WINDOW_ROLE: &str = "AXWindow";
 
 /// The accessibility element of a window the instance owns.
-pub fn window_element(
+pub(super) fn window_element(
     application: &AXUIElement,
     pid: Pid,
     window_id: WindowId,
@@ -58,7 +58,10 @@ pub fn window_element(
 ///
 /// An application that reports no main window needs no window ID lookup, so it is told that it
 /// has none rather than that a private interface is missing.
-pub fn main_window_id(application: &AXUIElement, pid: Pid) -> Result<Option<WindowId>, String> {
+pub(super) fn main_window_id(
+    application: &AXUIElement,
+    pid: Pid,
+) -> Result<Option<WindowId>, String> {
     let Some(window) = main_window(application, pid)? else {
         return Ok(None);
     };

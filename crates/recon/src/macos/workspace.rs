@@ -7,7 +7,7 @@ use objc2_foundation::{NSError, NSString, NSURL};
 
 use crate::application::Pid;
 
-pub fn running_applications() -> Vec<(PathBuf, Pid)> {
+pub(super) fn running_applications() -> Vec<(PathBuf, Pid)> {
     NSWorkspace::sharedWorkspace()
         .runningApplications()
         .iter()
@@ -20,7 +20,7 @@ pub fn running_applications() -> Vec<(PathBuf, Pid)> {
         .collect()
 }
 
-pub fn launch(path: &Path) -> Result<Pid, String> {
+pub(super) fn launch(path: &Path) -> Result<Pid, String> {
     let path_string = path
         .to_str()
         .ok_or_else(|| format!("application path is not UTF-8: {}", path.display()))?;

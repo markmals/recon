@@ -13,7 +13,7 @@ use crate::application::Pid;
 use crate::ui::window::{Bounds, Window, WindowId, title_from, windows_of};
 
 /// The windows the given process owns, in the window server's front-to-back order.
-pub fn windows_owned_by(pid: Pid) -> Result<Vec<Window>, String> {
+pub(super) fn windows_owned_by(pid: Pid) -> Result<Vec<Window>, String> {
     Ok(windows_of(windows()?, pid))
 }
 

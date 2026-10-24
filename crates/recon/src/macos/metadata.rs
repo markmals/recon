@@ -5,7 +5,7 @@ use plist::Value;
 
 use crate::application::Application;
 
-pub fn inspect_bundle(path: &Path) -> Result<Application, String> {
+pub(super) fn inspect_bundle(path: &Path) -> Result<Application, String> {
     let path = path
         .canonicalize()
         .map_err(|error| format!("cannot access {}: {error}", path.display()))?;

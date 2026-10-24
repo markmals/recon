@@ -18,7 +18,7 @@ type CaptureWindowList = unsafe extern "C" fn(c_int, *const CGWindowID, u32, u32
 const PNG: &str = "public.png";
 
 /// One window's pixels, ready to be written as a PNG file.
-pub struct Capture {
+pub(super) struct Capture {
     pub width: u32,
     pub height: u32,
     pub uniform: bool,
@@ -26,7 +26,7 @@ pub struct Capture {
 }
 
 /// Captures the window server's current content for one window.
-pub fn capture(window_id: WindowId) -> Result<Capture, String> {
+pub(super) fn capture(window_id: WindowId) -> Result<Capture, String> {
     let image = window_image(window_id)?;
     let width = CGImage::width(Some(&image));
     let height = CGImage::height(Some(&image));

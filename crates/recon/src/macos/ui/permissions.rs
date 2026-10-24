@@ -25,7 +25,7 @@ unsafe extern "C" {
 ///
 /// Checking never prompts; requesting may, and macOS stays silent when the user denied the
 /// permission earlier. Either way a missing permission is reported rather than worked around.
-pub fn require(needed: &[Permission]) -> Result<(), String> {
+pub(super) fn require(needed: &[Permission]) -> Result<(), String> {
     let missing: Vec<Permission> =
         needed.iter().copied().filter(|permission| !granted(*permission)).collect();
     if missing.is_empty() {

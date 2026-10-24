@@ -15,15 +15,15 @@ use crate::ui::tree::{ElementAttributes, ElementSource, ReadFailure};
 use crate::ui::window::Bounds;
 
 /// Bounds every accessibility request, so an unresponsive application cannot hang Recon.
-pub const MESSAGING_TIMEOUT: c_float = 2.0;
+pub(super) const MESSAGING_TIMEOUT: c_float = 2.0;
 
 /// An accessibility element. Elements have no durable identity, but macOS can still tell whether
 /// two of them refer to the same object, which is what a tree read needs to spot repetition.
 #[derive(Clone, Debug)]
-pub struct Element(CFRetained<AXUIElement>);
+pub(super) struct Element(CFRetained<AXUIElement>);
 
 impl Element {
-    pub fn new(element: CFRetained<AXUIElement>) -> Self {
+    pub(super) fn new(element: CFRetained<AXUIElement>) -> Self {
         Self(element)
     }
 }
@@ -43,12 +43,12 @@ impl Hash for Element {
 }
 
 /// Reads elements of a running application, one request per element.
-pub struct Accessibility {
+pub(super) struct Accessibility {
     attributes: CFRetained<CFArray<CFString>>,
 }
 
 impl Accessibility {
-    pub fn new() -> Self {
+    pub(super) fn new() -> Self {
         let names: Vec<CFRetained<CFString>> =
             Attribute::ALL.iter().map(|attribute| CFString::from_str(attribute.name())).collect();
         Self { attributes: CFArray::from_retained_objects(&names) }
@@ -126,7 +126,7 @@ impl ElementSource for Accessibility {
 
 /// Bounds how long every accessibility request this process makes may take, so that an
 /// unresponsive application cannot hang Recon.
-pub fn bound_messaging() {
+pub(super) fn bound_messaging() {
     // SAFETY: the system-wide element carries process-wide accessibility settings like this one.
     unsafe {
         let system_wide = AXUIElement::new_system_wide();
@@ -135,7 +135,7 @@ pub fn bound_messaging() {
 }
 
 /// The top-level element of a running application.
-pub fn application_element(pid: Pid) -> Result<CFRetained<AXUIElement>, String> {
+pub(super) fn application_element(pid: Pid) -> Result<CFRetained<AXUIElement>, String> {
     let pid = pid_t::try_from(pid.0).map_err(|_| format!("{pid} is not a process id"))?;
     // SAFETY: creating an application element does not message the application.
     Ok(unsafe { AXUIElement::new_application(pid) })
@@ -144,7 +144,7 @@ pub fn application_element(pid: Pid) -> Result<CFRetained<AXUIElement>, String> 
 /// The value of one attribute. The error tells the caller why there is none: `kAXErrorNoValue`
 /// and `kAXErrorAttributeUnsupported` mean the element simply does not have the attribute, while
 /// `kAXErrorCannotComplete` means the application did not answer.
-pub fn attribute(element: &AXUIElement, name: &str) -> Result<CFRetained<CFType>, AXError> {
+pub(super) fn attribute(element: &AXUIElement, name: &str) -> Result<CFRetained<CFType>, AXError> {
     let mut value: *const CFType = ptr::null();
     // SAFETY: on success `value` owns the attribute's value.
     let error = unsafe {
