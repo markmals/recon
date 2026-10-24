@@ -1,8 +1,14 @@
+//! Writing a capture to `--out`: never over an existing file, and never leaving a partial one.
+
 use std::fs::{self, File};
 use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
 
 /// Resolves `--out` to an absolute path Recon may create, without creating it.
+///
+/// # Errors
+///
+/// When the parent directory does not exist or the file already does.
 pub fn prepare_output(out: &Path, current_dir: &Path) -> Result<PathBuf, String> {
     let path = if out.is_absolute() { out.to_path_buf() } else { current_dir.join(out) };
     let Some(parent) = path.parent() else {
@@ -21,6 +27,12 @@ pub fn prepare_output(out: &Path, current_dir: &Path) -> Result<PathBuf, String>
     Ok(path)
 }
 
+/// Writes `bytes` to a file created at `path`.
+///
+/// # Errors
+///
+/// When the file already exists, which Recon never overwrites, or when writing fails; a failed
+/// write removes the partial file.
 pub fn write_new(path: &Path, bytes: &[u8]) -> Result<(), String> {
     let file = File::create_new(path).map_err(|error| match error.kind() {
         ErrorKind::AlreadyExists => already_exists(path),

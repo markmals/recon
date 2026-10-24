@@ -1,3 +1,5 @@
+//! Telling whether a captured image is uniform, which a capture of an invisible window is.
+
 /// How the bytes of a captured image are arranged.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PixelLayout {

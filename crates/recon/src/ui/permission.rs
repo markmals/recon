@@ -1,3 +1,5 @@
+//! The privacy permissions `recon ui` needs, and how a missing one is explained.
+
 use std::path::Path;
 
 /// A macOS privacy permission that `recon` itself must hold.

@@ -1,9 +1,12 @@
+//! Windows as the window server lists them, and how a command picks one.
+
 use std::fmt;
 
 use serde::Serialize;
 
 use crate::application::Pid;
 
+/// A rectangle in global screen points, with the origin at the top left of the main display.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub struct Bounds {
     pub x: f64,
@@ -38,14 +41,21 @@ pub struct Window {
     pub alpha: f64,
 }
 
+/// An empty title is no title, so a window titled `""` reports `null`.
 pub fn title_from(raw: Option<String>) -> Option<String> {
     raw.filter(|title| !title.is_empty())
 }
 
+/// The windows `pid` owns, in the order of `all`.
 pub fn windows_of(all: Vec<Window>, pid: Pid) -> Vec<Window> {
     all.into_iter().filter(|window| window.owner_pid == pid).collect()
 }
 
+/// The window `id`, which must belong to `pid`.
+///
+/// # Errors
+///
+/// When `windows` holds no window `id` owned by `pid`.
 pub fn select_window(windows: Vec<Window>, id: WindowId, pid: Pid) -> Result<Window, String> {
     windows
         .into_iter()

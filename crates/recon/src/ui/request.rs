@@ -1,15 +1,19 @@
+//! The `recon ui` command grammar.
+
 use std::path::PathBuf;
 
 use crate::application::Pid;
 use crate::request::USAGE;
 use crate::ui::window::WindowId;
 
+/// The application a `recon ui` command observes, and the instance `--pid` chose, if any.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Selection {
     pub target: String,
     pub pid: Option<Pid>,
 }
 
+/// One `recon ui` command. A `window` of `None` means the command picks the window itself.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum UiRequest {
     Windows { selection: Selection },
@@ -24,7 +28,12 @@ struct Flags {
     out: Option<PathBuf>,
 }
 
-/// Parses the arguments that follow `recon ui`.
+/// Parses the arguments that follow `recon ui`. Flags may come before or after the target.
+///
+/// # Errors
+///
+/// Any argument mistake yields the usage text, including a flag the command does not take, a
+/// repeated flag, and a `--pid` of 0.
 pub fn parse_ui_arguments(arguments: &[String]) -> Result<UiRequest, String> {
     let mut words = arguments.iter().map(String::as_str);
     let command = words.next().ok_or_else(usage)?;

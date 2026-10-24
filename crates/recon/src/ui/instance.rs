@@ -1,8 +1,15 @@
+//! Choosing which running instance of a bundle `recon ui` observes.
+
 use std::path::Path;
 
 use crate::application::Pid;
 
 /// Picks the one running process of a resolved bundle, never guessing between several.
+///
+/// # Errors
+///
+/// When the bundle is not running, when `requested` is not one of its processes, or when it has
+/// several and none was requested.
 pub fn select_instance(
     application_path: &Path,
     running_pids: &[Pid],
