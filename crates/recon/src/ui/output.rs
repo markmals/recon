@@ -1,4 +1,4 @@
-//! Writing a capture to `--out`: never over an existing file, and never leaving a partial one.
+//! Writing a capture to `--out`: never over an existing file, and removing a partial one.
 
 use std::fs::{self, File};
 use std::io::{ErrorKind, Write};
@@ -31,8 +31,8 @@ pub fn prepare_output(out: &Path, current_dir: &Path) -> Result<PathBuf, String>
 ///
 /// # Errors
 ///
-/// When the file already exists, which Recon never overwrites, or when writing fails; a failed
-/// write removes the partial file.
+/// When the file already exists, which Recon never overwrites, or when writing fails. A failed
+/// write removes the partial file, and the error names the file when macOS refuses to remove it.
 pub fn write_new(path: &Path, bytes: &[u8]) -> Result<(), String> {
     let file = File::create_new(path).map_err(|error| match error.kind() {
         ErrorKind::AlreadyExists => already_exists(path),

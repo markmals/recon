@@ -13,7 +13,8 @@ pub struct Selection {
     pub pid: Option<Pid>,
 }
 
-/// One `recon ui` command. A `window` of `None` means the command picks the window itself.
+/// One `recon ui` command. Without a `window`, `tree` reads the whole application and
+/// `screenshot` captures the application's main window.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum UiRequest {
     Windows { selection: Selection },

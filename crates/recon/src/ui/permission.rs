@@ -31,7 +31,8 @@ impl Permission {
 pub enum Signature {
     /// The designated requirement is the code hash itself, so a rebuild forgets every grant.
     AdHoc,
-    /// A signature whose grants outlive a rebuild.
+    /// Any other signature, such as Developer ID, whose grants outlive a rebuild. A signature
+    /// Recon cannot read is taken to be this kind, so no rebuild warning is given for it.
     Stable,
 }
 
