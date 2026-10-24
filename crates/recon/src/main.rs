@@ -1,6 +1,6 @@
 use std::env;
 #[cfg(target_os = "macos")]
-use std::path::PathBuf;
+use std::path::Path;
 
 #[cfg(target_os = "macos")]
 use recon::application::Application;
@@ -14,7 +14,7 @@ use serde::Serialize;
 struct ListedApplication<'a> {
     name: &'a str,
     bundle_id: Option<&'a str>,
-    path: &'a PathBuf,
+    path: &'a Path,
     running_pids: &'a [u32],
 }
 
@@ -34,7 +34,7 @@ struct InspectResponse<'a> {
 #[cfg(target_os = "macos")]
 #[derive(Serialize)]
 struct LaunchResponse<'a> {
-    path: &'a PathBuf,
+    path: &'a Path,
     pid: u32,
 }
 
