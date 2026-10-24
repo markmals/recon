@@ -46,9 +46,9 @@ pub fn windows_of(all: Vec<Window>, pid: Pid) -> Vec<Window> {
     all.into_iter().filter(|window| window.owner_pid == pid).collect()
 }
 
-pub fn select_window(windows: &[Window], id: WindowId, pid: Pid) -> Result<&Window, String> {
+pub fn select_window(windows: Vec<Window>, id: WindowId, pid: Pid) -> Result<Window, String> {
     windows
-        .iter()
+        .into_iter()
         .find(|window| window.id == id && window.owner_pid == pid)
         .ok_or_else(|| format!("window {id} is not a window of process {pid}"))
 }

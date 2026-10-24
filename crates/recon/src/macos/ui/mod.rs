@@ -54,7 +54,7 @@ fn windows(selection: &Selection) -> Result<String, String> {
 fn tree(selection: &Selection, window: Option<WindowId>) -> Result<String, String> {
     with_instance(selection, |application, pid| {
         if let Some(id) = window {
-            select_window(&window_server::windows_owned_by(pid)?, id, pid)?;
+            select_window(window_server::windows_owned_by(pid)?, id, pid)?;
         }
         permissions::require(&[Permission::Accessibility])?;
 
@@ -84,8 +84,7 @@ fn screenshot(
         let out = prepare_output(out, &current_directory()?)?;
         let window = match window {
             Some(id) => {
-                let windows = window_server::windows_owned_by(pid)?;
-                let window = select_window(&windows, id, pid)?.clone();
+                let window = select_window(window_server::windows_owned_by(pid)?, id, pid)?;
                 permissions::require(&[Permission::ScreenRecording])?;
                 window
             }
@@ -127,8 +126,7 @@ fn main_window(application: &Application, pid: Pid) -> Result<Window, String> {
             application.path.display()
         )
     })?;
-    let windows = window_server::windows_owned_by(pid)?;
-    Ok(select_window(&windows, id, pid)?.clone())
+    select_window(window_server::windows_owned_by(pid)?, id, pid)
 }
 
 fn with_instance<T>(

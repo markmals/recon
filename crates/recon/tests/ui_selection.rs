@@ -67,11 +67,11 @@ fn the_windows_of_an_instance_exclude_other_processes_and_keep_their_order() {
 #[test]
 fn a_window_must_belong_to_the_selected_instance() {
     let windows = vec![window(3, 42), window(5, 90)];
-    assert_eq!(select_window(&windows, WindowId(3), Pid(42)).unwrap().id, WindowId(3));
+    assert_eq!(select_window(windows.clone(), WindowId(3), Pid(42)).unwrap().id, WindowId(3));
 
-    let error = select_window(&windows, WindowId(5), Pid(42)).unwrap_err();
+    let error = select_window(windows.clone(), WindowId(5), Pid(42)).unwrap_err();
     assert_eq!(error, "window 5 is not a window of process 42");
-    let error = select_window(&windows, WindowId(77), Pid(42)).unwrap_err();
+    let error = select_window(windows, WindowId(77), Pid(42)).unwrap_err();
     assert_eq!(error, "window 77 is not a window of process 42");
 }
 
