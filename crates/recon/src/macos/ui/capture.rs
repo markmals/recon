@@ -9,7 +9,7 @@ use objc2_core_graphics::{CGDataProvider, CGImage, CGWindowID};
 use objc2_image_io::CGImageDestination;
 
 use super::private;
-use crate::ui::image::is_uniform;
+use crate::ui::image::{PixelLayout, is_uniform};
 use crate::ui::window::WindowId;
 
 type MainConnection = unsafe extern "C" fn() -> c_int;
@@ -75,8 +75,13 @@ fn uniform(
         .ok_or_else(|| format!("macOS returned no pixels for window {window_id}"))?;
     // SAFETY: the copied pixels are not mutated while they are read.
     let pixels = unsafe { pixels.as_bytes_unchecked() };
-    let bytes_per_row = CGImage::bytes_per_row(Some(image));
-    Ok(is_uniform(pixels, width, height, bytes_per_row, bits_per_pixel / 8))
+    let layout = PixelLayout {
+        width,
+        height,
+        bytes_per_row: CGImage::bytes_per_row(Some(image)),
+        bytes_per_pixel: bits_per_pixel / 8,
+    };
+    Ok(is_uniform(pixels, layout))
 }
 
 fn png(image: &CGImage, window_id: WindowId) -> Result<Vec<u8>, String> {
