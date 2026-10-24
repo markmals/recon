@@ -48,7 +48,7 @@ mise use --global rust-analyzer@latest npm:bash-language-server@latest npm:vscod
 mise install 'npm:@vue/language-server[allow_exotic_deps=@emmetio/css-parser]@2.2.12' npm:typescript@5.9.3
 ```
 
-Globally selected Mise servers run through `mise exec`. If Rustup's `rust-analyzer` proxy is first on that environment's `PATH`, install the component for the pinned toolchain with `mise exec rust@1.99.1 -- rustup component add rust-analyzer --toolchain 1.99.1`. TypeScript uses the native LSP bundled with this project's TypeScript 7 dependency; run `vp install` first. Swift uses `xcrun sourcekit-lsp` from the Xcode command-line tools on macOS.
+Globally selected Mise servers run through `mise exec`. If Rustup's `rust-analyzer` proxy is first on that environment's `PATH`, install the component for the active Mise Rust toolchain with `mise exec -- rustup component add rust-analyzer`. TypeScript uses the native LSP bundled with this project's TypeScript 7 dependency; run `vp install` first. Swift uses `xcrun sourcekit-lsp` from the Xcode command-line tools on macOS.
 
 Vue uses the separately installed 2.2.12 server in standalone mode with a Mise-managed TypeScript 5.9.3 SDK. The launcher in `tools/vue-language-server.ts` runs with Node, resolves both installations through Mise, and initializes Vue's standalone service. Newer Vue servers require a custom TypeScript request bridge, and TypeScript 7 no longer provides the JavaScript SDK that standalone Vue needs. The globally selected Vue and TypeScript versions remain unchanged.
 
