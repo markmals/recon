@@ -20,6 +20,8 @@ pub fn applications() -> Result<Vec<Application>, String> {
         .output()
         .map_err(|error| format!("cannot search indexed applications: {error}"))?;
     let indexed_paths = checked_indexed_output(&output)?;
+    // The listing promises only bundles it can read, so an indexed or running path that is not a
+    // readable application bundle is left out rather than failing the whole listing.
     let mut discovered: Vec<Application> = indexed_paths
         .split(|byte| *byte == 0)
         .filter(|path| !path.is_empty())
