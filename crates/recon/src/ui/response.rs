@@ -2,6 +2,7 @@ use std::path::Path;
 
 use serde::Serialize;
 
+use crate::application::Pid;
 use crate::ui::tree::Node;
 use crate::ui::window::{Bounds, Window, WindowId};
 
@@ -10,7 +11,7 @@ const CAPTURE_METHOD: &str = "skylight-hardware-capture";
 #[derive(Debug, Serialize)]
 pub struct ObservedApplication<'a> {
     pub path: &'a Path,
-    pub pid: u32,
+    pub pid: Pid,
 }
 
 #[derive(Debug, Serialize)]

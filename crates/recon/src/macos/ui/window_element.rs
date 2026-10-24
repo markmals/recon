@@ -11,6 +11,7 @@ use objc2_core_graphics::CGWindowID;
 
 use super::accessibility::attribute;
 use super::private;
+use crate::application::Pid;
 use crate::ui::window::WindowId;
 
 type GetWindow = unsafe extern "C" fn(&AXUIElement, *mut CGWindowID) -> AXError;
@@ -24,7 +25,7 @@ const WINDOW_ROLE: &str = "AXWindow";
 /// The accessibility element of a window the instance owns.
 pub fn window_element(
     application: &AXUIElement,
-    pid: u32,
+    pid: Pid,
     window_id: WindowId,
 ) -> Result<CFRetained<AXUIElement>, String> {
     let get_window = window_id_lookup()?;
@@ -57,7 +58,7 @@ pub fn window_element(
 ///
 /// An application that reports no main window needs no window ID lookup, so it is told that it
 /// has none rather than that a private interface is missing.
-pub fn main_window_id(application: &AXUIElement, pid: u32) -> Result<Option<WindowId>, String> {
+pub fn main_window_id(application: &AXUIElement, pid: Pid) -> Result<Option<WindowId>, String> {
     let Some(window) = main_window(application, pid)? else {
         return Ok(None);
     };
@@ -81,7 +82,7 @@ fn lookup_outcome(error: AXError) -> Lookup {
     }
 }
 
-fn keep_looking(error: AXError, pid: u32) -> Result<(), String> {
+fn keep_looking(error: AXError, pid: Pid) -> Result<(), String> {
     match lookup_outcome(error) {
         Lookup::Continue => Ok(()),
         Lookup::Unresponsive => {
@@ -101,7 +102,7 @@ fn window_id_lookup() -> Result<GetWindow, String> {
 
 fn listed_windows(
     application: &AXUIElement,
-    pid: u32,
+    pid: Pid,
 ) -> Result<Vec<CFRetained<AXUIElement>>, String> {
     let windows = match attribute(application, "AXWindows") {
         Ok(windows) => windows,
@@ -117,7 +118,7 @@ fn listed_windows(
 
 fn main_window(
     application: &AXUIElement,
-    pid: u32,
+    pid: Pid,
 ) -> Result<Option<CFRetained<AXUIElement>>, String> {
     match attribute(application, "AXMainWindow") {
         Ok(window) => Ok(window.downcast::<AXUIElement>().ok()),
@@ -128,7 +129,7 @@ fn main_window(
 fn window_id_of(
     element: &AXUIElement,
     get_window: GetWindow,
-    pid: u32,
+    pid: Pid,
 ) -> Result<Option<WindowId>, String> {
     let mut id: CGWindowID = 0;
     // SAFETY: the private lookup writes the window ID of an accessibility window.
@@ -140,12 +141,12 @@ fn window_id_of(
 }
 
 fn scanned_window(
-    pid: u32,
+    pid: Pid,
     window_id: WindowId,
     from_token: CreateWithRemoteToken,
     get_window: GetWindow,
 ) -> Result<Option<CFRetained<AXUIElement>>, String> {
-    let token_pid = i32::try_from(pid).map_err(|_| format!("{pid} is not a process id"))?;
+    let token_pid = i32::try_from(pid.0).map_err(|_| format!("{pid} is not a process id"))?;
     for number in ELEMENT_NUMBERS {
         let Some(element) = element_from_token(token_pid, number, from_token) else {
             continue;
@@ -172,7 +173,7 @@ fn element_from_token(
     Some(unsafe { CFRetained::from_raw(element) })
 }
 
-fn role_of(element: &AXUIElement, pid: u32) -> Result<Option<String>, String> {
+fn role_of(element: &AXUIElement, pid: Pid) -> Result<Option<String>, String> {
     match attribute(element, "AXRole") {
         Ok(role) => Ok(role.downcast::<CFString>().ok().map(|role| role.to_string())),
         Err(error) => keep_looking(error, pid).map(|()| None),

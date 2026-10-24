@@ -1,11 +1,13 @@
 use std::path::Path;
 
+use crate::application::Pid;
+
 /// Picks the one running process of a resolved bundle, never guessing between several.
 pub fn select_instance(
     application_path: &Path,
-    running_pids: &[u32],
-    requested: Option<u32>,
-) -> Result<u32, String> {
+    running_pids: &[Pid],
+    requested: Option<Pid>,
+) -> Result<Pid, String> {
     let application = application_path.display();
     if running_pids.is_empty() {
         return Err(format!("{application} is not running; recon ui does not launch applications"));
@@ -19,6 +21,6 @@ pub fn select_instance(
     if let [only] = running_pids {
         return Ok(*only);
     }
-    let candidates = running_pids.iter().map(u32::to_string).collect::<Vec<_>>().join(", ");
+    let candidates = running_pids.iter().map(Pid::to_string).collect::<Vec<_>>().join(", ");
     Err(format!("{application} has several running instances; choose one with --pid: {candidates}"))
 }

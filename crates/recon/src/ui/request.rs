@@ -1,12 +1,13 @@
 use std::path::PathBuf;
 
+use crate::application::Pid;
 use crate::request::USAGE;
 use crate::ui::window::WindowId;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Selection {
     pub target: String,
-    pub pid: Option<u32>,
+    pub pid: Option<Pid>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -18,7 +19,7 @@ pub enum UiRequest {
 
 #[derive(Default)]
 struct Flags {
-    pid: Option<u32>,
+    pid: Option<Pid>,
     window: Option<WindowId>,
     out: Option<PathBuf>,
 }
@@ -50,7 +51,7 @@ fn parse_target_and_flags<'a>(
     let mut flags = Flags::default();
     while let Some(word) = words.next() {
         match word {
-            "--pid" => set(&mut flags.pid, positive_integer(value_of(&mut words)?)?)?,
+            "--pid" => set(&mut flags.pid, process_id(value_of(&mut words)?)?)?,
             "--window" => set(&mut flags.window, window_id(value_of(&mut words)?)?)?,
             "--out" => set(&mut flags.out, PathBuf::from(value_of(&mut words)?))?,
             _ if is_flag(word) => return Err(usage()),
@@ -76,8 +77,9 @@ fn window_id(value: &str) -> Result<WindowId, String> {
     digits(value).map(WindowId).ok_or_else(usage)
 }
 
-fn positive_integer(value: &str) -> Result<u32, String> {
-    digits(value).filter(|number| *number > 0).ok_or_else(usage)
+/// A process ID is positive: 0 names no process.
+fn process_id(value: &str) -> Result<Pid, String> {
+    digits(value).filter(|number| *number > 0).map(Pid).ok_or_else(usage)
 }
 
 /// Accepts only plain decimal digits, so `+12`, ` 12`, and `12.0` are not numbers here.

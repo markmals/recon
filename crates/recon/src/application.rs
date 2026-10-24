@@ -4,6 +4,17 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
+/// The process ID of one running instance of an application.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[serde(transparent)]
+pub struct Pid(pub u32);
+
+impl fmt::Display for Pid {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(formatter)
+    }
+}
+
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Application {
@@ -13,7 +24,7 @@ pub struct Application {
     pub version: Option<String>,
     pub build: Option<String>,
     pub executable_path: Option<PathBuf>,
-    pub running_pids: Vec<u32>,
+    pub running_pids: Vec<Pid>,
 }
 
 impl Application {

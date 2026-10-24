@@ -10,6 +10,7 @@ use objc2_application_services::{AXCopyMultipleAttributeOptions, AXError, AXUIEl
 use objc2_core_foundation::{CFArray, CFRetained, CFString, CFType};
 
 use super::attributes::{self, Attribute, Children};
+use crate::application::Pid;
 use crate::ui::tree::{ElementAttributes, ElementSource, ReadFailure};
 use crate::ui::window::Bounds;
 
@@ -134,8 +135,8 @@ pub fn bound_messaging() {
 }
 
 /// The top-level element of a running application.
-pub fn application_element(pid: u32) -> Result<CFRetained<AXUIElement>, String> {
-    let pid = pid_t::try_from(pid).map_err(|_| format!("{pid} is not a process id"))?;
+pub fn application_element(pid: Pid) -> Result<CFRetained<AXUIElement>, String> {
+    let pid = pid_t::try_from(pid.0).map_err(|_| format!("{pid} is not a process id"))?;
     // SAFETY: creating an application element does not message the application.
     Ok(unsafe { AXUIElement::new_application(pid) })
 }

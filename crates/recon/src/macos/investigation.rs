@@ -6,7 +6,7 @@ use serde::Serialize;
 
 use super::workspace::launch;
 use super::{applications, encode, with_target};
-use crate::application::Application;
+use crate::application::{Application, Pid};
 use crate::request::AppRequest;
 
 /// How `app list` found its applications: the Spotlight index, plus whatever is running.
@@ -18,7 +18,7 @@ struct ListedApplication<'a> {
     name: &'a str,
     bundle_id: Option<&'a str>,
     path: &'a Path,
-    running_pids: &'a [u32],
+    running_pids: &'a [Pid],
 }
 
 #[derive(Serialize)]
@@ -35,7 +35,7 @@ struct InspectResponse<'a> {
 #[derive(Serialize)]
 struct LaunchResponse<'a> {
     path: &'a Path,
-    pid: u32,
+    pid: Pid,
 }
 
 /// Runs one `recon app` command and returns its result as JSON.

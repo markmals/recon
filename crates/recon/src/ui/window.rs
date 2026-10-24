@@ -2,6 +2,8 @@ use std::fmt;
 
 use serde::Serialize;
 
+use crate::application::Pid;
+
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub struct Bounds {
     pub x: f64,
@@ -28,7 +30,7 @@ pub struct Window {
     pub id: WindowId,
     /// The owning process is how a window is selected, not something the result reports.
     #[serde(skip)]
-    pub owner_pid: u32,
+    pub owner_pid: Pid,
     pub title: Option<String>,
     pub layer: i32,
     pub bounds: Bounds,
@@ -40,11 +42,11 @@ pub fn title_from(raw: Option<String>) -> Option<String> {
     raw.filter(|title| !title.is_empty())
 }
 
-pub fn windows_of(all: Vec<Window>, pid: u32) -> Vec<Window> {
+pub fn windows_of(all: Vec<Window>, pid: Pid) -> Vec<Window> {
     all.into_iter().filter(|window| window.owner_pid == pid).collect()
 }
 
-pub fn select_window(windows: &[Window], id: WindowId, pid: u32) -> Result<&Window, String> {
+pub fn select_window(windows: &[Window], id: WindowId, pid: Pid) -> Result<&Window, String> {
     windows
         .iter()
         .find(|window| window.id == id && window.owner_pid == pid)

@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use recon::application::Pid;
 use recon::request::USAGE;
 use recon::ui::request::{Selection, UiRequest, parse_ui_arguments};
 use recon::ui::window::WindowId;
@@ -28,7 +29,7 @@ fn windows_takes_a_target_and_an_optional_pid() {
     assert_eq!(
         parse(&["windows", "Logic Pro", "--pid", "412"]).unwrap(),
         UiRequest::Windows {
-            selection: Selection { target: "Logic Pro".to_owned(), pid: Some(412) },
+            selection: Selection { target: "Logic Pro".to_owned(), pid: Some(Pid(412)) },
         }
     );
 }
@@ -36,7 +37,7 @@ fn windows_takes_a_target_and_an_optional_pid() {
 #[test]
 fn tree_takes_pid_and_window_flags_in_any_order() {
     let expected = UiRequest::Tree {
-        selection: Selection { target: "/Applications/Notes.app".to_owned(), pid: Some(7) },
+        selection: Selection { target: "/Applications/Notes.app".to_owned(), pid: Some(Pid(7)) },
         window: Some(WindowId(53510)),
     };
     assert_eq!(
@@ -59,7 +60,7 @@ fn tree_takes_pid_and_window_flags_in_any_order() {
 #[test]
 fn flags_may_come_before_the_target() {
     let safari = UiRequest::Tree {
-        selection: Selection { target: "Safari".to_owned(), pid: Some(7) },
+        selection: Selection { target: "Safari".to_owned(), pid: Some(Pid(7)) },
         window: Some(WindowId(9)),
     };
     assert_eq!(parse(&["tree", "--pid", "7", "--window", "9", "Safari"]).unwrap(), safari);
@@ -89,7 +90,7 @@ fn screenshot_requires_an_output_file_and_accepts_a_window() {
         parse(&["screenshot", "Notes", "--window", "9", "--out", "/tmp/shot.png", "--pid", "3"])
             .unwrap(),
         UiRequest::Screenshot {
-            selection: Selection { target: "Notes".to_owned(), pid: Some(3) },
+            selection: Selection { target: "Notes".to_owned(), pid: Some(Pid(3)) },
             window: Some(WindowId(9)),
             out: PathBuf::from("/tmp/shot.png"),
         }
@@ -145,7 +146,7 @@ fn a_pid_must_be_a_positive_integer() {
     assert_eq!(
         parse(&["windows", "Notes", "--pid", "4294967295"]).unwrap(),
         UiRequest::Windows {
-            selection: Selection { target: "Notes".to_owned(), pid: Some(u32::MAX) },
+            selection: Selection { target: "Notes".to_owned(), pid: Some(Pid(u32::MAX)) },
         }
     );
     rejects(&["windows", "Notes", "--pid", "0"]);

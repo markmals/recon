@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use proptest::prelude::*;
-use recon::application::{Application, TargetError, normalize_applications, resolve_target};
+use recon::application::{Application, Pid, TargetError, normalize_applications, resolve_target};
 
 fn application(name: &str, bundle_id: Option<&str>, path: &str) -> Application {
     Application {
@@ -78,14 +78,14 @@ fn an_ambiguous_target_lists_each_candidate_by_name_identifier_and_path() {
 #[test]
 fn running_processes_belong_to_the_exact_bundle_location() {
     let mut system = application("Editor", Some("com.example.editor"), "/Applications/Editor.app");
-    system.running_pids.push(91);
+    system.running_pids.push(Pid(91));
     let mut copy = application("Editor", Some("com.example.editor"), "/Users/test/Editor.app");
-    copy.running_pids.extend([75, 12, 75]);
+    copy.running_pids.extend([Pid(75), Pid(12), Pid(75)]);
     let apps = normalize_applications(vec![copy, system.clone(), system.clone()]);
 
     assert_eq!(apps.len(), 2);
-    assert_eq!(apps[0].running_pids, vec![91]);
-    assert_eq!(apps[1].running_pids, vec![12, 75]);
+    assert_eq!(apps[0].running_pids, [Pid(91)]);
+    assert_eq!(apps[1].running_pids, [Pid(12), Pid(75)]);
     assert_eq!(apps[0].path, system.path);
 }
 

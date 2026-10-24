@@ -9,10 +9,11 @@ use objc2_core_graphics::{
     kCGWindowName, kCGWindowNumber, kCGWindowOwnerPID,
 };
 
+use crate::application::Pid;
 use crate::ui::window::{Bounds, Window, WindowId, title_from, windows_of};
 
 /// The windows the given process owns, in the window server's front-to-back order.
-pub fn windows_owned_by(pid: u32) -> Result<Vec<Window>, String> {
+pub fn windows_owned_by(pid: Pid) -> Result<Vec<Window>, String> {
     Ok(windows_of(windows()?, pid))
 }
 
@@ -34,7 +35,7 @@ fn window_from(entry: &CFDictionary<CFString, CFType>, keys: &Keys) -> Option<Wi
 
     Some(Window {
         id: WindowId(u32::try_from(number(keys.number)?.as_i64()?).ok()?),
-        owner_pid: u32::try_from(number(keys.owner_pid)?.as_i64()?).ok()?,
+        owner_pid: Pid(u32::try_from(number(keys.owner_pid)?.as_i64()?).ok()?),
         title: title_from(title),
         layer: number(keys.layer)?.as_i32()?,
         bounds: bounds_from(entry.get(keys.bounds)?)?,
@@ -125,7 +126,7 @@ mod tests {
             window_from(&entry, &keys),
             Some(Window {
                 id: WindowId(53510),
-                owner_pid: 412,
+                owner_pid: Pid(412),
                 title: Some("Recon Fixture — Main".to_owned()),
                 layer: 0,
                 bounds: Bounds { x: 12.0, y: 34.0, width: 800.0, height: 600.0 },

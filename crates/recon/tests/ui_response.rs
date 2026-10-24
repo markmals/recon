@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use recon::application::Pid;
 use recon::ui::response::{
     CapturedImage, CapturedWindow, ObservedApplication, ScreenshotResponse, TreeResponse,
     WindowsResponse,
@@ -10,7 +11,7 @@ use recon::ui::window::{Bounds, Window, WindowId};
 const BUNDLE: &str = "/Applications/Notes.app";
 
 fn application() -> ObservedApplication<'static> {
-    ObservedApplication { path: Path::new(BUNDLE), pid: 412 }
+    ObservedApplication { path: Path::new(BUNDLE), pid: Pid(412) }
 }
 
 fn bounds() -> Bounds {
@@ -20,7 +21,7 @@ fn bounds() -> Bounds {
 fn window(title: Option<&str>) -> Window {
     Window {
         id: WindowId(53510),
-        owner_pid: 412,
+        owner_pid: Pid(412),
         title: title.map(str::to_owned),
         layer: 0,
         bounds: bounds(),

@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 use accessibility::{Accessibility, Element};
 
 use super::encode;
-use crate::application::Application;
+use crate::application::{Application, Pid};
 use crate::ui::instance::select_instance;
 use crate::ui::output::{prepare_output, write_new};
 use crate::ui::permission::Permission;
@@ -118,7 +118,7 @@ fn screenshot(
 }
 
 /// The window the application itself reports as its main one, as the window server lists it.
-fn main_window(application: &Application, pid: u32) -> Result<Window, String> {
+fn main_window(application: &Application, pid: Pid) -> Result<Window, String> {
     accessibility::bound_messaging();
     let application_element = accessibility::application_element(pid)?;
     let id = window_element::main_window_id(&application_element, pid)?.ok_or_else(|| {
@@ -133,7 +133,7 @@ fn main_window(application: &Application, pid: u32) -> Result<Window, String> {
 
 fn with_instance<T>(
     selection: &Selection,
-    observe_instance: impl FnOnce(&Application, u32) -> Result<T, String>,
+    observe_instance: impl FnOnce(&Application, Pid) -> Result<T, String>,
 ) -> Result<T, String> {
     super::with_target(&selection.target, |application| {
         let pid = select_instance(&application.path, &application.running_pids, selection.pid)?;
@@ -141,7 +141,7 @@ fn with_instance<T>(
     })
 }
 
-fn observed(application: &Application, pid: u32) -> ObservedApplication<'_> {
+fn observed(application: &Application, pid: Pid) -> ObservedApplication<'_> {
     ObservedApplication { path: &application.path, pid }
 }
 
