@@ -34,9 +34,9 @@ pub fn hold() -> Held {
     // SAFETY: every set is a live local.
     unsafe {
         for signal in &forwarded {
-            libc::sigaddset(&mut blocked, *signal);
+            debug_check(libc::sigaddset(&mut blocked, *signal));
         }
-        libc::sigprocmask(libc::SIG_BLOCK, &blocked, &mut previous);
+        debug_check(libc::sigprocmask(libc::SIG_BLOCK, &blocked, &mut previous));
     }
     Held { previous, forwarded }
 }
@@ -56,7 +56,7 @@ fn forwardable(ignored: [bool; FORWARDED.len()]) -> Vec<c_int> {
 fn is_ignored(signal: c_int) -> bool {
     let mut current = empty_action();
     // SAFETY: a null new action only reads the signal's current disposition.
-    unsafe { libc::sigaction(signal, ptr::null(), &mut current) };
+    debug_check(unsafe { libc::sigaction(signal, ptr::null(), &mut current) });
     current.sa_sigaction == libc::SIG_IGN
 }
 
@@ -78,7 +78,7 @@ impl Held {
             .map(|signal| {
                 let mut replaced = empty_action();
                 // SAFETY: the handler is async-signal-safe, and both actions are live locals.
-                unsafe { libc::sigaction(*signal, &action, &mut replaced) };
+                debug_check(unsafe { libc::sigaction(*signal, &action, &mut replaced) });
                 (*signal, replaced)
             })
             .collect();
@@ -89,7 +89,9 @@ impl Held {
 impl Drop for Held {
     fn drop(&mut self) {
         // SAFETY: `previous` is the mask this process ran with before the signals were blocked.
-        unsafe { libc::sigprocmask(libc::SIG_SETMASK, &self.previous, ptr::null_mut()) };
+        debug_check(unsafe {
+            libc::sigprocmask(libc::SIG_SETMASK, &self.previous, ptr::null_mut())
+        });
     }
 }
 
@@ -108,17 +110,17 @@ impl Forwarding {
         // SAFETY: every set and action here is a live local.
         unsafe {
             for (signal, _) in &self.previous {
-                libc::sigaddset(&mut blocked, *signal);
+                debug_check(libc::sigaddset(&mut blocked, *signal));
             }
-            libc::sigprocmask(libc::SIG_BLOCK, &blocked, ptr::null_mut());
+            debug_check(libc::sigprocmask(libc::SIG_BLOCK, &blocked, ptr::null_mut()));
         }
         CHILD.store(0, Ordering::Relaxed);
         // SAFETY: each action is the one this process had before forwarding began.
         unsafe {
             for (signal, previous) in &self.previous {
-                libc::sigaction(*signal, previous, ptr::null_mut());
+                debug_check(libc::sigaction(*signal, previous, ptr::null_mut()));
             }
-            libc::sigprocmask(libc::SIG_SETMASK, &self.mask, ptr::null_mut());
+            debug_check(libc::sigprocmask(libc::SIG_SETMASK, &self.mask, ptr::null_mut()));
         }
     }
 }
@@ -127,7 +129,7 @@ fn no_signals() -> libc::sigset_t {
     // SAFETY: `sigemptyset` initializes the set it is given.
     unsafe {
         let mut set = mem::zeroed::<libc::sigset_t>();
-        libc::sigemptyset(&mut set);
+        debug_check(libc::sigemptyset(&mut set));
         set
     }
 }
@@ -169,7 +171,8 @@ fn reraise(signal: c_int) {
     action.sa_sigaction = libc::SIG_DFL;
     let mut only = no_signals();
     // SAFETY: restores the signal's default disposition, unblocks it, and sends it to this
-    // process; all three take live locals or a signal number.
+    // process; all three take live locals or a signal number. Their results are not checked:
+    // SIGKILL and SIGSTOP refuse a new disposition, and `exit_like` reports the signal anyway.
     unsafe {
         libc::sigaction(signal, &action, ptr::null_mut());
         libc::sigaddset(&mut only, signal);
@@ -182,9 +185,15 @@ fn empty_action() -> libc::sigaction {
     // SAFETY: a zeroed `sigaction` with an emptied mask and no flags.
     unsafe {
         let mut action = mem::zeroed::<libc::sigaction>();
-        libc::sigemptyset(&mut action.sa_mask);
+        debug_check(libc::sigemptyset(&mut action.sa_mask));
         action
     }
+}
+
+/// The signal calls checked here fail only for an invalid signal number or mask operation, which
+/// their constant arguments rule out, so a failure is a programming error.
+fn debug_check(result: c_int) {
+    debug_assert_eq!(result, 0, "signal call failed: {}", io::Error::last_os_error());
 }
 
 #[cfg(test)]
