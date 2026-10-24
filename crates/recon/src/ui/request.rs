@@ -1,9 +1,6 @@
 use std::path::PathBuf;
 
-pub const USAGE: &str = "usage: recon app list | inspect <target> | launch <target>
-       recon ui windows <target> [--pid <pid>]
-       recon ui tree <target> [--pid <pid>] [--window <id>]
-       recon ui screenshot <target> [--pid <pid>] [--window <id>] --out <file>";
+use crate::request::USAGE;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Selection {

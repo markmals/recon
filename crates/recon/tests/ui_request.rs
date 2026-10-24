@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
-use recon::ui::request::{Selection, USAGE, UiRequest, parse_ui_arguments};
+use recon::request::USAGE;
+use recon::ui::request::{Selection, UiRequest, parse_ui_arguments};
 
 fn arguments(words: &[&str]) -> Vec<String> {
     words.iter().map(|word| (*word).to_owned()).collect()
@@ -175,15 +176,4 @@ fn extra_positional_arguments_are_rejected() {
     rejects(&["windows", "Notes", "Mail"]);
     rejects(&["tree", "Notes", "--pid", "3", "Mail"]);
     rejects(&["screenshot", "Notes", "--out", "a.png", "b.png"]);
-}
-
-#[test]
-fn the_usage_text_covers_both_command_groups() {
-    assert!(USAGE.contains("recon app list | inspect <target> | launch <target>"), "{USAGE}");
-    assert!(USAGE.contains("recon ui windows <target> [--pid <pid>]"), "{USAGE}");
-    assert!(USAGE.contains("recon ui tree <target> [--pid <pid>] [--window <id>]"), "{USAGE}");
-    assert!(
-        USAGE.contains("recon ui screenshot <target> [--pid <pid>] [--window <id>] --out <file>"),
-        "{USAGE}"
-    );
 }

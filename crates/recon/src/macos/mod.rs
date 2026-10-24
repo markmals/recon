@@ -1,3 +1,4 @@
+mod investigation;
 mod metadata;
 pub mod ui;
 mod workspace;
@@ -7,9 +8,11 @@ use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 use std::process::{Command, Output};
 
+use serde::Serialize;
+
 use crate::application::{Application, TargetError, normalize_applications, resolve_target};
 
-pub use workspace::launch;
+pub use investigation::investigate;
 
 pub fn applications() -> Result<Vec<Application>, String> {
     let output = Command::new("/usr/bin/mdfind")
@@ -79,6 +82,10 @@ pub fn with_target<T>(
         ),
     })?;
     use_application(application)
+}
+
+fn encode(response: &impl Serialize) -> Result<String, String> {
+    serde_json::to_string(response).map_err(|error| format!("cannot encode response: {error}"))
 }
 
 #[cfg(test)]

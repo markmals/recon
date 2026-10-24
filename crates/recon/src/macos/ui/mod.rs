@@ -14,10 +14,9 @@ mod window_server;
 use std::env;
 use std::path::{Path, PathBuf};
 
-use serde::Serialize;
-
 use accessibility::{Accessibility, Element};
 
+use super::encode;
 use crate::application::Application;
 use crate::ui::instance::select_instance;
 use crate::ui::output::{prepare_output, write_new};
@@ -144,8 +143,4 @@ fn observed(application: &Application, pid: u32) -> ObservedApplication<'_> {
 
 fn current_directory() -> Result<PathBuf, String> {
     env::current_dir().map_err(|error| format!("cannot read the current directory: {error}"))
-}
-
-fn encode(response: &impl Serialize) -> Result<String, String> {
-    serde_json::to_string(response).map_err(|error| format!("cannot encode response: {error}"))
 }
