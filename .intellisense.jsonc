@@ -1,0 +1,60 @@
+{
+    "$schema": "./.intellisense.schema.json",
+    "servers": {
+        "bash-language-server": {
+            "command": ["mise", "exec", "--", "bash-language-server", "start"],
+            "filetypes": {
+                "bash": "shellscript",
+                "sh": "shellscript",
+                "check-scoped-commit": "shellscript",
+                "commit-msg": "shellscript",
+                "post-checkout": "shellscript",
+                "post-merge": "shellscript",
+                "pre-commit": "shellscript",
+                "pre-push": "shellscript",
+                "prepare-commit-msg": "shellscript"
+            },
+            "settings": {
+                "bashIde": {
+                    "globPattern": "{**/*.sh,**/*.bash,.agents/hooks/check-scoped-commit,.beads/hooks/*}"
+                }
+            }
+        },
+        "rust-analyzer": {
+            "command": ["mise", "exec", "--", "rust-analyzer"]
+        },
+        "typescript-language-server": {
+            "command": ["node", "node_modules/typescript/lib/tsc.js", "--lsp", "--stdio"]
+        },
+        "sourcekit-lsp": {
+            "command": ["xcrun", "sourcekit-lsp"]
+        },
+        "vue-language-server": {
+            "command": ["node", "tools/vue-language-server.ts", "--stdio"],
+            "filetypes": { "vue": "vue" },
+            "initializationOptions": {
+                "typescript": {}
+            }
+        },
+        "vscode-css-language-server": {
+            "command": ["mise", "exec", "--", "vscode-css-language-server", "--stdio"],
+            "filetypes": { "css": "css" }
+        },
+        "vscode-json-language-server": {
+            "command": ["mise", "exec", "--", "vscode-json-language-server", "--stdio"],
+            "filetypes": { "json": "json", "jsonc": "jsonc" }
+        },
+        "yaml-language-server": {
+            "command": ["mise", "exec", "--", "yaml-language-server", "--stdio"],
+            "filetypes": { "yaml": "yaml", "yml": "yaml" }
+        },
+        "taplo": {
+            "command": ["mise", "exec", "--", "taplo", "lsp", "stdio"],
+            "filetypes": { "toml": "toml" }
+        },
+        "marksman": {
+            "command": ["mise", "exec", "--", "marksman", "server"],
+            "filetypes": { "md": "markdown" }
+        }
+    }
+}
