@@ -15,7 +15,7 @@ use crate::ui::tree::{ElementAttributes, ElementSource, ReadFailure};
 use crate::ui::window::Bounds;
 
 /// Bounds every accessibility request, so an unresponsive application cannot hang Recon.
-const MESSAGING_TIMEOUT: c_float = 2.0;
+pub const MESSAGING_TIMEOUT: c_float = 2.0;
 
 /// An accessibility element. Elements have no durable identity, but macOS can still tell whether
 /// two of them refer to the same object, which is what a tree read needs to spot repetition.

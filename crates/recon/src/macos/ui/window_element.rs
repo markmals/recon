@@ -9,7 +9,7 @@ use objc2_application_services::{AXError, AXUIElement};
 use objc2_core_foundation::{CFArray, CFData, CFRetained, CFString};
 use objc2_core_graphics::CGWindowID;
 
-use super::accessibility::attribute;
+use super::accessibility::{MESSAGING_TIMEOUT, attribute};
 use super::private;
 use crate::application::Pid;
 use crate::ui::window::WindowId;
@@ -85,9 +85,10 @@ fn lookup_outcome(error: AXError) -> Lookup {
 fn keep_looking(error: AXError, pid: Pid) -> Result<(), String> {
     match lookup_outcome(error) {
         Lookup::Continue => Ok(()),
-        Lookup::Unresponsive => {
-            Err(format!("process {pid} did not answer an accessibility request within 2 seconds"))
-        }
+        Lookup::Unresponsive => Err(format!(
+            "process {pid} did not answer an accessibility request within {MESSAGING_TIMEOUT} \
+                 seconds"
+        )),
     }
 }
 
@@ -219,6 +220,10 @@ mod tests {
     #[test]
     fn an_application_that_stops_answering_ends_the_search() {
         assert_eq!(lookup_outcome(AXError::CannotComplete), Lookup::Unresponsive);
+        assert_eq!(
+            keep_looking(AXError::CannotComplete, Pid(412)),
+            Err("process 412 did not answer an accessibility request within 2 seconds".to_owned())
+        );
     }
 
     #[test]
