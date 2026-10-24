@@ -1,3 +1,5 @@
+use std::error::Error;
+use std::fmt;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
@@ -16,9 +18,34 @@ pub struct Application {
 
 #[derive(Debug)]
 pub enum TargetError<'a> {
-    NotFound,
-    Ambiguous(Vec<&'a Application>),
+    NotFound { selector: &'a str },
+    Ambiguous { selector: &'a str, candidates: Vec<&'a Application> },
 }
+
+impl fmt::Display for TargetError<'_> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TargetError::NotFound { selector } => {
+                write!(formatter, "no application matches {selector:?}")
+            }
+            TargetError::Ambiguous { selector, candidates } => {
+                write!(formatter, "ambiguous application {selector:?}; choose a bundle path:")?;
+                for candidate in candidates {
+                    write!(
+                        formatter,
+                        "\n  {} [{}] {}",
+                        candidate.name,
+                        candidate.bundle_id.as_deref().unwrap_or("-"),
+                        candidate.path.display()
+                    )?;
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+impl Error for TargetError<'_> {}
 
 pub fn normalize_applications(mut discovered: Vec<Application>) -> Vec<Application> {
     discovered.sort_unstable_by(|left, right| left.path.cmp(&right.path));
@@ -42,7 +69,7 @@ pub fn normalize_applications(mut discovered: Vec<Application>) -> Vec<Applicati
 
 pub fn resolve_target<'a>(
     applications: &'a [Application],
-    selector: &str,
+    selector: &'a str,
 ) -> Result<&'a Application, TargetError<'a>> {
     let mut first = None;
     let mut ambiguous = Vec::new();
@@ -68,7 +95,7 @@ pub fn resolve_target<'a>(
         }
     }
     if !ambiguous.is_empty() {
-        return Err(TargetError::Ambiguous(ambiguous));
+        return Err(TargetError::Ambiguous { selector, candidates: ambiguous });
     }
-    first.ok_or(TargetError::NotFound)
+    first.ok_or(TargetError::NotFound { selector })
 }

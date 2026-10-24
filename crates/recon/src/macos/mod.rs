@@ -10,7 +10,7 @@ use std::process::{Command, Output};
 
 use serde::Serialize;
 
-use crate::application::{Application, TargetError, normalize_applications, resolve_target};
+use crate::application::{Application, normalize_applications, resolve_target};
 
 pub use investigation::investigate;
 
@@ -65,22 +65,7 @@ pub fn with_target<T>(
     }
 
     let applications = applications()?;
-    let application = resolve_target(&applications, selector).map_err(|error| match error {
-        TargetError::NotFound => format!("no application matches {selector:?}"),
-        TargetError::Ambiguous(candidates) => format!(
-            "ambiguous application {selector:?}; choose a bundle path:\n{}",
-            candidates
-                .iter()
-                .map(|app| format!(
-                    "  {} [{}] {}",
-                    app.name,
-                    app.bundle_id.as_deref().unwrap_or("-"),
-                    app.path.display()
-                ))
-                .collect::<Vec<_>>()
-                .join("\n")
-        ),
-    })?;
+    let application = resolve_target(&applications, selector).map_err(|error| error.to_string())?;
     use_application(application)
 }
 
