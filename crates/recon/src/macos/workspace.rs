@@ -31,6 +31,8 @@ pub fn launch(path: &Path) -> Result<u32, String> {
     let (sender, receiver) = mpsc::sync_channel(1);
     let completion =
         RcBlock::new(move |running: *mut NSRunningApplication, error: *mut NSError| {
+            // SAFETY: AppKit passes each argument as null or as an object that stays valid for
+            // the duration of the completion handler.
             let response = unsafe {
                 if let Some(error) = error.as_ref() {
                     Err(error.localizedDescription().to_string())
@@ -41,6 +43,7 @@ pub fn launch(path: &Path) -> Result<u32, String> {
                     Err("macOS did not open the application".to_owned())
                 }
             };
+            // The receiver is gone only after `launch` has returned, when no one is left to tell.
             let _ = sender.send(response);
         });
     NSWorkspace::sharedWorkspace().openApplicationAtURL_configuration_completionHandler(
