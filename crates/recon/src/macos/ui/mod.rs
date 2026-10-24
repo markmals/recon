@@ -27,7 +27,7 @@ use crate::ui::response::{
     WindowsResponse,
 };
 use crate::ui::tree::read_tree;
-use crate::ui::window::{Window, select_window};
+use crate::ui::window::{Window, WindowId, select_window};
 
 /// Runs one `recon ui` command and returns its result as JSON.
 ///
@@ -51,7 +51,7 @@ fn windows(selection: &Selection) -> Result<String, String> {
     })
 }
 
-fn tree(selection: &Selection, window: Option<u32>) -> Result<String, String> {
+fn tree(selection: &Selection, window: Option<WindowId>) -> Result<String, String> {
     with_instance(selection, |application, pid| {
         if let Some(id) = window {
             select_window(&window_server::windows_owned_by(pid)?, id, pid)?;
@@ -75,7 +75,11 @@ fn tree(selection: &Selection, window: Option<u32>) -> Result<String, String> {
     })
 }
 
-fn screenshot(selection: &Selection, window: Option<u32>, out: &Path) -> Result<String, String> {
+fn screenshot(
+    selection: &Selection,
+    window: Option<WindowId>,
+    out: &Path,
+) -> Result<String, String> {
     with_instance(selection, |application, pid| {
         let out = prepare_output(out, &current_directory()?)?;
         let window = match window {

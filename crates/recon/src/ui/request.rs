@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use crate::request::USAGE;
+use crate::ui::window::WindowId;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Selection {
@@ -11,14 +12,14 @@ pub struct Selection {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum UiRequest {
     Windows { selection: Selection },
-    Tree { selection: Selection, window: Option<u32> },
-    Screenshot { selection: Selection, window: Option<u32>, out: PathBuf },
+    Tree { selection: Selection, window: Option<WindowId> },
+    Screenshot { selection: Selection, window: Option<WindowId>, out: PathBuf },
 }
 
 #[derive(Default)]
 struct Flags {
     pid: Option<u32>,
-    window: Option<u32>,
+    window: Option<WindowId>,
     out: Option<PathBuf>,
 }
 
@@ -71,8 +72,8 @@ fn set<T>(flag: &mut Option<T>, value: T) -> Result<(), String> {
     Ok(())
 }
 
-fn window_id(value: &str) -> Result<u32, String> {
-    digits(value).ok_or_else(usage)
+fn window_id(value: &str) -> Result<WindowId, String> {
+    digits(value).map(WindowId).ok_or_else(usage)
 }
 
 fn positive_integer(value: &str) -> Result<u32, String> {

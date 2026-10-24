@@ -5,7 +5,7 @@ use recon::ui::response::{
     WindowsResponse,
 };
 use recon::ui::tree::{AttributeValue, ElementNode, Node, ReadFailure};
-use recon::ui::window::{Bounds, Window};
+use recon::ui::window::{Bounds, Window, WindowId};
 
 const BUNDLE: &str = "/Applications/Notes.app";
 
@@ -19,7 +19,7 @@ fn bounds() -> Bounds {
 
 fn window(title: Option<&str>) -> Window {
     Window {
-        id: 53510,
+        id: WindowId(53510),
         owner_pid: 412,
         title: title.map(str::to_owned),
         layer: 0,
@@ -146,7 +146,7 @@ fn a_failed_node_names_its_failure() {
 fn the_tree_response_matches_the_proposal() {
     let response = TreeResponse {
         application: application(),
-        window_id: Some(53510),
+        window_id: Some(WindowId(53510)),
         truncated: true,
         root: Node::Failed(ReadFailure::Timeout),
     };
@@ -169,7 +169,12 @@ fn the_tree_response_matches_the_proposal() {
 fn the_screenshot_response_names_the_capture_method() {
     let response = ScreenshotResponse::new(
         application(),
-        CapturedWindow { id: 53510, title: Some("Notes"), bounds: bounds(), on_screen: true },
+        CapturedWindow {
+            id: WindowId(53510),
+            title: Some("Notes"),
+            bounds: bounds(),
+            on_screen: true,
+        },
         CapturedImage { path: Path::new("/tmp/shot.png"), width: 600, height: 400, uniform: false },
     );
 

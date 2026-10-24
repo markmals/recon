@@ -11,6 +11,7 @@ use objc2_core_graphics::CGWindowID;
 
 use super::accessibility::attribute;
 use super::private;
+use crate::ui::window::WindowId;
 
 type GetWindow = unsafe extern "C" fn(&AXUIElement, *mut CGWindowID) -> AXError;
 type CreateWithRemoteToken = unsafe extern "C" fn(&CFData) -> *mut AXUIElement;
@@ -24,7 +25,7 @@ const WINDOW_ROLE: &str = "AXWindow";
 pub fn window_element(
     application: &AXUIElement,
     pid: u32,
-    window_id: u32,
+    window_id: WindowId,
 ) -> Result<CFRetained<AXUIElement>, String> {
     let get_window = window_id_lookup()?;
 
@@ -56,7 +57,7 @@ pub fn window_element(
 ///
 /// An application that reports no main window needs no window ID lookup, so it is told that it
 /// has none rather than that a private interface is missing.
-pub fn main_window_id(application: &AXUIElement, pid: u32) -> Result<Option<u32>, String> {
+pub fn main_window_id(application: &AXUIElement, pid: u32) -> Result<Option<WindowId>, String> {
     let Some(window) = main_window(application, pid)? else {
         return Ok(None);
     };
@@ -128,19 +129,19 @@ fn window_id_of(
     element: &AXUIElement,
     get_window: GetWindow,
     pid: u32,
-) -> Result<Option<u32>, String> {
+) -> Result<Option<WindowId>, String> {
     let mut id: CGWindowID = 0;
     // SAFETY: the private lookup writes the window ID of an accessibility window.
     let error = unsafe { get_window(element, &raw mut id) };
     if error == AXError::Success {
-        return Ok(Some(id));
+        return Ok(Some(WindowId(id)));
     }
     keep_looking(error, pid).map(|()| None)
 }
 
 fn scanned_window(
     pid: u32,
-    window_id: u32,
+    window_id: WindowId,
     from_token: CreateWithRemoteToken,
     get_window: GetWindow,
 ) -> Result<Option<CFRetained<AXUIElement>>, String> {
@@ -190,7 +191,7 @@ fn remote_token(pid: i32, element_number: u64) -> [u8; 20] {
     token
 }
 
-fn unreachable_window(window_id: u32) -> String {
+fn unreachable_window(window_id: WindowId) -> String {
     format!("window {window_id} has no accessibility element reachable by Recon")
 }
 

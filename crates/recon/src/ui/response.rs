@@ -3,7 +3,7 @@ use std::path::Path;
 use serde::Serialize;
 
 use crate::ui::tree::Node;
-use crate::ui::window::{Bounds, Window};
+use crate::ui::window::{Bounds, Window, WindowId};
 
 const CAPTURE_METHOD: &str = "skylight-hardware-capture";
 
@@ -23,7 +23,7 @@ pub struct WindowsResponse<'a> {
 #[serde(rename_all = "camelCase")]
 pub struct TreeResponse<'a> {
     pub application: ObservedApplication<'a>,
-    pub window_id: Option<u32>,
+    pub window_id: Option<WindowId>,
     pub truncated: bool,
     pub root: Node,
 }
@@ -32,7 +32,7 @@ pub struct TreeResponse<'a> {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CapturedWindow<'a> {
-    pub id: u32,
+    pub id: WindowId,
     pub title: Option<&'a str>,
     pub bounds: Bounds,
     pub on_screen: bool,

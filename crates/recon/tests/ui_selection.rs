@@ -2,13 +2,13 @@ use std::path::Path;
 
 use proptest::prelude::*;
 use recon::ui::instance::select_instance;
-use recon::ui::window::{Bounds, Window, select_window, title_from, windows_of};
+use recon::ui::window::{Bounds, Window, WindowId, select_window, title_from, windows_of};
 
 const BUNDLE: &str = "/Applications/Logic Pro.app";
 
 fn window(id: u32, owner_pid: u32) -> Window {
     Window {
-        id,
+        id: WindowId(id),
         owner_pid,
         title: None,
         layer: 0,
@@ -58,17 +58,17 @@ fn a_requested_pid_must_be_an_instance_of_the_resolved_bundle() {
 fn the_windows_of_an_instance_exclude_other_processes_and_keep_their_order() {
     let all = vec![window(5, 90), window(3, 42), window(4, 90), window(1, 42)];
     let mine = windows_of(all, 42);
-    assert_eq!(mine.iter().map(|window| window.id).collect::<Vec<_>>(), vec![3, 1]);
+    assert_eq!(mine.iter().map(|window| window.id).collect::<Vec<_>>(), [WindowId(3), WindowId(1)]);
 }
 
 #[test]
 fn a_window_must_belong_to_the_selected_instance() {
     let windows = vec![window(3, 42), window(5, 90)];
-    assert_eq!(select_window(&windows, 3, 42).unwrap().id, 3);
+    assert_eq!(select_window(&windows, WindowId(3), 42).unwrap().id, WindowId(3));
 
-    let error = select_window(&windows, 5, 42).unwrap_err();
+    let error = select_window(&windows, WindowId(5), 42).unwrap_err();
     assert_eq!(error, "window 5 is not a window of process 42");
-    let error = select_window(&windows, 77, 42).unwrap_err();
+    let error = select_window(&windows, WindowId(77), 42).unwrap_err();
     assert_eq!(error, "window 77 is not a window of process 42");
 }
 

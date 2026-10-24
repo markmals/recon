@@ -1,3 +1,5 @@
+use std::fmt;
+
 use serde::Serialize;
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
@@ -8,11 +10,22 @@ pub struct Bounds {
     pub height: f64,
 }
 
+/// A window server window number: the `CGWindowID` that `--window` names and results report.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Serialize)]
+#[serde(transparent)]
+pub struct WindowId(pub u32);
+
+impl fmt::Display for WindowId {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(formatter)
+    }
+}
+
 /// A window-server window, in the order and the global points the window server reports.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Window {
-    pub id: u32,
+    pub id: WindowId,
     /// The owning process is how a window is selected, not something the result reports.
     #[serde(skip)]
     pub owner_pid: u32,
@@ -31,7 +44,7 @@ pub fn windows_of(all: Vec<Window>, pid: u32) -> Vec<Window> {
     all.into_iter().filter(|window| window.owner_pid == pid).collect()
 }
 
-pub fn select_window(windows: &[Window], id: u32, pid: u32) -> Result<&Window, String> {
+pub fn select_window(windows: &[Window], id: WindowId, pid: u32) -> Result<&Window, String> {
     windows
         .iter()
         .find(|window| window.id == id && window.owner_pid == pid)
