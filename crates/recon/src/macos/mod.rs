@@ -18,7 +18,8 @@ use crate::application::{Application, normalize_applications, resolve_target};
 pub use investigation::investigate;
 pub use ui::observe;
 
-/// Every application bundle the Spotlight index lists or a running process was launched from.
+/// The readable application bundles that the Spotlight index lists or that running processes were
+/// launched from.
 fn applications() -> Result<Vec<Application>, String> {
     let output = Command::new("/usr/bin/mdfind")
         .args(["-0", "kMDItemContentTypeTree == 'com.apple.application-bundle'"])

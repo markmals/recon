@@ -1,5 +1,5 @@
 //! The `recon` executable: it runs one command against this Mac and prints the result as one JSON
-//! object, or prints a `recon:` diagnostic to standard error and exits with status 1.
+//! object, or prints a `recon:` diagnostic to standard error and exits unsuccessfully.
 
 use std::env;
 
