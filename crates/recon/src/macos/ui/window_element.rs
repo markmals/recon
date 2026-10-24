@@ -39,9 +39,10 @@ pub fn window_element(
         return Ok(element);
     }
 
-    let Some(from_token) =
+    // SAFETY: `CreateWithRemoteToken` is the signature of `_AXUIElementCreateWithRemoteToken`.
+    let Some(from_token) = (unsafe {
         private::function::<CreateWithRemoteToken>(c"_AXUIElementCreateWithRemoteToken")
-    else {
+    }) else {
         return Err(format!(
             "{} (remote-token lookup is unavailable on this macOS version)",
             unreachable_window(window_id)
@@ -89,7 +90,8 @@ fn keep_looking(error: AXError, pid: u32) -> Result<(), String> {
 }
 
 fn window_id_lookup() -> Result<GetWindow, String> {
-    private::function(c"_AXUIElementGetWindow").ok_or_else(|| {
+    // SAFETY: `GetWindow` is the signature of `_AXUIElementGetWindow`.
+    unsafe { private::function(c"_AXUIElementGetWindow") }.ok_or_else(|| {
         "accessibility window lookup is unavailable on this macOS version (_AXUIElementGetWindow \
          not found)"
             .to_owned()

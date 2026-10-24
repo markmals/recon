@@ -39,13 +39,16 @@ pub fn capture(window_id: u32) -> Result<Capture, String> {
 }
 
 fn window_image(window_id: u32) -> Result<CFRetained<CGImage>, String> {
+    // SAFETY: `MainConnection` is the signature of `CGSMainConnectionID`.
     let connection: MainConnection =
-        private::function(c"CGSMainConnectionID").ok_or_else(unavailable)?;
+        unsafe { private::function(c"CGSMainConnectionID") }.ok_or_else(unavailable)?;
+    // SAFETY: `CaptureWindowList` is the signature of `SLSHWCaptureWindowList`.
     let capture_windows: CaptureWindowList =
-        private::function(c"SLSHWCaptureWindowList").ok_or_else(unavailable)?;
+        unsafe { private::function(c"SLSHWCaptureWindowList") }.ok_or_else(unavailable)?;
 
     let windows = [window_id];
-    // SAFETY: captures the one window named by the list; the returned array is owned.
+    // SAFETY: the main connection takes no arguments, and the capture reads the one window the
+    // list names and returns an owned array.
     let images = unsafe { capture_windows(connection(), windows.as_ptr(), 1, 0) };
     let images = NonNull::new(images).ok_or_else(|| no_image(window_id))?;
     // SAFETY: the array is owned, and hardware capture fills it with images.

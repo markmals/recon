@@ -52,8 +52,9 @@ fn relaunched_by(marker: Option<&str>, parent: pid_t) -> bool {
 }
 
 fn responsible_for_self() -> Result<bool, String> {
+    // SAFETY: `ResponsibleForPid` is the signature of the responsibility lookup.
     let responsible_for: ResponsibleForPid =
-        private::function(c"responsibility_get_pid_responsible_for_pid")
+        unsafe { private::function(c"responsibility_get_pid_responsible_for_pid") }
             .ok_or_else(|| unavailable("responsibility_get_pid_responsible_for_pid"))?;
     // SAFETY: the lookup reports the process macOS holds responsible for the given one.
     let own = unsafe { libc::getpid() };
@@ -61,8 +62,10 @@ fn responsible_for_self() -> Result<bool, String> {
 }
 
 fn relaunch_disclaimed() -> Result<(), String> {
-    let set_disclaim: SetDisclaim = private::function(c"responsibility_spawnattrs_setdisclaim")
-        .ok_or_else(|| unavailable("responsibility_spawnattrs_setdisclaim"))?;
+    // SAFETY: `SetDisclaim` is the signature of the disclaim spawn-attribute setter.
+    let set_disclaim: SetDisclaim =
+        unsafe { private::function(c"responsibility_spawnattrs_setdisclaim") }
+            .ok_or_else(|| unavailable("responsibility_spawnattrs_setdisclaim"))?;
     let executable = env::current_exe()
         .map_err(|error| format!("cannot find the running recon executable: {error}"))?;
 
