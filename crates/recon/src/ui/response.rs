@@ -1,29 +1,35 @@
+//! The JSON object each `recon ui` command prints on success.
+
 use std::path::Path;
 
 use serde::Serialize;
 
+use crate::application::Pid;
 use crate::ui::tree::Node;
-use crate::ui::window::{Bounds, Window};
+use crate::ui::window::{Bounds, Window, WindowId};
 
 const CAPTURE_METHOD: &str = "skylight-hardware-capture";
 
+/// The bundle and the running instance a result describes.
 #[derive(Debug, Serialize)]
 pub struct ObservedApplication<'a> {
     pub path: &'a Path,
-    pub pid: u32,
+    pub pid: Pid,
 }
 
+/// What `recon ui windows` prints.
 #[derive(Debug, Serialize)]
 pub struct WindowsResponse<'a> {
     pub application: ObservedApplication<'a>,
     pub windows: Vec<Window>,
 }
 
+/// What `recon ui tree` prints. `window_id` is the `--window` the command was given, if any.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TreeResponse<'a> {
     pub application: ObservedApplication<'a>,
-    pub window_id: Option<u32>,
+    pub window_id: Option<WindowId>,
     pub truncated: bool,
     pub root: Node,
 }
@@ -32,12 +38,14 @@ pub struct TreeResponse<'a> {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CapturedWindow<'a> {
-    pub id: u32,
+    pub id: WindowId,
     pub title: Option<&'a str>,
     pub bounds: Bounds,
     pub on_screen: bool,
 }
 
+/// The PNG file a capture wrote, in backing pixels. It is `uniform` when every pixel is the same,
+/// as in a capture of an invisible or fully transparent window.
 #[derive(Debug, Serialize)]
 pub struct CapturedImage<'a> {
     pub path: &'a Path,
@@ -46,6 +54,7 @@ pub struct CapturedImage<'a> {
     pub uniform: bool,
 }
 
+/// What `recon ui screenshot` prints.
 #[derive(Debug, Serialize)]
 pub struct ScreenshotResponse<'a> {
     pub application: ObservedApplication<'a>,

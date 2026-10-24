@@ -2,7 +2,6 @@
 //! runs. Every observation here is made out of process, so that a failing test says whether Recon
 //! disturbed the Mac rather than whether the test did.
 
-use std::ffi::c_void;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -11,27 +10,27 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use objc2_app_kit::{NSEvent, NSWorkspace};
 use objc2_core_foundation::{
-    CFArray, CFDictionary, CFNumber, CFRunLoop, CFString, kCFRunLoopDefaultMode,
+    CFArray, CFDictionary, CFNumber, CFRetained, CFRunLoop, CFString, CFType, kCFRunLoopDefaultMode,
 };
 use objc2_core_graphics::{
     CGDisplayCopyDisplayMode, CGDisplayMode, CGMainDisplayID, CGWindowListCopyWindowInfo,
-    CGWindowListOption, kCGWindowOwnerPID,
+    CGWindowListOption, kCGNullWindowID, kCGWindowOwnerPID,
 };
 use serde_json::Value;
 
-pub const MAIN_WINDOW_TITLE: &str = "Recon Fixture — Main";
-pub const INSPECTOR_WINDOW_TITLE: &str = "Recon Fixture — Inspector";
+pub(crate) const MAIN_WINDOW_TITLE: &str = "Recon Fixture — Main";
+pub(crate) const INSPECTOR_WINDOW_TITLE: &str = "Recon Fixture — Inspector";
 
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(20);
 
 /// One running instance of the fixture, launched in the background and terminated with the test.
-pub struct Fixture {
+pub(crate) struct Fixture {
     bundle: PathBuf,
     pub pid: u32,
 }
 
 impl Fixture {
-    pub fn launch() -> Fixture {
+    pub(crate) fn launch() -> Fixture {
         let bundle = fixture_bundle();
         let executable = bundle.join("Contents/MacOS/ReconFixture");
         assert!(
@@ -53,7 +52,7 @@ impl Fixture {
         fixture
     }
 
-    pub fn target(&self) -> &str {
+    pub(crate) fn target(&self) -> &str {
         path_argument(&self.bundle)
     }
 }
@@ -67,7 +66,7 @@ impl Drop for Fixture {
 }
 
 /// Runs a `ui` command that is expected to succeed and returns the JSON object it printed.
-pub fn run_ui(arguments: &[&str]) -> Value {
+pub(crate) fn run_ui(arguments: &[&str]) -> Value {
     let mut invocation = vec!["ui"];
     invocation.extend_from_slice(arguments);
     let output = run_recon(&invocation);
@@ -83,7 +82,7 @@ pub fn run_ui(arguments: &[&str]) -> Value {
 /// Runs the signed `recon` and holds it to the quality bar every command shares: observation
 /// leaves the frontmost application and the pointer where they were. A person using the Mac
 /// during the run trips these checks too, so the suite must run hands-off.
-pub fn run_recon(arguments: &[&str]) -> Output {
+pub(crate) fn run_recon(arguments: &[&str]) -> Output {
     let frontmost = frontmost_pid();
     assert!(frontmost.is_some(), "no application is frontmost; these checks need one to compare");
     let pointer = pointer_location();
@@ -104,19 +103,19 @@ pub fn run_recon(arguments: &[&str]) -> Output {
     output
 }
 
-pub fn frontmost_pid() -> Option<u32> {
+pub(crate) fn frontmost_pid() -> Option<u32> {
     settle_workspace_notifications();
     NSWorkspace::sharedWorkspace()
         .frontmostApplication()
         .and_then(|application| u32::try_from(application.processIdentifier()).ok())
 }
 
-pub fn main_window_id(fixture: &Fixture) -> u64 {
+pub(crate) fn main_window_id(fixture: &Fixture) -> u64 {
     let observation = run_ui(&["windows", fixture.target()]);
     window_titled(&observation, MAIN_WINDOW_TITLE)["id"].as_u64().expect("a window id")
 }
 
-pub fn window_titled<'a>(observation: &'a Value, title: &str) -> &'a Value {
+pub(crate) fn window_titled<'a>(observation: &'a Value, title: &str) -> &'a Value {
     observation["windows"]
         .as_array()
         .expect("a windows array")
@@ -126,7 +125,7 @@ pub fn window_titled<'a>(observation: &'a Value, title: &str) -> &'a Value {
 }
 
 /// Every node of a tree result, root first.
-pub fn nodes(root: &Value) -> Vec<&Value> {
+pub(crate) fn nodes(root: &Value) -> Vec<&Value> {
     let mut found = vec![root];
     let mut index = 0;
     while index < found.len() {
@@ -139,7 +138,7 @@ pub fn nodes(root: &Value) -> Vec<&Value> {
     found
 }
 
-pub fn png_pixel_size(path: &Path) -> (u64, u64) {
+pub(crate) fn png_pixel_size(path: &Path) -> (u64, u64) {
     let bytes = fs::read(path).unwrap_or_else(|error| panic!("read {}: {error}", path.display()));
     assert!(
         bytes.len() > 24 && bytes.starts_with(b"\x89PNG\r\n\x1a\n"),
@@ -155,7 +154,7 @@ pub fn png_pixel_size(path: &Path) -> (u64, u64) {
 /// The main display's backing pixels per point. Read from the display mode rather than
 /// `NSScreen`, because libtest runs each test on a spawned thread and AppKit's screen list is
 /// main-thread only.
-pub fn backing_scale_factor() -> f64 {
+pub(crate) fn backing_scale_factor() -> f64 {
     let mode = CGDisplayCopyDisplayMode(CGMainDisplayID()).expect("a main display mode");
     let points = CGDisplayMode::width(Some(&mode));
     let pixels = CGDisplayMode::pixel_width(Some(&mode));
@@ -163,14 +162,14 @@ pub fn backing_scale_factor() -> f64 {
     pixels as f64 / points as f64
 }
 
-pub fn path_argument(path: &Path) -> &str {
+pub(crate) fn path_argument(path: &Path) -> &str {
     path.to_str().expect("UTF-8 path")
 }
 
-pub struct TemporaryDirectory(PathBuf);
+pub(crate) struct TemporaryDirectory(PathBuf);
 
 impl TemporaryDirectory {
-    pub fn new() -> TemporaryDirectory {
+    pub(crate) fn new() -> TemporaryDirectory {
         let unique =
             SystemTime::now().duration_since(UNIX_EPOCH).expect("a clock after 1970").as_nanos();
         let path = std::env::temp_dir().join(format!("recon-ui-observation-{unique}"));
@@ -178,7 +177,7 @@ impl TemporaryDirectory {
         TemporaryDirectory(path)
     }
 
-    pub fn file(&self, name: &str) -> PathBuf {
+    pub(crate) fn file(&self, name: &str) -> PathBuf {
         self.0.join(name)
     }
 }
@@ -212,7 +211,9 @@ fn repository_target() -> PathBuf {
 /// `NSWorkspace` learns of activation changes through run-loop notifications; a test process that
 /// never runs its run loop would keep reporting whichever application was frontmost at startup.
 fn settle_workspace_notifications() {
-    CFRunLoop::run_in_mode(unsafe { kCFRunLoopDefaultMode }, 0.1, false);
+    // SAFETY: an immutable Core Foundation constant.
+    let mode = unsafe { kCFRunLoopDefaultMode };
+    CFRunLoop::run_in_mode(mode, 0.1, false);
 }
 
 fn pointer_location() -> (f64, f64) {
@@ -235,16 +236,20 @@ fn running_fixture(executable: &Path) -> Option<u32> {
 }
 
 fn window_count(pid: u32) -> usize {
-    let Some(windows) = CGWindowListCopyWindowInfo(CGWindowListOption::OptionAll, 0) else {
+    let Some(windows) = CGWindowListCopyWindowInfo(CGWindowListOption::OptionAll, kCGNullWindowID)
+    else {
         return 0;
     };
-    (0..windows.count()).filter(|index| window_owner(&windows, *index) == Some(pid)).count()
+    // SAFETY: the window server describes each window with a dictionary keyed by CFString.
+    let windows: CFRetained<CFArray<CFDictionary<CFString, CFType>>> =
+        unsafe { CFRetained::cast_unchecked(windows) };
+    // SAFETY: a documented, immutable dictionary key of `CGWindowListCopyWindowInfo`.
+    let owner_key = unsafe { kCGWindowOwnerPID };
+    windows.iter().filter(|window| window_owner(window, owner_key) == Some(pid)).count()
 }
 
-fn window_owner(windows: &CFArray, index: isize) -> Option<u32> {
-    let window = unsafe { windows.value_at_index(index).cast::<CFDictionary>().as_ref() }?;
-    let key = (unsafe { kCGWindowOwnerPID } as *const CFString).cast::<c_void>();
-    let owner = unsafe { window.value(key).cast::<CFNumber>().as_ref() }?;
+fn window_owner(window: &CFDictionary<CFString, CFType>, owner_key: &CFString) -> Option<u32> {
+    let owner = window.get(owner_key)?.downcast::<CFNumber>().ok()?;
     owner.as_i32().and_then(|pid| u32::try_from(pid).ok())
 }
 

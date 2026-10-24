@@ -1,6 +1,9 @@
 use std::path::PathBuf;
 
-use recon::ui::request::{Selection, USAGE, UiRequest, parse_ui_arguments};
+use recon::application::Pid;
+use recon::request::USAGE;
+use recon::ui::request::{Selection, UiRequest, parse_ui_arguments};
+use recon::ui::window::WindowId;
 
 fn arguments(words: &[&str]) -> Vec<String> {
     words.iter().map(|word| (*word).to_owned()).collect()
@@ -26,7 +29,7 @@ fn windows_takes_a_target_and_an_optional_pid() {
     assert_eq!(
         parse(&["windows", "Logic Pro", "--pid", "412"]).unwrap(),
         UiRequest::Windows {
-            selection: Selection { target: "Logic Pro".to_owned(), pid: Some(412) },
+            selection: Selection { target: "Logic Pro".to_owned(), pid: Some(Pid(412)) },
         }
     );
 }
@@ -34,8 +37,8 @@ fn windows_takes_a_target_and_an_optional_pid() {
 #[test]
 fn tree_takes_pid_and_window_flags_in_any_order() {
     let expected = UiRequest::Tree {
-        selection: Selection { target: "/Applications/Notes.app".to_owned(), pid: Some(7) },
-        window: Some(53510),
+        selection: Selection { target: "/Applications/Notes.app".to_owned(), pid: Some(Pid(7)) },
+        window: Some(WindowId(53510)),
     };
     assert_eq!(
         parse(&["tree", "/Applications/Notes.app", "--pid", "7", "--window", "53510"]).unwrap(),
@@ -57,8 +60,8 @@ fn tree_takes_pid_and_window_flags_in_any_order() {
 #[test]
 fn flags_may_come_before_the_target() {
     let safari = UiRequest::Tree {
-        selection: Selection { target: "Safari".to_owned(), pid: Some(7) },
-        window: Some(9),
+        selection: Selection { target: "Safari".to_owned(), pid: Some(Pid(7)) },
+        window: Some(WindowId(9)),
     };
     assert_eq!(parse(&["tree", "--pid", "7", "--window", "9", "Safari"]).unwrap(), safari);
     assert_eq!(parse(&["tree", "--window", "9", "Safari", "--pid", "7"]).unwrap(), safari);
@@ -87,8 +90,8 @@ fn screenshot_requires_an_output_file_and_accepts_a_window() {
         parse(&["screenshot", "Notes", "--window", "9", "--out", "/tmp/shot.png", "--pid", "3"])
             .unwrap(),
         UiRequest::Screenshot {
-            selection: Selection { target: "Notes".to_owned(), pid: Some(3) },
-            window: Some(9),
+            selection: Selection { target: "Notes".to_owned(), pid: Some(Pid(3)) },
+            window: Some(WindowId(9)),
             out: PathBuf::from("/tmp/shot.png"),
         }
     );
@@ -143,7 +146,7 @@ fn a_pid_must_be_a_positive_integer() {
     assert_eq!(
         parse(&["windows", "Notes", "--pid", "4294967295"]).unwrap(),
         UiRequest::Windows {
-            selection: Selection { target: "Notes".to_owned(), pid: Some(u32::MAX) },
+            selection: Selection { target: "Notes".to_owned(), pid: Some(Pid(u32::MAX)) },
         }
     );
     rejects(&["windows", "Notes", "--pid", "0"]);
@@ -162,7 +165,7 @@ fn a_window_id_must_be_a_u32() {
         parse(&["tree", "Notes", "--window", "0"]).unwrap(),
         UiRequest::Tree {
             selection: Selection { target: "Notes".to_owned(), pid: None },
-            window: Some(0),
+            window: Some(WindowId(0)),
         }
     );
     rejects(&["tree", "Notes", "--window", "-3"]);
@@ -175,15 +178,4 @@ fn extra_positional_arguments_are_rejected() {
     rejects(&["windows", "Notes", "Mail"]);
     rejects(&["tree", "Notes", "--pid", "3", "Mail"]);
     rejects(&["screenshot", "Notes", "--out", "a.png", "b.png"]);
-}
-
-#[test]
-fn the_usage_text_covers_both_command_groups() {
-    assert!(USAGE.contains("recon app list | inspect <target> | launch <target>"), "{USAGE}");
-    assert!(USAGE.contains("recon ui windows <target> [--pid <pid>]"), "{USAGE}");
-    assert!(USAGE.contains("recon ui tree <target> [--pid <pid>] [--window <id>]"), "{USAGE}");
-    assert!(
-        USAGE.contains("recon ui screenshot <target> [--pid <pid>] [--window <id>] --out <file>"),
-        "{USAGE}"
-    );
 }
