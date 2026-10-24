@@ -1,3 +1,5 @@
+//! Reading an application bundle's identity and versions from its `Info.plist`.
+
 use std::path::Path;
 
 use objc2_foundation::{NSFileManager, NSString};
@@ -5,6 +7,8 @@ use plist::Value;
 
 use crate::application::Application;
 
+/// Describes the application bundle at `path`, which must be an existing `.app` directory whose
+/// `Info.plist` declares the `APPL` package type. Optional metadata it lacks is reported as absent.
 pub(super) fn inspect_bundle(path: &Path) -> Result<Application, String> {
     let path = path
         .canonicalize()

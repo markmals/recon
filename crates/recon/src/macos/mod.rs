@@ -1,3 +1,6 @@
+//! Recon on macOS: finding applications through Spotlight and the running workspace, and
+//! observing them through Accessibility and the window server.
+
 mod investigation;
 mod metadata;
 mod ui;
@@ -15,6 +18,7 @@ use crate::application::{Application, normalize_applications, resolve_target};
 pub use investigation::investigate;
 pub use ui::observe;
 
+/// Every application bundle the Spotlight index lists or a running process was launched from.
 fn applications() -> Result<Vec<Application>, String> {
     let output = Command::new("/usr/bin/mdfind")
         .args(["-0", "kMDItemContentTypeTree == 'com.apple.application-bundle'"])
@@ -54,6 +58,10 @@ fn checked_indexed_output(output: &Output) -> Result<&[u8], String> {
     Ok(&output.stdout)
 }
 
+/// Resolves a selector and runs `use_application` on the application it names.
+///
+/// An absolute path is inspected directly rather than looked up among discovered applications, so
+/// it can name a bundle the index does not list.
 fn with_target<T>(
     selector: &str,
     use_application: impl FnOnce(&Application) -> Result<T, String>,

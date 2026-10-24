@@ -1,3 +1,5 @@
+//! What `NSWorkspace` knows: which applications are running, and how to launch one.
+
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 
@@ -7,6 +9,7 @@ use objc2_foundation::{NSError, NSString, NSURL};
 
 use crate::application::Pid;
 
+/// The bundle path and process ID of every running application that has an identifiable bundle.
 pub(super) fn running_applications() -> Vec<(PathBuf, Pid)> {
     NSWorkspace::sharedWorkspace()
         .runningApplications()
@@ -20,6 +23,8 @@ pub(super) fn running_applications() -> Vec<(PathBuf, Pid)> {
         .collect()
 }
 
+/// Opens and activates the application at exactly `path`, reusing an instance already running
+/// from that path and never substituting a running copy from another location.
 pub(super) fn launch(path: &Path) -> Result<Pid, String> {
     let path_string = path
         .to_str()

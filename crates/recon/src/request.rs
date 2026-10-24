@@ -24,6 +24,10 @@ pub enum AppRequest {
 }
 
 /// Parses the arguments that follow `recon`.
+///
+/// # Errors
+///
+/// Any argument mistake yields [`USAGE`], so every mistake reports the full usage text.
 pub fn parse_arguments(arguments: &[String]) -> Result<Request, String> {
     match arguments.split_first() {
         Some((group, rest)) if group == "app" => parse_app_arguments(rest).map(Request::App),

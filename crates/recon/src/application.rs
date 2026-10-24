@@ -1,3 +1,5 @@
+//! Applications as bundles on disk, and how a selector the user types resolves to exactly one.
+
 use std::error::Error;
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -15,6 +17,8 @@ impl fmt::Display for Pid {
     }
 }
 
+/// An application bundle at one location, with the running instances observed for exactly that
+/// location. Copies of an application at other paths are other applications.
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Application {
@@ -35,6 +39,7 @@ impl Application {
     }
 }
 
+/// Why a selector names no single application.
 #[derive(Debug)]
 pub enum TargetError<'a> {
     NotFound { selector: &'a str },
@@ -66,6 +71,8 @@ impl fmt::Display for TargetError<'_> {
 
 impl Error for TargetError<'_> {}
 
+/// Merges discovered applications into one entry per bundle path, combining the process IDs each
+/// discovery observed, and sorts the result by name and then path.
 pub fn normalize_applications(mut discovered: Vec<Application>) -> Vec<Application> {
     discovered.sort_unstable_by(|left, right| left.path.cmp(&right.path));
     let mut applications: Vec<Application> = Vec::with_capacity(discovered.len());
@@ -87,6 +94,16 @@ pub fn normalize_applications(mut discovered: Vec<Application>) -> Vec<Applicati
     applications
 }
 
+/// Finds the one application a selector names.
+///
+/// A selector starting with `/` must equal a bundle path. Any other selector matches a display
+/// name exactly or a bundle identifier without regard to ASCII case, so one selector may match a
+/// name and an identifier of different bundles.
+///
+/// # Errors
+///
+/// [`TargetError::NotFound`] when nothing matches, and [`TargetError::Ambiguous`] with every match
+/// when more than one bundle does; Recon never picks among them.
 pub fn resolve_target<'a>(
     applications: &'a [Application],
     selector: &'a str,
