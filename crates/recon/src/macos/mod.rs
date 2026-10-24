@@ -46,7 +46,9 @@ fn checked_indexed_output(output: &Output) -> Result<&[u8], String> {
         ));
     }
     if output.stdout.iter().all(|byte| *byte == 0) {
-        return Err("cannot search indexed applications: no indexed applications found; check Spotlight indexing".to_owned());
+        return Err("cannot search indexed applications: no indexed applications found; check \
+                    Spotlight indexing"
+            .to_owned());
     }
     Ok(&output.stdout)
 }
