@@ -1,0 +1,252 @@
+{
+    "$defs": {
+        "Limits": {
+            "additionalProperties": false,
+            "properties": {
+                "maxExamples": {
+                    "anyOf": [
+                        {
+                            "format": "uint",
+                            "minimum": 0,
+                            "type": "integer"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": 3,
+                    "description": "Reference snippets attached to a single symbol; zero turns examples off."
+                },
+                "maxFiles": {
+                    "anyOf": [
+                        {
+                            "format": "uint",
+                            "minimum": 1,
+                            "type": "integer"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": 5000,
+                    "description": "Upper bound on files visited by one workspace traversal."
+                },
+                "maxResults": {
+                    "anyOf": [
+                        {
+                            "format": "uint",
+                            "minimum": 1,
+                            "type": "integer"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": 200
+                }
+            },
+            "type": "object"
+        },
+        "ServerConfig": {
+            "additionalProperties": false,
+            "properties": {
+                "command": {
+                    "description": "Program and arguments; the program is resolved against `PATH` and never run via a shell.\nRequired: a server entry that cannot be started is a configuration error, not a server\nthat silently does nothing.",
+                    "items": {
+                        "type": "string"
+                    },
+                    "minItems": 1,
+                    "prefixItems": [
+                        {
+                            "minLength": 1,
+                            "type": "string"
+                        }
+                    ],
+                    "type": "array"
+                },
+                "filetypes": {
+                    "anyOf": [
+                        {
+                            "additionalProperties": {
+                                "anyOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ]
+                            },
+                            "type": "object"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": {},
+                    "description": "File extension (or exact file name) to LSP language identifier."
+                },
+                "initializationOptions": {
+                    "anyOf": [
+                        {},
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null
+                },
+                "priority": {
+                    "anyOf": [
+                        {
+                            "format": "int32",
+                            "type": "integer"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": 0,
+                    "description": "Tie-break when several servers claim one file; the highest priority wins."
+                },
+                "settings": {
+                    "anyOf": [
+                        {},
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Sent as `workspace/configuration` and `workspace/didChangeConfiguration` payload."
+                }
+            },
+            "type": "object"
+        },
+        "Timeouts": {
+            "additionalProperties": false,
+            "properties": {
+                "requestMs": {
+                    "anyOf": [
+                        {
+                            "format": "uint64",
+                            "minimum": 1,
+                            "type": "integer"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": 30000
+                },
+                "startupMs": {
+                    "anyOf": [
+                        {
+                            "format": "uint64",
+                            "minimum": 1,
+                            "type": "integer"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": 30000,
+                    "description": "Budget for spawning a server and completing the `initialize` handshake."
+                }
+            },
+            "type": "object"
+        }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "description": "JSONC configuration layer. A servers map selects exactly its entries; other objects merge recursively, arrays replace, and null removes optional properties. Selected presets inherit defaults and matching lower-layer overrides.",
+    "properties": {
+        "$schema": {
+            "description": "Location of this schema. Read by editors, ignored by intellisense.",
+            "type": "string"
+        },
+        "exclude": {
+            "anyOf": [
+                {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": [
+                "**/.git/**",
+                "**/.hg/**",
+                "**/.svn/**",
+                "**/.jj/**",
+                "**/.intellisense/**",
+                "**/node_modules/**",
+                "**/target/**",
+                "**/build/**",
+                "**/dist/**",
+                "**/vendor/**",
+                "**/.venv/**",
+                "**/venv/**",
+                "**/__pycache__/**",
+                "**/.mypy_cache/**",
+                "**/.tox/**",
+                "**/.build/**",
+                "**/DerivedData/**"
+            ],
+            "description": "Glob patterns, relative to the workspace root, that no traversal enters."
+        },
+        "idleSeconds": {
+            "anyOf": [
+                {
+                    "format": "uint64",
+                    "minimum": 1,
+                    "type": "integer"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": 1800,
+            "description": "Seconds a language server may sit idle in the daemon before it is stopped."
+        },
+        "limits": {
+            "anyOf": [
+                {
+                    "$ref": "#/$defs/Limits"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": {
+                "maxExamples": 3,
+                "maxFiles": 5000,
+                "maxResults": 200
+            }
+        },
+        "servers": {
+            "additionalProperties": {
+                "$ref": "#/$defs/ServerConfig"
+            },
+            "description": "Exact server selection. Omit to inherit the lower-layer selection, or use {} to select none. Named presets inherit defaults and matching lower-layer overrides.",
+            "type": "object"
+        },
+        "timeouts": {
+            "anyOf": [
+                {
+                    "$ref": "#/$defs/Timeouts"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": {
+                "requestMs": 30000,
+                "startupMs": 30000
+            }
+        }
+    },
+    "title": "Config",
+    "type": "object"
+}
