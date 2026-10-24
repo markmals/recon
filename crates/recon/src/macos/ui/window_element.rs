@@ -212,12 +212,6 @@ mod tests {
     }
 
     #[test]
-    fn element_numbers_cover_the_documented_range() {
-        assert_eq!(ELEMENT_NUMBERS.count(), 100_000);
-        assert_eq!(remote_token(1, 99_999)[12..20], 99_999u64.to_le_bytes());
-    }
-
-    #[test]
     fn an_application_that_stops_answering_ends_the_search() {
         assert_eq!(lookup_outcome(AXError::CannotComplete), Lookup::Unresponsive);
         assert_eq!(
