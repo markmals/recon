@@ -16,6 +16,14 @@ pub struct Application {
     pub running_pids: Vec<u32>,
 }
 
+impl Application {
+    /// Puts the running process IDs in ascending order and drops repeats.
+    pub fn normalize_running_pids(&mut self) {
+        self.running_pids.sort_unstable();
+        self.running_pids.dedup();
+    }
+}
+
 #[derive(Debug)]
 pub enum TargetError<'a> {
     NotFound { selector: &'a str },
@@ -49,22 +57,23 @@ impl Error for TargetError<'_> {}
 
 pub fn normalize_applications(mut discovered: Vec<Application>) -> Vec<Application> {
     discovered.sort_unstable_by(|left, right| left.path.cmp(&right.path));
-    discovered.dedup_by(|next, previous| {
-        if next.path != previous.path {
-            return false;
+    let mut applications: Vec<Application> = Vec::with_capacity(discovered.len());
+    for application in discovered {
+        match applications.last_mut() {
+            Some(previous) if previous.path == application.path => {
+                previous.running_pids.extend(application.running_pids);
+            }
+            _ => applications.push(application),
         }
-        previous.running_pids.append(&mut next.running_pids);
-        true
-    });
-
-    for application in &mut discovered {
-        application.running_pids.sort_unstable();
-        application.running_pids.dedup();
     }
-    discovered.sort_unstable_by(|left, right| {
-        left.name.cmp(&right.name).then(left.path.cmp(&right.path))
+
+    for application in &mut applications {
+        application.normalize_running_pids();
+    }
+    applications.sort_unstable_by(|left, right| {
+        left.name.cmp(&right.name).then_with(|| left.path.cmp(&right.path))
     });
-    discovered
+    applications
 }
 
 pub fn resolve_target<'a>(

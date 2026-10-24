@@ -59,8 +59,7 @@ pub fn with_target<T>(
             .into_iter()
             .filter_map(|(path, pid)| (path == application.path).then_some(pid))
             .collect();
-        application.running_pids.sort_unstable();
-        application.running_pids.dedup();
+        application.normalize_running_pids();
         return use_application(&application);
     }
 
