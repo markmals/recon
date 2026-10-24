@@ -23,6 +23,16 @@ impl Permission {
     }
 }
 
+/// How the running `recon` executable is code-signed, which decides whether macOS keeps a grant
+/// when the executable is rebuilt.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Signature {
+    /// The designated requirement is the code hash itself, so a rebuild forgets every grant.
+    AdHoc,
+    /// A signature whose grants outlive a rebuild.
+    Stable,
+}
+
 const AD_HOC_SIGNATURE: &str = "\nthis recon is ad-hoc signed, so macOS forgets the grant \
     whenever this executable is rebuilt; signing it with a Developer ID Application identity keeps \
     the grant across rebuilds";
@@ -31,7 +41,7 @@ const AD_HOC_SIGNATURE: &str = "\nthis recon is ad-hoc signed, so macOS forgets 
 pub fn missing_permissions_message(
     missing: &[Permission],
     executable: &Path,
-    ad_hoc: bool,
+    signature: Signature,
 ) -> String {
     let noun = if missing.len() == 1 { "permission" } else { "permissions" };
     let grants: String = missing
@@ -41,6 +51,9 @@ pub fn missing_permissions_message(
             format!("\n  {}: System Settings → {location}", permission.name())
         })
         .collect();
-    let signature = if ad_hoc { AD_HOC_SIGNATURE } else { "" };
-    format!("missing {noun} for {}:{grants}{signature}", executable.display())
+    let rebuilds = match signature {
+        Signature::AdHoc => AD_HOC_SIGNATURE,
+        Signature::Stable => "",
+    };
+    format!("missing {noun} for {}:{grants}{rebuilds}", executable.display())
 }
