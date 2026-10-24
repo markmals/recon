@@ -56,8 +56,9 @@ fn responsible_for_self() -> Result<bool, String> {
     let responsible_for: ResponsibleForPid =
         unsafe { private::function(c"responsibility_get_pid_responsible_for_pid") }
             .ok_or_else(|| unavailable("responsibility_get_pid_responsible_for_pid"))?;
-    // SAFETY: the lookup reports the process macOS holds responsible for the given one.
+    // SAFETY: reading this process's own ID cannot fail.
     let own = unsafe { libc::getpid() };
+    // SAFETY: the lookup takes any process ID and reports the process macOS holds responsible.
     Ok(unsafe { responsible_for(own) } == own)
 }
 

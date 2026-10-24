@@ -2,7 +2,6 @@
 //! runs. Every observation here is made out of process, so that a failing test says whether Recon
 //! disturbed the Mac rather than whether the test did.
 
-use std::ffi::c_void;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -11,11 +10,11 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use objc2_app_kit::{NSEvent, NSWorkspace};
 use objc2_core_foundation::{
-    CFArray, CFDictionary, CFNumber, CFRunLoop, CFString, kCFRunLoopDefaultMode,
+    CFArray, CFDictionary, CFNumber, CFRetained, CFRunLoop, CFString, CFType, kCFRunLoopDefaultMode,
 };
 use objc2_core_graphics::{
     CGDisplayCopyDisplayMode, CGDisplayMode, CGMainDisplayID, CGWindowListCopyWindowInfo,
-    CGWindowListOption, kCGWindowOwnerPID,
+    CGWindowListOption, kCGNullWindowID, kCGWindowOwnerPID,
 };
 use serde_json::Value;
 
@@ -212,7 +211,9 @@ fn repository_target() -> PathBuf {
 /// `NSWorkspace` learns of activation changes through run-loop notifications; a test process that
 /// never runs its run loop would keep reporting whichever application was frontmost at startup.
 fn settle_workspace_notifications() {
-    CFRunLoop::run_in_mode(unsafe { kCFRunLoopDefaultMode }, 0.1, false);
+    // SAFETY: an immutable Core Foundation constant.
+    let mode = unsafe { kCFRunLoopDefaultMode };
+    CFRunLoop::run_in_mode(mode, 0.1, false);
 }
 
 fn pointer_location() -> (f64, f64) {
@@ -235,16 +236,20 @@ fn running_fixture(executable: &Path) -> Option<u32> {
 }
 
 fn window_count(pid: u32) -> usize {
-    let Some(windows) = CGWindowListCopyWindowInfo(CGWindowListOption::OptionAll, 0) else {
+    let Some(windows) = CGWindowListCopyWindowInfo(CGWindowListOption::OptionAll, kCGNullWindowID)
+    else {
         return 0;
     };
-    (0..windows.count()).filter(|index| window_owner(&windows, *index) == Some(pid)).count()
+    // SAFETY: the window server describes each window with a dictionary keyed by CFString.
+    let windows: CFRetained<CFArray<CFDictionary<CFString, CFType>>> =
+        unsafe { CFRetained::cast_unchecked(windows) };
+    // SAFETY: a documented, immutable dictionary key of `CGWindowListCopyWindowInfo`.
+    let owner_key = unsafe { kCGWindowOwnerPID };
+    windows.iter().filter(|window| window_owner(window, owner_key) == Some(pid)).count()
 }
 
-fn window_owner(windows: &CFArray, index: isize) -> Option<u32> {
-    let window = unsafe { windows.value_at_index(index).cast::<CFDictionary>().as_ref() }?;
-    let key = (unsafe { kCGWindowOwnerPID } as *const CFString).cast::<c_void>();
-    let owner = unsafe { window.value(key).cast::<CFNumber>().as_ref() }?;
+fn window_owner(window: &CFDictionary<CFString, CFType>, owner_key: &CFString) -> Option<u32> {
+    let owner = window.get(owner_key)?.downcast::<CFNumber>().ok()?;
     owner.as_i32().and_then(|pid| u32::try_from(pid).ok())
 }
 
