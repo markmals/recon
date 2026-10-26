@@ -2,7 +2,7 @@
 id: proposal.0004
 title: Selective Observation Output
 authors: [Mark Malstrom]
-status: draft
+status: awaiting-implementation
 pull-request: https://github.com/markmals/recon/pull/35
 issues: []
 supersedes: []
@@ -18,7 +18,8 @@ Let an agent ask for less: `recon app list --running`, `recon ui tree --depth`, 
 
 - Authority: Mark consented on 2026-10-17, in conversation, to this proposal, after reviewing an analysis of Recon's CLI against agent-first CLI guidance. No build mandate applies.
 - Fit: This proposal is limited to options that narrow `recon app list` and `recon ui tree` results, to the shape of a tree node, and to the vocabulary a result uses to say what it left out.
-- Decisions recorded: None yet.
+- Decisions recorded: On 2026-10-26, Mark selected keeping the application's menu bar in an unqualified `ui tree`, with `--no-menu-bar` as the opt-out, and making the smaller node encoding the only encoding, always omitting absent fields and empty arrays.
+- Approval: Mark explicitly approved implementation of this proposal on 2026-10-26 once those clarifications were recorded, in Sesh session `5d3d3975-ea96-4a45-bc27-063741e02e03`. Acceptance of the finished implementation and permission to merge remain separate.
 
 ## Motivation
 
@@ -253,9 +254,8 @@ Tree results gain `narrowed`. A reader that checks `truncated` to decide whether
 - **Echoing the effective options in the result envelope.** Rejected. The caller knows its own arguments; what it cannot know is whether they changed the result. `narrowed` and the node markers report that, and nothing else needs echoing.
 - **Making `--depth 1` mean the root alone.** Rejected. Recon already says the root is at depth 0, and the depth cap of 64 is expressed the same way; a second counting convention in the same command would be a trap.
 - **Substring or pattern filtering for `app list`.** Rejected for now, though proposal 0001's rejection of substring matching does not forbid it: a filtered list selects nothing and shows every match. It would need its own matching semantics — case, Unicode normalization, which fields participate — and that is a second vocabulary beside proposal 0001's exact resolution rules. `--running` answers the question that was actually observed, and an exact name or identifier already answers "where is this application".
-- **Keeping the node encoding and adding `--compact`.** Rejected in the recommendation below: two node shapes would have to be handled by every consumer, every test, and every stored observation, to avoid a change that no external caller would notice.
+- **Keeping the node encoding and adding `--compact`.** Rejected: two node shapes would have to be handled by every consumer, every test, and every stored observation, to avoid a change that no external caller would notice.
 
 ## Open questions
 
-- [NEEDS CLARIFICATION: Should `recon ui tree` keep reading the application's menu bar by default? Options: (a) keep today's default and add `--no-menu-bar`, so an unqualified `ui tree` still means "the whole tree" and feature discovery (#17) keeps the menu catalogue it will rely on; (b) exclude the menu bar by default and spell the flag `--menu-bar` to include it, which would drop 52% of Safari's bytes, 33% of Notes', 97% of Code's, and 97–99% of Finder's and MarkEdit's from the common case, at the cost of making `recon ui tree MarkEdit` return a nearly empty tree unless the caller knows the flag. Recommendation: (a).]
-- [NEEDS CLARIFICATION: Should the smaller node encoding be the only encoding? Options: (a) always omit absent fields and empty arrays — one node shape, no information lost, 17.8–27.8% fewer bytes in the trees measured here; (b) keep today's encoding and add an option for the smaller one, so no existing reader changes, at the price of two node shapes in every consumer, test, and stored observation; (c) leave the encoding as it is and rely on the other options. Recommendation: (a), with the guide stating plainly that an absent field means the element does not expose that attribute.]
+None. Mark resolved both questions on 2026-10-26: keep the menu bar by default with `--no-menu-bar` as an opt-out, and always omit absent node fields and empty arrays as the sole node encoding.
