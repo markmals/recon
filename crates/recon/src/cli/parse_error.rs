@@ -166,8 +166,12 @@ fn after_separator(argument: &str, words: &[String], parser: &Command) -> bool {
     }
     // A recognized option before `--` is valid; the same spelling after it is a positional.
     argument.strip_prefix("--").is_some_and(|long| {
+        let long = long.split_once('=').map_or(long, |(name, _)| name);
         parser.get_arguments().any(|declared| declared.get_long() == Some(long))
-    }) || !words[..separator].iter().any(|word| word == argument)
+    }) || !words[..separator].iter().any(|word| {
+        word == argument
+            || word.strip_prefix(argument).is_some_and(|suffix| suffix.starts_with('='))
+    })
 }
 
 fn argument_error(
