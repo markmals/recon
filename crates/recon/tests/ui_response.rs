@@ -2,6 +2,7 @@ use std::path::Path;
 
 use proptest::prelude::*;
 use recon::application::Pid;
+use recon::cli::schema::output_schema;
 use recon::ui::response::{
     CapturedImage, CapturedWindow, ObservedApplication, ScreenshotResponse, TreeResponse,
     WindowsResponse,
@@ -164,6 +165,18 @@ fn every_kind_of_value_keeps_its_json_type() {
         element.value = Some(value);
 
         assert_eq!(encoded(&Node::Element(Box::new(element)))["value"], expected);
+    }
+}
+
+#[test]
+fn non_finite_values_are_absent_rather_than_null_in_sparse_nodes() {
+    let schema = output_schema::<Node>();
+    let validator = jsonschema::draft202012::new(&schema).unwrap();
+    for number in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+        let element = ElementNode { value: Some(AttributeValue::Real(number)), ..node() };
+        let encoded = encoded(&Node::Element(Box::new(element)));
+        assert!(encoded.get("value").is_none(), "{encoded}");
+        assert!(validator.is_valid(&encoded), "{encoded}");
     }
 }
 

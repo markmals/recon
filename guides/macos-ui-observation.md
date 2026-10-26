@@ -80,6 +80,8 @@ The object around the tree is `application` with `path` and `pid`, `windowId` ho
 
 A node reports only what the element has. `role`, `subrole`, `title`, `description`, `value`, `identifier`, `enabled`, `focused`, `frame`, `actions`, and `children` come from the attributes `AXRole`, `AXSubrole`, `AXTitle`, `AXDescription`, `AXValue`, `AXIdentifier`, `AXEnabled`, `AXFocused`, `AXPosition` combined with `AXSize`, and `AXChildren`, plus the names of the actions the element advertises — and each field appears only when there is something to report. A missing attribute field means the element does not have that attribute, does not support it, or reports a `value` that is not a string, a number, or a boolean; a missing `actions` means it advertises no action. `children` appears only when the node has child nodes to report, so its absence means Recon emitted none: the markers below say whether that is because the element has no children or because some were left unread. A field that is present but empty or false — `""`, `0`, `false` — is a value the element reported, not an absence. A string `value` longer than 4,096 Unicode scalar values is cut to its first 4,096 and the node gains `"valueTruncated": true`. The `frame` is in the same global points as window bounds and appears only when both position and size are available. Recon lists the actions; it never performs one.
 
+A numeric `value` is omitted when it is NaN or infinity: neither is a JSON number, and Recon never substitutes `null`.
+
 An element that answered and exposed nothing is `{}`.
 
 Two other node shapes appear in a tree:

@@ -143,7 +143,7 @@ pub struct ElementNode {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "String")]
     pub description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "is_absent_value")]
     #[schemars(with = "AttributeValue")]
     pub value: Option<AttributeValue>,
     /// Set when `value` was cut to [`MAX_VALUE_SCALARS`].
@@ -206,6 +206,12 @@ pub struct Tree {
 
 fn is_unset(flag: &bool) -> bool {
     !flag
+}
+
+fn is_absent_value(value: &Option<AttributeValue>) -> bool {
+    value
+        .as_ref()
+        .is_none_or(|value| matches!(value, AttributeValue::Real(number) if !number.is_finite()))
 }
 
 impl Serialize for Node {
