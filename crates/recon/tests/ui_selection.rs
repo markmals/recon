@@ -26,6 +26,7 @@ fn window(id: u32, owner_pid: u32) -> Window {
 }
 
 fn details(failure: &Failure) -> Value {
+    validate_failure(&failure.report(), &["ui", "windows"]);
     failure.details.clone().expect("the data needed to recover")
 }
 
@@ -42,7 +43,6 @@ fn a_bundle_that_is_not_running_is_never_launched() {
         assert_eq!(failure.code, ErrorCode::NotRunning);
         assert!(!failure.retryable);
         assert_eq!(details(&failure), json!({ "application": BUNDLE }));
-        validate_failure(&failure, &["ui", "windows"]);
     }
 }
 
@@ -53,7 +53,6 @@ fn several_instances_are_an_ambiguous_instance_naming_every_process() {
     assert_eq!(failure.code, ErrorCode::AmbiguousInstance);
     assert!(!failure.retryable);
     assert_eq!(details(&failure), json!({ "application": BUNDLE, "pids": [410, 902] }));
-    validate_failure(&failure, &["ui", "windows"]);
 }
 
 #[test]
@@ -82,7 +81,6 @@ fn a_requested_pid_must_be_an_instance_of_the_resolved_bundle() {
             "detail": null,
         })
     );
-    validate_failure(&failure, &["ui", "windows"]);
 }
 
 #[test]
@@ -114,7 +112,6 @@ fn a_window_must_belong_to_the_selected_instance() {
                 "detail": null,
             })
         );
-        validate_failure(&failure, &["ui", "tree"]);
     }
 }
 
@@ -154,7 +151,10 @@ proptest! {
                 prop_assert_eq!(selected, requested);
                 prop_assert!(pids.contains(&requested));
             }
-            Err(_) => prop_assert!(!pids.contains(&requested)),
+            Err(failure) => {
+                validate_failure(&failure.report(), &["ui", "windows"]);
+                prop_assert!(!pids.contains(&requested));
+            }
         }
     }
 }

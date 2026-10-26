@@ -1,5 +1,6 @@
 use recon::error::{ErrorCode, Failure};
 use recon::request::{AppRequest, Request, parse_arguments};
+mod support;
 
 fn parse(words: &[&str]) -> Result<Request, Failure> {
     let arguments: Vec<String> = words.iter().map(|word| (*word).to_owned()).collect();
@@ -9,7 +10,10 @@ fn parse(words: &[&str]) -> Result<Request, Failure> {
 fn rejects(words: &[&str]) {
     match parse(words) {
         Ok(request) => panic!("{words:?} should not parse, got {request:?}"),
-        Err(error) => assert_eq!(error.code, ErrorCode::InvalidArgument),
+        Err(error) => {
+            support::validate_failure(&error.report(), &[]);
+            assert_eq!(error.code, ErrorCode::InvalidArgument);
+        }
     }
 }
 

@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::process::{Command, Output};
 
 use serde_json::Value;
+mod support;
 
 fn recon(arguments: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_recon")).args(arguments).output().expect("start recon")
@@ -64,6 +65,7 @@ fn context_takes_no_arguments() {
         assert!(output.stdout.is_empty(), "recon {arguments:?} should print no report");
         let stderr = String::from_utf8(output.stderr).expect("UTF-8 diagnostic");
         let failure: Value = serde_json::from_str(&stderr).expect("one JSON error object");
+        support::validate_failure(&failure, &["context"]);
         assert_eq!(failure["error"]["code"], "INVALID_ARGUMENT", "{stderr}");
     }
 }

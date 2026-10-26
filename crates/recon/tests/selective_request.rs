@@ -59,6 +59,15 @@ fn proposal_0004_rejects_malformed_or_inapplicable_narrowing() {
     }
 }
 
+#[test]
+fn proposal_0004_a_negative_depth_is_blamed_on_the_depth_option() {
+    let failure = parse_arguments(&["ui", "tree", "Notes", "--depth", "-1"].map(str::to_owned))
+        .expect_err("a negative depth");
+    let details = failure.details.expect("invalid-argument details");
+    assert_eq!(details["argument"], "--depth");
+    assert_eq!(details["value"], "-1");
+}
+
 proptest! {
     #[test]
     fn proposal_0004_all_supported_depths_are_accepted(depth in 0usize..=64, zeros in 0usize..8) {

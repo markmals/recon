@@ -4,6 +4,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use super::decimal;
+use super::output_path;
 use super::registry::{CommandSpec, registry};
 use crate::error::{ErrorCode, ErrorReport, Failure};
 
@@ -170,9 +171,11 @@ fn description(entry: &CommandSpec) -> Description {
             "string"
         }
         .to_owned();
-        let mut constraints = numeric.map(|constraints| {
-            serde_json::to_value(constraints).expect("numeric constraints serialize")
-        });
+        let mut constraints = numeric
+            .map(|constraints| {
+                serde_json::to_value(constraints).expect("numeric constraints serialize")
+            })
+            .or_else(|| output_path::constraints(argument.get_value_parser()));
         let conflicts = parser.get_arg_conflicts_with(argument);
         if !conflicts.is_empty() {
             constraints.get_or_insert_with(|| json!({}))["conflictsWith"] = json!(

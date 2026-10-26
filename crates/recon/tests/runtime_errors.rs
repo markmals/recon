@@ -11,6 +11,7 @@ use std::process::Command;
 
 use serde_json::Value;
 use tempfile::TempDir;
+mod support;
 
 fn scratch() -> TempDir {
     tempfile::tempdir().expect("create the scratch directory")
@@ -53,6 +54,7 @@ fn failure(arguments: &[&str]) -> Value {
 
     let reported: Value =
         serde_json::from_str(diagnostic.trim_end()).expect("one JSON error object");
+    support::validate_failure(&reported, &[]);
     let error = reported["error"].clone();
     assert!(error.is_object(), "{reported}");
     assert!(error["message"].as_str().is_some_and(|message| !message.is_empty()), "{error}");

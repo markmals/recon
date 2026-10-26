@@ -8,6 +8,7 @@ use std::process::{Command, Output};
 
 use serde_json::Value;
 use tempfile::TempDir;
+mod support;
 
 const BUNDLE_ID: &str = "test.recon.bundle";
 
@@ -54,6 +55,7 @@ fn rejection(path: &Path) -> Value {
     let diagnostic = String::from_utf8(output.stderr).expect("UTF-8 diagnostic");
     let reported: Value =
         serde_json::from_str(diagnostic.trim_end()).expect("one JSON error object");
+    support::validate_failure(&reported, &["app", "inspect"]);
     reported["error"].clone()
 }
 

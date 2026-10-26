@@ -5,6 +5,8 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 mod schema;
+#[cfg(test)]
+mod test_contract;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, JsonSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -99,13 +101,16 @@ pub struct ErrorReport<'a> {
 
 impl Failure {
     pub fn new(code: ErrorCode, message: impl Into<String>, details: Value) -> Self {
-        Self {
+        let failure = Self {
             code,
             message: message.into(),
             retryable: code.retryable(),
             command: None,
             details: (!details.is_null()).then_some(details),
-        }
+        };
+        #[cfg(test)]
+        test_contract::validate(&failure);
+        failure
     }
 
     pub fn internal(message: impl Into<String>) -> Self {
@@ -115,6 +120,8 @@ impl Failure {
 
     pub fn with_command(mut self, command: &[&str]) -> Self {
         self.command = Some(command.iter().map(|word| (*word).to_owned()).collect());
+        #[cfg(test)]
+        test_contract::validate(&self);
         self
     }
 

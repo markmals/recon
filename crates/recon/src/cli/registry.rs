@@ -8,6 +8,7 @@ use crate::ui::response::{ScreenshotResponse, TreeResponse, WindowsResponse};
 use crate::ui::tree::MAX_DEPTH;
 
 use super::decimal::Decimal;
+use super::output_path::OutputPath;
 use super::schema::{SchemaResponse, output_schema};
 
 pub struct CommandSpec {
@@ -27,7 +28,7 @@ impl CommandSpec {
         base(self.path.last().expect("command path"))
             .about(self.summary)
             .long_about(self.description)
-            .args(self.arguments.clone())
+            .args(self.arguments.iter().cloned())
     }
 }
 
@@ -42,15 +43,17 @@ pub fn base(name: &'static str) -> Command {
 
 pub fn parser(registry: &[CommandSpec]) -> Command {
     let mut root = base("recon").subcommand_required(true);
-    for group in ["app", "ui"] {
-        let mut command = base(group).subcommand_required(true);
-        for specification in registry.iter().filter(|entry| entry.path[0] == group) {
-            command = command.subcommand(specification.parser());
+    for specification in registry {
+        let group = specification.path[0];
+        if specification.path.len() == 1 {
+            root = root.subcommand(specification.parser());
+        } else if root.find_subcommand(group).is_some() {
+            root = root.mut_subcommand(group, |command| command.subcommand(specification.parser()));
+        } else {
+            root = root.subcommand(
+                base(group).subcommand_required(true).subcommand(specification.parser()),
+            );
         }
-        root = root.subcommand(command);
-    }
-    for specification in registry.iter().filter(|entry| entry.path.len() == 1) {
-        root = root.subcommand(specification.parser());
     }
     root
 }
@@ -69,6 +72,7 @@ fn number<const MINIMUM: u32>(
         .long(name)
         .value_name(value_name)
         .help(description)
+        .allow_hyphen_values(true)
         .value_parser(Decimal::<MINIMUM>::parser())
 }
 
@@ -138,6 +142,7 @@ pub fn registry() -> Vec<CommandSpec> {
                     .long("depth")
                     .value_name("N")
                     .help(format!("A maximum tree depth from 0 through {MAX_DEPTH} inclusive; the root is at depth 0"))
+                    .allow_hyphen_values(true)
                     .value_parser(Decimal::<0, { MAX_DEPTH as u32 }>::parser()),
                 Arg::new("no-menu-bar")
                     .long("no-menu-bar")
@@ -159,7 +164,9 @@ pub fn registry() -> Vec<CommandSpec> {
                     .long("out")
                     .value_name("FILE")
                     .required(true)
-                    .help("A path to a PNG file that does not exist yet"),
+                    .allow_hyphen_values(true)
+                    .value_parser(OutputPath::parser())
+                    .help("A path to a PNG file that does not exist yet and does not start with a hyphen"),
             ],
             output_schema::<ScreenshotResponse<'static>>,
         ),
