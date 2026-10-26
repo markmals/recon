@@ -4,9 +4,10 @@ use std::path::Path;
 use std::process::Command;
 
 pub(crate) fn directives(package: &Path, sink: &mut impl Write) -> io::Result<()> {
-    if !is_revision_eligible(package) {
+    if !has_matching_workspace_root(package) {
         return Ok(());
     }
+    // HEAD can become eligible without changing any source file.
     for name in ["HEAD", "packed-refs"] {
         if let Some(path) = git(package, &["rev-parse", "--git-path", name]) {
             writeln!(sink, "cargo::rerun-if-changed={path}")?;
@@ -16,6 +17,9 @@ pub(crate) fn directives(package: &Path, sink: &mut impl Write) -> io::Result<()
         && let Some(path) = git(package, &["rev-parse", "--git-path", &reference])
     {
         writeln!(sink, "cargo::rerun-if-changed={path}")?;
+    }
+    if !head_names_package(package) {
+        return Ok(());
     }
     for (variable, arguments) in [
         ("RECON_COMMIT", ["rev-parse", "HEAD"].as_slice()),
@@ -29,8 +33,7 @@ pub(crate) fn directives(package: &Path, sink: &mut impl Write) -> io::Result<()
     Ok(())
 }
 
-// Root and manifest paths can still match when an archive overlays an unrelated tracked package.
-fn is_revision_eligible(package: &Path) -> bool {
+fn has_matching_workspace_root(package: &Path) -> bool {
     let Some(root) = git(package, &["rev-parse", "--show-toplevel"]) else {
         return false;
     };
@@ -39,9 +42,11 @@ fn is_revision_eligible(package: &Path) -> bool {
     else {
         return false;
     };
-    if root != source {
-        return false;
-    }
+    root == source
+}
+
+// Root and manifest paths can still match when an archive overlays an unrelated tracked package.
+fn head_names_package(package: &Path) -> bool {
     let Some(manifest) = git(package, &["show", "HEAD:./Cargo.toml"]) else {
         return false;
     };

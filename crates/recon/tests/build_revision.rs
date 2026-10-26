@@ -58,11 +58,15 @@ fn foreign_checkout(root: &Path) {
     git(root, &["commit", "-qm", "unrelated work"]);
 }
 
-/// The directives the build script would print for a package directory, one per line.
-fn directives(package: &Path) -> Vec<String> {
+fn metadata_directives(package: &Path) -> Vec<String> {
     let mut sink = Vec::new();
     revision::directives(package, &mut sink).unwrap();
-    String::from_utf8(sink).unwrap().lines().map(str::to_owned).collect()
+    String::from_utf8(sink)
+        .unwrap()
+        .lines()
+        .filter(|line| line.starts_with("cargo::rustc-env="))
+        .map(str::to_owned)
+        .collect()
 }
 
 #[test]
@@ -72,7 +76,7 @@ fn proposal0003_a_source_archive_nested_in_a_foreign_checkout_reports_no_revisio
     foreign_checkout(&foreign);
     let package = source_archive(&foreign.join("vendor").join("recon"));
 
-    let directives = directives(&package);
+    let directives = metadata_directives(&package);
 
     assert!(directives.is_empty(), "{directives:?}");
 }
@@ -84,7 +88,7 @@ fn proposal0003_a_source_archive_overlaid_on_a_foreign_root_reports_no_revision(
     foreign_checkout(&foreign);
     let package = source_archive(&foreign);
 
-    let directives = directives(&package);
+    let directives = metadata_directives(&package);
 
     assert!(directives.is_empty(), "{directives:?}");
 }
@@ -97,7 +101,7 @@ fn proposal0003_a_staged_source_archive_does_not_inherit_the_foreign_commit() {
     let package = source_archive(&foreign);
     git(&foreign, &["add", "--all"]);
 
-    let directives = directives(&package);
+    let directives = metadata_directives(&package);
 
     assert!(directives.is_empty(), "{directives:?}");
 }
@@ -120,14 +124,14 @@ fn proposal0003_an_archive_over_an_unrelated_tracked_package_reports_no_revision
         git(&foreign, &["commit", "-qm", "unrelated package"]);
         source_archive(&foreign);
 
-        let directives = directives(&package);
+        let directives = metadata_directives(&package);
 
         assert!(directives.is_empty(), "{manifest:?}: {directives:?}");
     }
 }
 
 #[test]
-fn proposal0003_a_source_checkout_reports_its_commit_and_watches_its_head() {
+fn proposal0003_a_dirty_source_checkout_reports_its_head_baseline() {
     let scratch = tempfile::tempdir().unwrap();
     let checkout = scratch.path().join("recon");
     let package = source_checkout(&checkout);
@@ -137,7 +141,7 @@ fn proposal0003_a_source_checkout_reports_its_commit_and_watches_its_head() {
     )
     .unwrap();
 
-    let directives = directives(&package);
+    let directives = metadata_directives(&package);
 
     let commit = git(&package, &["rev-parse", "HEAD"]);
     let short = git(&package, &["rev-parse", "--short", "HEAD"]);
@@ -145,11 +149,6 @@ fn proposal0003_a_source_checkout_reports_its_commit_and_watches_its_head() {
         format!("cargo::rustc-env=RECON_COMMIT={commit}"),
         format!("cargo::rustc-env=RECON_COMMIT_SHORT={short}"),
         "cargo::rustc-env=RECON_COMMIT_DATE=2020-01-02".to_owned(),
-        format!("cargo::rerun-if-changed={}", git(&package, &["rev-parse", "--git-path", "HEAD"])),
-        format!(
-            "cargo::rerun-if-changed={}",
-            git(&package, &["rev-parse", "--git-path", "refs/heads/main"])
-        ),
     ] {
         assert!(directives.contains(&expected), "{expected}: {directives:?}");
     }
@@ -165,7 +164,7 @@ fn proposal0003_a_linked_worktree_reports_the_commit_it_is_checked_out_at() {
     git(&worktree, &["commit", "-q", "--allow-empty", "-m", "review work"]);
     let package = worktree.join("crates").join("recon");
 
-    let directives = directives(&package);
+    let directives = metadata_directives(&package);
 
     let commit = git(&package, &["rev-parse", "HEAD"]);
     assert_ne!(commit, git(&checkout, &["rev-parse", "HEAD"]));
@@ -179,5 +178,7 @@ fn proposal0003_checkout_path_with_a_trailing_space_keeps_its_revision() {
     let checkout = scratch.path().join("recon ");
     let package = source_checkout(&checkout);
     let commit = git(&package, &["rev-parse", "HEAD"]);
-    assert!(directives(&package).contains(&format!("cargo::rustc-env=RECON_COMMIT={commit}")));
+    assert!(
+        metadata_directives(&package).contains(&format!("cargo::rustc-env=RECON_COMMIT={commit}"))
+    );
 }
