@@ -1,0 +1,1 @@
+import{t as e}from"./framework.BOvhuu-7.js";var t={root:()=>e(()=>import(`./@localSearchIndexroot.CuC8-k4D.js`),[])};export{t as default};
