@@ -67,6 +67,7 @@ Observed: narrowing the same trees, by recomputing their JSON, is worth the foll
 - Observed: the position of the menu bar among the root's children varies by application. Finder listed `AXMenuBar` first and `AXScrollArea` second; Notes, Safari, and Code listed `AXWindow` first and `AXMenuBar` second; MarkEdit listed only `AXMenuBar`. An application element can also have no children at all: SystemUIServer reported none, and Dock's root reported no role and no children.
 - A secondary report claims that from macOS 27 applications no longer expose their own `AXExtrasMenuBar`, because menu-bar rendering moved into a system agent ([pull request against mac-menubar-manager](https://github.com/milan-elsen/mac-menubar-manager/pull/8)); `MenuBarAgent` is indeed running on this Mac. The observation above contradicts that claim for what appears in `AXChildren`. Recon reads `AXChildren`, so what an application exposes there is what a tree contains, whoever draws it.
 - Proposal 0002 established that menu items can be read without opening menus, that Recon never opens one, and that reading a closed menu can still make an application run its own menu-update code.
+- Implementation clarification (2026-10-26, derived from the approved exclusion guarantee and no-silent-fallback rule): the Xcode 27.1 SDK's `AXError.h` and `AXUIElement.h` distinguish an unsupported attribute (`AttributeUnsupported`) from a process that does not implement Accessibility (`NotImplemented`). Only the former, and `NoValue`, establish that there is no menu bar to exclude. Other lookup failures cannot justify returning an unfiltered tree. The parent strategist checked these installed SDK headers and settled the boundary before implementation; this does not record a new human approval.
 
 **Prior art for narrowing a UI tree**
 
@@ -166,10 +167,13 @@ recon ui tree Notes → the same facts in 27.8% fewer bytes
     - Two elements are equal here by the same identity Recon already uses to recognize a repeated element.
     - When the attribute is absent, unsupported, or answers with something that is not an accessibility element, nothing is excluded, no marker appears, and `narrowed` stays false for this reason: the application has no menu bar to exclude.
     - When that request does not complete within the messaging timeout, the command fails with the existing `process <pid> did not answer an accessibility request within 2 seconds`, rather than returning a tree that still contains the menu bar the caller excluded.
+    - Any other lookup error fails the command before traversal, with no success JSON. This includes `Failure`, `InvalidUIElement`, `NotImplemented`, `APIDisabled`, `IllegalArgument`, and unknown AX errors; none establishes that the menu bar is absent. Under proposal 0003's error contract, an otherwise-unclassified failure uses `INTERNAL`, with the lookup operation and numeric AX error in its existing `details.detail` string. No retry, permission request, new error code, or schema field is introduced.
 - Only the root's direct children are compared against the menu bar element; the comparison is not repeated deeper in the walk.
 - A menu bar holding status items is a different element from the one `AXMenuBar` names, so it stays in the tree, as does every window. Excluding the menu bar never removes anything else.
-- When the depth limit keeps Recon from listing the root's children at all — `--depth 0` — nothing is skipped on the menu bar's account: Recon does not read the `AXMenuBar` attribute, and the root carries only `depthLimited`. Otherwise the two options combine, and the root can carry both markers.
+- When the depth limit keeps Recon from listing the root's children at all — `--depth 0` — nothing is skipped on the menu bar's account: Recon does not read the `AXMenuBar` attribute, and the root carries only `depthLimited`. Otherwise the two options combine, and the result can contain both markers at their respective nodes: `menuBarExcluded` on the root and `depthLimited` on descendants at the requested depth whose children were omitted.
 - Without the flag, the menu bar is read exactly as it is today.
+
+The marker locations above include an internal text correction settled by the parent strategist on 2026-10-26: the earlier sentence saying that the root could carry both markers contradicted the depth-0 no-lookup rule. The per-node rules, traversal behavior, and human approval remain unchanged.
 
 ### Node shape
 

@@ -7,11 +7,11 @@ use std::ptr::{self, NonNull};
 
 use libc::pid_t;
 use objc2_application_services::{AXCopyMultipleAttributeOptions, AXError, AXUIElement};
-use objc2_core_foundation::{CFArray, CFRetained, CFString, CFType};
+use objc2_core_foundation::{CFArray, CFRetained, CFString, CFType, Type};
 
-use super::attributes::{self, Attribute, Children};
+use super::attributes::{self, Attribute};
 use crate::application::Pid;
-use crate::error::Failure;
+use crate::error::{ErrorCode, Failure};
 use crate::ui::tree::{ElementAttributes, ElementSource, ReadFailure};
 use crate::ui::window::Bounds;
 
@@ -82,7 +82,11 @@ impl Accessibility {
 impl ElementSource for Accessibility {
     type Element = Element;
 
-    fn read(&mut self, element: &Element) -> Result<ElementAttributes<Element>, ReadFailure> {
+    fn read(
+        &mut self,
+        element: &Element,
+        expand_children: bool,
+    ) -> Result<ElementAttributes<Element>, ReadFailure> {
         let values = self.values_of(element)?;
         if let Some(failure) = values
             .iter()
@@ -99,10 +103,9 @@ impl ElementSource for Accessibility {
         };
         let position = value_of(Attribute::Position).and_then(|value| attributes::point(&value));
         let size = value_of(Attribute::Size).and_then(|value| attributes::size(&value));
-        let Children { elements: children, unreadable: unreadable_children } =
-            value_of(Attribute::Children)
-                .and_then(|children| attributes::children_of(&children))
-                .unwrap_or_default();
+        let children = value_of(Attribute::Children)
+            .and_then(|children| attributes::children_of(&children, expand_children))
+            .unwrap_or_default();
 
         Ok(ElementAttributes {
             role: value_of(Attribute::Role).and_then(|value| attributes::text(&value)),
@@ -122,7 +125,6 @@ impl ElementSource for Accessibility {
             }),
             actions: actions_of(element)?,
             children,
-            unreadable_children,
         })
     }
 }
@@ -161,6 +163,34 @@ pub(super) fn attribute(element: &AXUIElement, name: &str) -> Result<CFRetained<
         // SAFETY: the value is owned by this process.
         .map(|value| unsafe { CFRetained::from_raw(value) })
         .ok_or(AXError::NoValue)
+}
+
+pub(super) fn menu_bar(application: &AXUIElement, pid: Pid) -> Result<Option<Element>, Failure> {
+    let response = attribute(application, "AXMenuBar");
+    menu_bar_value(response.as_deref().map_err(|error| *error), pid)
+}
+
+pub(super) fn menu_bar_value(
+    response: Result<&CFType, AXError>,
+    pid: Pid,
+) -> Result<Option<Element>, Failure> {
+    match response {
+        Ok(value) => {
+            Ok(value.downcast_ref::<AXUIElement>().map(|element| Element::new(element.retain())))
+        }
+        Err(AXError::NoValue | AXError::AttributeUnsupported) => Ok(None),
+        Err(AXError::CannotComplete) => Err(Failure::new(
+            ErrorCode::Timeout,
+            format!(
+                "process {pid} did not answer an accessibility request within {MESSAGING_TIMEOUT} seconds"
+            ),
+            serde_json::json!({"pid": pid.0, "timeoutSeconds": MESSAGING_TIMEOUT_SECONDS}),
+        )),
+        Err(error) => Err(Failure::internal(format!(
+            "cannot read AXMenuBar of process {pid}: accessibility error {}",
+            error.0
+        ))),
+    }
 }
 
 /// How a failed request to one element is reported: the tree keeps going around it.

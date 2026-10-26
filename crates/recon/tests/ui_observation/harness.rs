@@ -38,11 +38,12 @@ impl Fixture {
             "a fixture instance is already running; quit it before running these tests"
         );
 
+        // Process exit can precede LaunchServices forgetting the old instance.
         let opened = Command::new("/usr/bin/open")
-            .args(["-g".as_ref(), bundle.as_os_str()])
+            .args(["-g".as_ref(), "-n".as_ref(), bundle.as_os_str()])
             .status()
             .expect("run open");
-        assert!(opened.success(), "open -g {} failed", bundle.display());
+        assert!(opened.success(), "open -g -n {} failed", bundle.display());
 
         let pid = wait_for(|| running_fixture(&executable))
             .unwrap_or_else(|| panic!("{} did not start", bundle.display()));
@@ -226,6 +227,9 @@ impl Drop for TemporaryDirectory {
 }
 
 fn signed_recon() -> PathBuf {
+    if let Some(recon) = std::env::var_os("RECON_UI_BINARY") {
+        return PathBuf::from(recon);
+    }
     let recon = repository_target().join("signed/recon");
     assert!(recon.is_file(), "{} is missing; build it with `vp run recon:sign`", recon.display());
     recon

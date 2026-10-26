@@ -5,19 +5,14 @@ use serde_json::json;
 use super::workspace::launch;
 use super::{applications, encode, with_target};
 use crate::application::Application;
-use crate::application::response::{
-    InspectResponse, LaunchResponse, ListResponse, ListedApplication,
-};
+use crate::application::response::{InspectResponse, LaunchResponse, ListResponse};
 use crate::error::{ErrorCode, Failure};
 use crate::request::AppRequest;
-
-/// How `app list` found its applications: the Spotlight index, plus whatever is running.
-const DISCOVERY: &str = "indexed-and-running";
 
 /// Runs one `recon app` command and returns its result as JSON.
 pub fn investigate(request: &AppRequest) -> Result<String, Failure> {
     match request {
-        AppRequest::List => list(),
+        AppRequest::List { running } => list(*running),
         AppRequest::Inspect { target } => {
             with_target(target, |application| encode(&InspectResponse { application }))
         }
@@ -25,18 +20,9 @@ pub fn investigate(request: &AppRequest) -> Result<String, Failure> {
     }
 }
 
-fn list() -> Result<String, Failure> {
+fn list(running_only: bool) -> Result<String, Failure> {
     let applications = applications()?;
-    let entries = applications
-        .iter()
-        .map(|application| ListedApplication {
-            name: &application.name,
-            bundle_id: application.bundle_id.as_deref(),
-            path: &application.path,
-            running_pids: &application.running_pids,
-        })
-        .collect();
-    encode(&ListResponse { discovery: DISCOVERY, applications: entries })
+    encode(&ListResponse::new(&applications, running_only))
 }
 
 fn launch_application(application: &Application) -> Result<String, Failure> {

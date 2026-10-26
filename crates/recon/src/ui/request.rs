@@ -17,6 +17,6 @@ pub struct Selection {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum UiRequest {
     Windows { selection: Selection },
-    Tree { selection: Selection, window: Option<WindowId> },
+    Tree { selection: Selection, window: Option<WindowId>, depth: Option<usize>, no_menu_bar: bool },
     Screenshot { selection: Selection, window: Option<WindowId>, out: PathBuf },
 }

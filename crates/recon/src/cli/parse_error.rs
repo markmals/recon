@@ -97,6 +97,24 @@ pub(super) fn convert(
         }
     }
     if matches!(error.kind(), ErrorKind::ArgumentConflict) {
+        if let Some(argument) = declaration
+            && let Some((argument, conflict)) = incompatible_options(&parser, argument, words)
+        {
+            let argument_name = name(argument);
+            let other_name = name(conflict);
+            return invalid(
+                format!(
+                    "{argument_name} cannot be combined with {other_name}; {}; {}",
+                    description(argument),
+                    description(conflict),
+                ),
+                path,
+                Some(&argument_name),
+                None,
+                &format!("{argument_name} without {other_name}"),
+                None,
+            );
+        }
         let name = declaration.map(name).unwrap_or_else(|| argument_name.to_owned());
         let repeated = words
             .iter()
@@ -116,7 +134,11 @@ pub(super) fn convert(
     }
     if let Some(argument) = declaration {
         let name = name(argument);
-        let expected = description(argument);
+        let expected = if argument.get_action().takes_values() {
+            description(argument)
+        } else {
+            "no value".to_owned()
+        };
         let value = value.or_else(|| {
             words
                 .iter()
@@ -158,6 +180,33 @@ pub(super) fn convert(
         "exactly one target",
         None,
     )
+}
+
+fn incompatible_options<'a>(
+    parser: &'a clap::Command,
+    invalid: &clap::Arg,
+    words: &[String],
+) -> Option<(&'a clap::Arg, &'a clap::Arg)> {
+    // Clap lists declared conflicts in one direction; input order can name either side.
+    parser.get_arguments().filter(|argument| supplied(argument, words)).find_map(|argument| {
+        parser
+            .get_arg_conflicts_with(argument)
+            .into_iter()
+            .find(|conflict| {
+                supplied(conflict, words)
+                    && (argument.get_id() == invalid.get_id()
+                        || conflict.get_id() == invalid.get_id())
+            })
+            .map(|conflict| (argument, conflict))
+    })
+}
+
+fn supplied(argument: &clap::Arg, words: &[String]) -> bool {
+    argument.get_long().is_some_and(|name| {
+        words.iter().any(|word| {
+            word.strip_prefix("--").is_some_and(|word| word.split('=').next() == Some(name))
+        })
+    })
 }
 
 fn name(argument: &clap::Arg) -> String {

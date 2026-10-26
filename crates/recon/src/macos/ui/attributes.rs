@@ -5,12 +5,10 @@ use std::ffi::c_void;
 use std::ptr::NonNull;
 
 use objc2_application_services::{AXError, AXUIElement, AXValue, AXValueType};
-use objc2_core_foundation::{
-    CFArray, CFBoolean, CFNumber, CFRetained, CFString, CFType, CGPoint, CGSize, Type,
-};
+use objc2_core_foundation::{CFArray, CFBoolean, CFNumber, CFString, CFType, CGPoint, CGSize};
 
 use super::accessibility::Element;
-use crate::ui::tree::AttributeValue;
+use crate::ui::tree::{AttributeValue, ElementChildren};
 
 /// The attributes Recon reads, in the order it requests them.
 #[derive(Clone, Copy)]
@@ -108,27 +106,22 @@ pub(super) fn size(value: &CFType) -> Option<CGSize> {
     geometry(value, AXValueType::CGSize, NonNull::from(&mut size).cast()).then_some(size)
 }
 
-/// The children of an element: the accessibility elements it lists, and whether it listed
-/// anything else. An application controls what goes in `AXChildren`, so a member that is not an
-/// element is a child Recon could not read rather than one it quietly drops.
-#[derive(Default)]
-pub(super) struct Children {
-    pub elements: Vec<Element>,
-    pub unreadable: bool,
-}
-
-pub(super) fn children_of(children: &CFType) -> Option<Children> {
-    let children = children.downcast_ref::<CFArray>()?.retain();
+pub(super) fn children_of(children: &CFType, expand: bool) -> Option<ElementChildren<Element>> {
+    let children = children.downcast_ref::<CFArray>()?;
+    if !expand {
+        return Some(ElementChildren::Unread { present: !children.is_empty() });
+    }
     // SAFETY: the members of a Core Foundation array are Core Foundation values.
-    let children: CFRetained<CFArray<CFType>> = unsafe { CFRetained::cast_unchecked(children) };
-    let mut read = Children::default();
+    let children: &CFArray<CFType> = unsafe { &*(children as *const CFArray).cast() };
+    let mut elements = Vec::new();
+    let mut unreadable = false;
     for child in children.iter() {
         match child.downcast::<AXUIElement>() {
-            Ok(element) => read.elements.push(Element::new(element)),
-            Err(_) => read.unreadable = true,
+            Ok(element) => elements.push(Element::new(element)),
+            Err(_) => unreadable = true,
         }
     }
-    Some(read)
+    Some(ElementChildren::Read { elements, unreadable })
 }
 
 fn geometry(value: &CFType, kind: AXValueType, into: NonNull<c_void>) -> bool {
@@ -180,16 +173,19 @@ mod tests {
         let number = CFNumber::new_i64(7);
         let mixed = CFArray::from_objects(&[&*text as &CFType, &number]);
 
-        let children = children_of(&mixed).expect("a child array");
-        assert!(children.elements.is_empty());
-        assert!(children.unreadable);
+        let children = children_of(&mixed, true).expect("a child array");
+        assert_eq!(children, ElementChildren::Read { elements: Vec::new(), unreadable: true });
+        assert_eq!(children_of(&mixed, false), Some(ElementChildren::Unread { present: true }));
 
         let empty = CFArray::<CFType>::from_objects(&[]);
-        let children = children_of(&empty).expect("a child array");
-        assert!(children.elements.is_empty());
-        assert!(!children.unreadable);
+        assert_eq!(
+            children_of(&empty, true),
+            Some(ElementChildren::Read { elements: Vec::new(), unreadable: false })
+        );
+        assert_eq!(children_of(&empty, false), Some(ElementChildren::Unread { present: false }));
 
-        assert!(children_of(&text).is_none());
+        assert!(children_of(&text, true).is_none());
+        assert!(children_of(&text, false).is_none());
     }
 
     #[test]

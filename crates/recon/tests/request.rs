@@ -14,8 +14,8 @@ fn rejects(words: &[&str]) {
 }
 
 #[test]
-fn app_list_takes_no_arguments() {
-    assert_eq!(parse(&["app", "list"]), Ok(Request::App(AppRequest::List)));
+fn app_list_without_options_keeps_the_full_inventory() {
+    assert_eq!(parse(&["app", "list"]), Ok(Request::App(AppRequest::List { running: false })));
     rejects(&["app", "list", "Notes"]);
 }
 

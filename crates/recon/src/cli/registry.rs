@@ -1,10 +1,11 @@
-use clap::{Arg, Command};
+use clap::{Arg, ArgAction, Command};
 use serde_json::Value;
 
 use crate::application::response::{InspectResponse, LaunchResponse, ListResponse};
 use crate::context::Context;
 use crate::error::ErrorCode;
 use crate::ui::response::{ScreenshotResponse, TreeResponse, WindowsResponse};
+use crate::ui::tree::MAX_DEPTH;
 
 use super::decimal::Decimal;
 use super::schema::{SchemaResponse, output_schema};
@@ -98,7 +99,10 @@ pub fn registry() -> Vec<CommandSpec> {
             &["app", "list"],
             "List discovered and running applications",
             "Read application bundles discovered through Spotlight and the running workspace without activating them.",
-            vec![],
+            vec![Arg::new("running")
+                .long("running")
+                .action(ArgAction::SetTrue)
+                .help("List only applications with a running process; discovery still requires Spotlight")],
             output_schema::<ListResponse<'static>>,
         ),
         specification(
@@ -130,6 +134,16 @@ pub fn registry() -> Vec<CommandSpec> {
                 target(),
                 number::<1>("pid", "PID", "A process id greater than 0"),
                 number::<0>("window", "ID", "A window id written as decimal digits"),
+                Arg::new("depth")
+                    .long("depth")
+                    .value_name("N")
+                    .help(format!("A maximum tree depth from 0 through {MAX_DEPTH} inclusive; the root is at depth 0"))
+                    .value_parser(Decimal::<0, { MAX_DEPTH as u32 }>::parser()),
+                Arg::new("no-menu-bar")
+                    .long("no-menu-bar")
+                    .action(ArgAction::SetTrue)
+                    .conflicts_with("window")
+                    .help("Exclude the application's menu bar, preserving status items and windows; a window tree contains no menu bar"),
             ],
             output_schema::<TreeResponse<'static>>,
         ),

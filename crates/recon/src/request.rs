@@ -15,7 +15,7 @@ pub enum Request {
 /// One `recon app` command. A target is an absolute bundle path, a name, or a bundle identifier.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AppRequest {
-    List,
+    List { running: bool },
     Inspect { target: String },
     Launch { target: String },
 }

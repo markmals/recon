@@ -60,11 +60,14 @@ fn proposal0003_tree_schema_tracks_handwritten_serialization_and_omission() {
             actions: Vec::new(),
             children,
             children_omitted: truncated,
+            depth_limited: false,
+            menu_bar_excluded: false,
         }));
         let response = TreeResponse {
             application: ObservedApplication { path: Path::new("/Example.app"), pid: Pid(42) },
             window_id: None,
             truncated,
+            narrowed: false,
             root,
         };
         validate(&["ui", "tree"], &serde_json::to_value(response).unwrap());

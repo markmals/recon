@@ -2,9 +2,16 @@ import AppKit
 
 final class ReconFixtureDelegate: NSObject, NSApplicationDelegate {
     private var openWindows: [NSWindow] = []
+    private var statusItem: NSStatusItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.mainMenu = makeMainMenu()
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        item.button?.title = "ReconFixture"
+        let statusMenu = NSMenu()
+        statusMenu.addItem(withTitle: "Fixture Status Item", action: nil, keyEquivalent: "")
+        item.menu = statusMenu
+        statusItem = item
 
         // The window ordered front last stays the application's main window, and observers
         // expect that to be the main window rather than the inspector. The fixture never

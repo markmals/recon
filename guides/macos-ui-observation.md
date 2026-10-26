@@ -1,7 +1,7 @@
 ---
 id: guide.macos-ui-observation
 title: Observe macOS Application UI
-describes: [proposal.0002, proposal.0003]
+describes: [proposal.0002, proposal.0003, proposal.0004]
 ---
 
 # Observe macOS Application UI
@@ -70,24 +70,54 @@ Each entry has an `id`, the window ID used by `--window`; a `title`, which is `n
 
 Read `onScreen: false` carefully. It does not distinguish a window on another Space from a minimized window, a window belonging to a hidden app, or a window that has simply been ordered out.
 
-### `recon ui tree <target> [--pid <pid>] [--window <id>]`
+### `recon ui tree <target> [--pid <pid>] [--window <id>] [--depth <n>] [--no-menu-bar]`
 
 Without `--window`, the root of the tree is the application element, and its children are whatever the application reports, typically its menu bar and its windows on the current Space. Windows on other Spaces are usually missing from that list, and Recon does not go looking for them here.
 
 With `--window`, the root is that window's accessibility element. Recon looks for the element in the application's `AXWindows`, then in its `AXMainWindow`, then by constructing elements from private remote tokens for element numbers 0 through 99,999 and matching their window IDs. A window that none of those reaches fails with `NOT_FOUND` and `details.kind: "window-element"`. When the private remote-token interface is absent from this macOS version, the same situation is `INTERFACE_UNAVAILABLE` instead, naming the `interface` and the `symbol` Recon looked for, because nothing you pass can recover it. An application that does not answer one of those requests within two seconds stops the search, and the command fails with `TIMEOUT`, which is retryable and carries the `pid` and `timeoutSeconds`.
 
-The object around the tree is `application` with `path` and `pid`, `windowId` holding the window ID you asked for or `null` when you did not, `truncated`, and `root`.
+The object around the tree is `application` with `path` and `pid`, `windowId` holding the window ID you asked for or `null` when you did not, `truncated`, `narrowed`, and `root`. Those five fields are always present.
 
-An ordinary node carries `role`, `subrole`, `title`, `description`, `value`, `identifier`, `enabled`, `focused`, `frame`, `actions`, and `children`. They come from the attributes `AXRole`, `AXSubrole`, `AXTitle`, `AXDescription`, `AXValue`, `AXIdentifier`, `AXEnabled`, `AXFocused`, `AXPosition` combined with `AXSize`, and `AXChildren`, plus the names of the actions the element advertises. An attribute the element does not have or does not support is `null`, and `actions` and `children` are then `[]`. A `value` is reported only when it is a string, a number, or a boolean; anything else is `null`. A string `value` longer than 4,096 Unicode scalar values is cut to its first 4,096 and the node gains `"valueTruncated": true`. The `frame` is in the same global points as window bounds and is `null` unless both position and size are available. Recon lists the actions; it never performs one.
+A node reports only what the element has. `role`, `subrole`, `title`, `description`, `value`, `identifier`, `enabled`, `focused`, `frame`, `actions`, and `children` come from the attributes `AXRole`, `AXSubrole`, `AXTitle`, `AXDescription`, `AXValue`, `AXIdentifier`, `AXEnabled`, `AXFocused`, `AXPosition` combined with `AXSize`, and `AXChildren`, plus the names of the actions the element advertises — and each field appears only when there is something to report. A missing attribute field means the element does not have that attribute, does not support it, or reports a `value` that is not a string, a number, or a boolean; a missing `actions` means it advertises no action. `children` appears only when the node has child nodes to report, so its absence means Recon emitted none: the markers below say whether that is because the element has no children or because some were left unread. A field that is present but empty or false — `""`, `0`, `false` — is a value the element reported, not an absence. A string `value` longer than 4,096 Unicode scalar values is cut to its first 4,096 and the node gains `"valueTruncated": true`. The `frame` is in the same global points as window bounds and appears only when both position and size are available. Recon lists the actions; it never performs one.
+
+An element that answered and exposed nothing is `{}`.
 
 Two other node shapes appear in a tree:
 
-- A node Recon has already emitted in this result appears again as `{"role": <role>, "repeated": true}`, with no children. Accessibility elements have no durable identity, so this marks a structure that points back at something you have already seen rather than giving you a second copy of it.
-- A node whose request failed carries an `error` and no children: `{"error": "element-unavailable"}` when the element no longer exists, `{"error": "timeout"}` when the request did not complete in time, and `{"error": "read-failed", "axError": <code>}` for any other failure, with the Accessibility error code.
+- A node Recon has already emitted in this result appears again as `{"role": <role>, "repeated": true}`, or as `{"repeated": true}` when the element reported no role, with no children. Accessibility elements have no durable identity, so this marks a structure that points back at something you have already seen rather than giving you a second copy of it. A repeated node does not make a result incomplete: the element was read, once.
+- A node whose request failed carries an `error` and no children: `{"error": "element-unavailable"}` when the element no longer exists, `{"error": "timeout"}` when the request did not complete in time, and `{"error": "read-failed", "axError": <code>}` for any other failure, with the Accessibility error code. An unavailable or failed element does not make a result incomplete; the failure is visible where it happened, and Recon carried on around it. A timeout is different: it ends the read, so a result holding a `timeout` node is always `truncated`.
 
 Reading is bounded in four ways. Recon follows only `AXChildren`, depth first, in the order the application reports them. The root is depth 0, and Recon does not read the children of nodes at depth 64. A result holds at most 25,000 nodes, counting repeated and failed ones, and reading stops there. Each request gets a two-second messaging timeout, and after one request times out Recon reads no further elements and returns the partial tree.
 
-Any node whose children were not all read carries `"childrenOmitted": true`, including a node that listed a child that is not an accessibility element. The top-level `truncated` is `true` whenever some node carries `childrenOmitted` or a timeout ended the read, so one field tells you whether the tree is the whole story.
+A result says which of two things made it short, and the two are independent.
+
+`truncated` is about what Recon could not finish. Any node whose children were not all read carries `"childrenOmitted": true` — a limit, a timeout, or a child that is not an accessibility element — and `truncated` is `true` whenever some node carries `childrenOmitted` or a timeout ended the read. It invites you to retry or to ask a narrower question.
+
+`narrowed` is about what you asked Recon to skip. A node carries `"depthLimited": true` or `"menuBarExcluded": true` where an option kept Recon from reading further, and `narrowed` is `true` whenever some node carries one of them. It invites you to ask a different question. `truncated: false` with `narrowed: false` means Recon read every element reachable from the root, so the tree is the whole story. `valueTruncated` sets neither: one text value was cut, and every element was still read.
+
+`narrowed` describes the result, not the command. `--depth 64` on a tree six levels deep, and `--no-menu-bar` on an application with no menu bar, both leave `narrowed` false, because nothing was left unread.
+
+#### `--depth <n>`
+
+`<n>` is one or more ASCII decimal digits between 0 and 64 inclusive. A value above 64 is a usage error naming 64 as the maximum, because 64 is the depth Recon never reads past. `--depth 0` is allowed and returns the root alone.
+
+The root is at depth 0, as it is for the limit of 64. Recon reads the attributes and action names of a node at depth `<n>` and does not read its children. A node at that depth whose `AXChildren` has at least one member carries `"depthLimited": true` and no children; a node at that depth with no children carries no marker, because nothing was omitted. Recon does not examine the members at that depth, so a member that is not an accessibility element is part of what you asked to skip rather than a `childrenOmitted`.
+
+`childrenOmitted` is never used for a cut you asked for, and `depthLimited` is never used for a cut Recon made on its own: without `--depth`, a node at depth 64 that has children carries `childrenOmitted` and the result is `truncated`.
+
+The node budget of 25,000 and the two-second messaging timeout still apply within the depth you chose, so a tree can be both `narrowed` and `truncated`. `--depth` applies the same way to an application tree and to a `--window` tree.
+
+#### `--no-menu-bar`
+
+`--no-menu-bar` takes no value and leaves the application's own menu bar unread. It is accepted only by `ui tree`, and only without `--window`: a window tree contains no menu bar, so combining them is a usage error rather than a flag that quietly does nothing.
+
+Before traversal Recon reads the application element's `AXMenuBar` attribute, which costs one accessibility request. When that attribute answers with an accessibility element, Recon skips the root's child that is the same element: nothing below it is requested, it is not counted against the node budget, nothing stands in its place among the root's children, the root node carries `"menuBarExcluded": true`, and the result is `narrowed`. Only the root's direct children are compared, so an element equal to the menu bar deeper in the tree is read normally.
+
+When the attribute is absent, unsupported, or answers with something that is not an accessibility element, nothing is excluded, no marker appears, and `narrowed` stays false for this reason: the application has no menu bar to exclude. When that one request does not answer within two seconds, the command fails with `process <pid> did not answer an accessibility request within 2 seconds` rather than returning a tree that still contains the menu bar you excluded. Any other failure of that request ends the command too, naming the failed lookup and the Accessibility error code it returned. Recon never answers `--no-menu-bar` with an unfiltered tree.
+
+The menu bar holding an application's status items is a different element from the one `AXMenuBar` names, so it stays in the tree, as does every window. Excluding the menu bar never removes anything else.
+
+With `--depth 0` the root's children are never listed, so nothing is skipped on the menu bar's account: Recon does not read the `AXMenuBar` attribute, and the root carries only `depthLimited`. At any other depth the two options combine, and each marker still appears only where something was actually left unread: the root carries `menuBarExcluded` when a menu bar was there to skip, a node at the depth you asked for carries `depthLimited` when it had children to omit, and one result can report both kinds of omission. Without the flag, the menu bar is read exactly as it was before.
 
 ### `recon ui screenshot <target> [--pid <pid>] [--window <id>] --out <file>`
 

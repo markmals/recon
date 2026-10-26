@@ -7,6 +7,9 @@
 #[path = "ui_observation/harness.rs"]
 mod harness;
 
+#[path = "ui_observation/selective.rs"]
+mod selective;
+
 use harness::{
     Fixture, INSPECTOR_WINDOW_TITLE, MAIN_WINDOW_TITLE, TemporaryDirectory, backing_scale_factor,
     frontmost_pid, main_window_id, nodes, path_argument, png_pixel_size, run_recon, run_ui,

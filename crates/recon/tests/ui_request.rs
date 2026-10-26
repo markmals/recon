@@ -45,6 +45,8 @@ fn tree_takes_pid_and_window_flags_in_any_order() {
     let expected = UiRequest::Tree {
         selection: Selection { target: "/Applications/Notes.app".to_owned(), pid: Some(Pid(7)) },
         window: Some(WindowId(53510)),
+        depth: None,
+        no_menu_bar: false,
     };
     assert_eq!(
         parse(&["tree", "/Applications/Notes.app", "--pid", "7", "--window", "53510"]).unwrap(),
@@ -59,6 +61,8 @@ fn tree_takes_pid_and_window_flags_in_any_order() {
         UiRequest::Tree {
             selection: Selection { target: "Notes".to_owned(), pid: None },
             window: None,
+            depth: None,
+            no_menu_bar: false,
         }
     );
 }
@@ -68,6 +72,8 @@ fn flags_may_come_before_the_target() {
     let safari = UiRequest::Tree {
         selection: Selection { target: "Safari".to_owned(), pid: Some(Pid(7)) },
         window: Some(WindowId(9)),
+        depth: None,
+        no_menu_bar: false,
     };
     assert_eq!(parse(&["tree", "--pid", "7", "--window", "9", "Safari"]).unwrap(), safari);
     assert_eq!(parse(&["tree", "--window", "9", "Safari", "--pid", "7"]).unwrap(), safari);
@@ -172,6 +178,8 @@ fn a_window_id_must_be_a_u32() {
         UiRequest::Tree {
             selection: Selection { target: "Notes".to_owned(), pid: None },
             window: Some(WindowId(0)),
+            depth: None,
+            no_menu_bar: false,
         }
     );
     rejects(&["tree", "Notes", "--window", "-3"]);
