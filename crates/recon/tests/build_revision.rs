@@ -64,7 +64,7 @@ fn metadata_directives(package: &Path) -> Vec<String> {
     String::from_utf8(sink)
         .unwrap()
         .lines()
-        .filter(|line| line.starts_with("cargo::rustc-env="))
+        .filter(|line| line.starts_with("cargo::rustc-env=") && !line.ends_with('='))
         .map(str::to_owned)
         .collect()
 }

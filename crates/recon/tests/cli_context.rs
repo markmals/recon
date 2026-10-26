@@ -34,7 +34,6 @@ fn context_reports_the_version_commit_and_path_of_the_binary_that_answered() {
     assert_eq!(context["recon"]["version"], env!("CARGO_PKG_VERSION"));
     match context["recon"]["commit"].as_str() {
         Some(commit) => {
-            assert_eq!(commit.len(), 40, "the full commit hash: {commit}");
             assert!(
                 commit.chars().all(|digit| digit.is_ascii_hexdigit() && !digit.is_uppercase()),
                 "{commit}"

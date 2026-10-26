@@ -4,17 +4,15 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 pub(crate) fn directives(package: &Path, sink: &mut impl Write) -> io::Result<()> {
-    if !watch_checkout(package, sink)? || !head_names_package(package) {
-        return Ok(());
-    }
+    let eligible = watch_checkout(package, sink)? && head_names_package(package);
     for (variable, arguments) in [
         ("RECON_COMMIT", ["rev-parse", "HEAD"].as_slice()),
         ("RECON_COMMIT_SHORT", ["rev-parse", "--short", "HEAD"].as_slice()),
         ("RECON_COMMIT_DATE", ["log", "-1", "--format=%as"].as_slice()),
     ] {
-        if let Some(value) = git(package, arguments) {
-            writeln!(sink, "cargo::rustc-env={variable}={value}")?;
-        }
+        let captured = if eligible { git(package, arguments) } else { None };
+        // Empty metadata masks ambient RECON_* variables; consumers treat it as unavailable.
+        writeln!(sink, "cargo::rustc-env={variable}={}", captured.as_deref().unwrap_or_default())?;
     }
     Ok(())
 }

@@ -18,6 +18,8 @@ Run `recon --version` for the crate version and, when available at build time, t
 
 The version suffix and `context.recon.commit` report the checkout's `HEAD` baseline when the Git root matches this workspace and the committed `crates/recon/Cargo.toml` names package `recon`. Missing, malformed, or nonmatching metadata is omitted. Dirty dependency/version edits and linked worktrees keep that baseline. A same-name archive overlaid on another checkout can also qualify: this name-based check cannot attest to source origin or byte-for-byte correspondence. No remote or history allowlist is consulted.
 
+Ambient build-environment metadata cannot supply a missing commit or override the eligible checkout's baseline.
+
 The next build refreshes metadata when `HEAD` moves or a source archive becomes a checkout. Changes to a linked or separate checkout's `.git` locator are also observed.
 
 Unchanged eligible checkouts remain fresh with the same build inputs. When the workspace's `.git` locator is absent, Cargo reruns the metadata build script on each build so repository creation is detected; this is a build-time cost for archives.

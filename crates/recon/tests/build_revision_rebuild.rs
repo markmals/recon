@@ -39,9 +39,9 @@ fn build_and_read_freshness(checkout: &Path, target: &Path) -> bool {
         .arg(target)
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
-        .env_remove("RECON_COMMIT")
-        .env_remove("RECON_COMMIT_SHORT")
-        .env_remove("RECON_COMMIT_DATE")
+        .env("RECON_COMMIT", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+        .env("RECON_COMMIT_SHORT", "badcafe")
+        .env("RECON_COMMIT_DATE", "1900-01-01")
         .output()
         .unwrap();
     assert!(output.status.success(), "{output:?}");
@@ -65,6 +65,13 @@ fn version(binary: &Path) -> Output {
     assert!(output.status.success(), "{output:?}");
     assert!(output.stderr.is_empty(), "{output:?}");
     output
+}
+
+fn context_report(binary: &Path) -> serde_json::Value {
+    let output = Command::new(binary).arg("context").output().unwrap();
+    assert!(output.status.success(), "{output:?}");
+    assert!(output.stderr.is_empty(), "{output:?}");
+    serde_json::from_slice(&output.stdout).unwrap()
 }
 
 fn copy_sources(checkout: &Path, package: &Path) {
@@ -101,6 +108,8 @@ fn proposal0003_committing_overlaid_sources_refreshes_previously_unavailable_met
             version(&binary).stdout,
             format!("recon {}\n", env!("CARGO_PKG_VERSION")).as_bytes()
         );
+        let context = context_report(&binary);
+        assert!(context["recon"]["commit"].is_null(), "{context}");
 
         if !existing_repository {
             git(&checkout, &["init", "-q", "-b", "main"]);
@@ -114,6 +123,10 @@ fn proposal0003_committing_overlaid_sources_refreshes_previously_unavailable_met
             version(&binary).stdout,
             format!("recon {} ({commit} 2020-01-02)\n", env!("CARGO_PKG_VERSION")).as_bytes(),
             "existing repository: {existing_repository}"
+        );
+        assert_eq!(
+            context_report(&binary)["recon"]["commit"],
+            git(&checkout, &["rev-parse", "HEAD"])
         );
     }
 }

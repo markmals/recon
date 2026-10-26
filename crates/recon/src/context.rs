@@ -157,7 +157,9 @@ pub fn report() -> Result<Context, Failure> {
     Ok(Context {
         recon: ReconFacts {
             version: env!("CARGO_PKG_VERSION").to_owned(),
-            commit: option_env!("RECON_COMMIT").map(str::to_owned),
+            commit: option_env!("RECON_COMMIT")
+                .filter(|commit| !commit.is_empty())
+                .map(str::to_owned),
             executable_path,
         },
         host: HostFacts {
