@@ -1,22 +1,28 @@
 use std::path::PathBuf;
 
 use recon::application::Pid;
-use recon::request::USAGE;
-use recon::ui::request::{Selection, UiRequest, parse_ui_arguments};
+use recon::error::{ErrorCode, Failure};
+use recon::request::{Request, parse_arguments};
+use recon::ui::request::{Selection, UiRequest};
 use recon::ui::window::WindowId;
 
 fn arguments(words: &[&str]) -> Vec<String> {
     words.iter().map(|word| (*word).to_owned()).collect()
 }
 
-fn parse(words: &[&str]) -> Result<UiRequest, String> {
-    parse_ui_arguments(&arguments(words))
+fn parse(words: &[&str]) -> Result<UiRequest, Failure> {
+    let mut command = vec!["ui".to_owned()];
+    command.extend(arguments(words));
+    parse_arguments(&command).map(|request| match request {
+        Request::Ui(request) => request,
+        _ => panic!("expected UI request"),
+    })
 }
 
 fn rejects(words: &[&str]) {
     match parse(words) {
         Ok(request) => panic!("{words:?} should not parse, got {request:?}"),
-        Err(error) => assert_eq!(error, USAGE, "{words:?} should report the usage text"),
+        Err(error) => assert_eq!(error.code, ErrorCode::InvalidArgument),
     }
 }
 

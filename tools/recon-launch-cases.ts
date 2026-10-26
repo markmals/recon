@@ -21,9 +21,11 @@ export function registerLaunchTests(): void {
             let launch = recon(["app", "launch", bundle], { timeout: 20_000 });
             expect(launch.status).not.toBe(0);
             expect(launch.stdout).toBe("");
-            expect(launch.stderr).toContain("recon:");
-            expect(launch.stderr).toContain("Broken App.app");
-            expect(launch.stderr).toContain("application executable is missing");
+            expect(JSON.parse(launch.stderr).error).toMatchObject({
+                code: "LAUNCH_FAILED",
+                retryable: false,
+                details: { application: realpathSync(bundle), reason: "executable-missing" },
+            });
         },
     );
 
@@ -100,7 +102,10 @@ export function registerLaunchTests(): void {
                 expect(copyPid).not.toBe(pid);
             } else {
                 expect(another.stdout).toBe("");
-                expect(another.stderr).toContain("Other Copy.app");
+                expect(JSON.parse(another.stderr).error).toMatchObject({
+                    code: "LAUNCH_FAILED",
+                    details: { application: realpathSync(copy) },
+                });
             }
             let original = recon(["app", "inspect", bundle]);
             expect(original.status, original.stderr).toBe(0);

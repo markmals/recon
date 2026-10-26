@@ -2,12 +2,15 @@
 
 use std::fmt;
 
+use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::application::Pid;
+use crate::error::{ErrorCode, Failure, NotFound};
 
 /// A rectangle in global screen points, with the origin at the top left of the main display.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct Bounds {
     pub x: f64,
     pub y: f64,
@@ -16,7 +19,7 @@ pub struct Bounds {
 }
 
 /// A window server window number: the `CGWindowID` that `--window` names and results report.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Serialize, JsonSchema)]
 #[serde(transparent)]
 pub struct WindowId(pub u32);
 
@@ -27,8 +30,8 @@ impl fmt::Display for WindowId {
 }
 
 /// A window-server window, in the order and the global points the window server reports.
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Window {
     pub id: WindowId,
     /// The owning process is how a window is selected, not something the result reports.
@@ -55,10 +58,19 @@ pub fn windows_of(all: Vec<Window>, pid: Pid) -> Vec<Window> {
 ///
 /// # Errors
 ///
-/// When `windows` holds no window `id` owned by `pid`.
-pub fn select_window(windows: Vec<Window>, id: WindowId, pid: Pid) -> Result<Window, String> {
-    windows
-        .into_iter()
-        .find(|window| window.id == id && window.owner_pid == pid)
-        .ok_or_else(|| format!("window {id} is not a window of process {pid}"))
+/// [`ErrorCode::NotFound`] when `windows` holds no window `id` owned by `pid`.
+pub fn select_window(windows: Vec<Window>, id: WindowId, pid: Pid) -> Result<Window, Failure> {
+    windows.into_iter().find(|window| window.id == id && window.owner_pid == pid).ok_or_else(|| {
+        Failure::new(
+            ErrorCode::NotFound,
+            format!("window {id} is not a window of process {pid}"),
+            NotFound {
+                kind: "window",
+                pid: Some(pid.0),
+                window_id: Some(id.0),
+                ..Default::default()
+            }
+            .details(),
+        )
+    })
 }

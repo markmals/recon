@@ -4,8 +4,10 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
+use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
+use serde_json::json;
 
 use crate::ui::window::Bounds;
 
@@ -17,7 +19,7 @@ pub const MAX_NODES: usize = 25_000;
 pub const MAX_VALUE_SCALARS: usize = 4_096;
 
 /// An attribute value Recon reports, keeping the JSON type the application gave it.
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
 #[serde(untagged)]
 pub enum AttributeValue {
     Text(String),
@@ -89,8 +91,8 @@ pub trait ElementSource {
 }
 
 /// One element of a tree result.
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ElementNode {
     pub role: Option<String>,
     pub subrole: Option<String>,
@@ -152,6 +154,22 @@ impl Serialize for Node {
                 serialize_failure(serializer, "read-failed", Some(*code))
             }
         }
+    }
+}
+
+impl JsonSchema for Node {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "Node".into()
+    }
+
+    fn json_schema(generator: &mut SchemaGenerator) -> Schema {
+        let element = generator.subschema_for::<ElementNode>();
+        serde_json::from_value(json!({"oneOf":[
+            element,
+            {"type":"object","properties":{"role":{"type":["string","null"]},"repeated":{"const":true}},"required":["role","repeated"],"additionalProperties":false},
+            {"type":"object","properties":{"error":{"enum":["element-unavailable","timeout"]}},"required":["error"],"additionalProperties":false},
+            {"type":"object","properties":{"error":{"const":"read-failed"},"axError":{"type":"integer","minimum":i32::MIN,"maximum":i32::MAX}},"required":["error","axError"],"additionalProperties":false}
+        ]})).expect("valid node schema")
     }
 }
 

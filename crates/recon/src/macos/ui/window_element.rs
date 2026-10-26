@@ -8,10 +8,12 @@ use std::ptr::NonNull;
 use objc2_application_services::{AXError, AXUIElement};
 use objc2_core_foundation::{CFArray, CFData, CFRetained, CFString};
 use objc2_core_graphics::CGWindowID;
+use serde_json::json;
 
-use super::accessibility::{MESSAGING_TIMEOUT, attribute};
+use super::accessibility::{MESSAGING_TIMEOUT_SECONDS, attribute};
 use super::private;
 use crate::application::Pid;
+use crate::error::{ErrorCode, Failure, NotFound};
 use crate::ui::window::WindowId;
 
 type GetWindow = unsafe extern "C" fn(&AXUIElement, *mut CGWindowID) -> AXError;
@@ -23,11 +25,18 @@ const ELEMENT_NUMBERS: std::ops::RangeInclusive<u64> = 0..=99_999;
 const WINDOW_ROLE: &str = "AXWindow";
 
 /// The accessibility element of a window the instance owns.
+///
+/// # Errors
+///
+/// [`ErrorCode::InterfaceUnavailable`] when a private interface the search needs is absent from
+/// this macOS version, [`ErrorCode::NotFound`] with the kind `window-element` when every
+/// mechanism ran and reached nothing, and [`ErrorCode::Timeout`] when the application stopped
+/// answering.
 pub(super) fn window_element(
     application: &AXUIElement,
     pid: Pid,
     window_id: WindowId,
-) -> Result<CFRetained<AXUIElement>, String> {
+) -> Result<CFRetained<AXUIElement>, Failure> {
     let get_window = window_id_lookup()?;
 
     for element in listed_windows(application, pid)? {
@@ -45,13 +54,34 @@ pub(super) fn window_element(
     let Some(from_token) = (unsafe {
         private::function::<CreateWithRemoteToken>(c"_AXUIElementCreateWithRemoteToken")
     }) else {
-        return Err(format!(
-            "{} (remote-token lookup is unavailable on this macOS version)",
-            unreachable_window(window_id)
+        // Nothing the caller passes can recover a missing interface, so this is not a window
+        // Recon failed to find: it is a mechanism this macOS version does not have.
+        return Err(Failure::new(
+            ErrorCode::InterfaceUnavailable,
+            format!(
+                "{} (remote-token lookup is unavailable on this macOS version)",
+                unreachable_window(window_id)
+            ),
+            json!({
+                "interface": "accessibility-remote-token",
+                "symbol": "_AXUIElementCreateWithRemoteToken",
+            }),
         ));
     };
-    scanned_window(pid, window_id, from_token, get_window)?
-        .ok_or_else(|| unreachable_window(window_id))
+    match scanned_window(pid, window_id, from_token, get_window)? {
+        Some(element) => Ok(element),
+        None => Err(Failure::new(
+            ErrorCode::NotFound,
+            unreachable_window(window_id),
+            NotFound {
+                kind: "window-element",
+                pid: Some(pid.0),
+                window_id: Some(window_id.0),
+                ..Default::default()
+            }
+            .details(),
+        )),
+    }
 }
 
 /// The window ID of the window the application reports as its main one.
@@ -61,7 +91,7 @@ pub(super) fn window_element(
 pub(super) fn main_window_id(
     application: &AXUIElement,
     pid: Pid,
-) -> Result<Option<WindowId>, String> {
+) -> Result<Option<WindowId>, Failure> {
     let Some(window) = main_window(application, pid)? else {
         return Ok(None);
     };
@@ -85,29 +115,36 @@ fn lookup_outcome(error: AXError) -> Lookup {
     }
 }
 
-fn keep_looking(error: AXError, pid: Pid) -> Result<(), String> {
+fn keep_looking(error: AXError, pid: Pid) -> Result<(), Failure> {
     match lookup_outcome(error) {
         Lookup::Continue => Ok(()),
-        Lookup::Unresponsive => Err(format!(
-            "process {pid} did not answer an accessibility request within {MESSAGING_TIMEOUT} \
-                 seconds"
+        Lookup::Unresponsive => Err(Failure::new(
+            ErrorCode::Timeout,
+            format!(
+                "process {pid} did not answer an accessibility request within \
+                 {MESSAGING_TIMEOUT_SECONDS} seconds"
+            ),
+            json!({ "pid": pid.0, "timeoutSeconds": MESSAGING_TIMEOUT_SECONDS }),
         )),
     }
 }
 
-fn window_id_lookup() -> Result<GetWindow, String> {
+fn window_id_lookup() -> Result<GetWindow, Failure> {
     // SAFETY: `GetWindow` is the signature of `_AXUIElementGetWindow`.
     unsafe { private::function(c"_AXUIElementGetWindow") }.ok_or_else(|| {
-        "accessibility window lookup is unavailable on this macOS version (_AXUIElementGetWindow \
-         not found)"
-            .to_owned()
+        Failure::new(
+            ErrorCode::InterfaceUnavailable,
+            "accessibility window lookup is unavailable on this macOS version \
+             (_AXUIElementGetWindow not found)",
+            json!({ "interface": "accessibility-window-id", "symbol": "_AXUIElementGetWindow" }),
+        )
     })
 }
 
 fn listed_windows(
     application: &AXUIElement,
     pid: Pid,
-) -> Result<Vec<CFRetained<AXUIElement>>, String> {
+) -> Result<Vec<CFRetained<AXUIElement>>, Failure> {
     let windows = match attribute(application, "AXWindows") {
         Ok(windows) => windows,
         Err(error) => return keep_looking(error, pid).map(|()| Vec::new()),
@@ -123,7 +160,7 @@ fn listed_windows(
 fn main_window(
     application: &AXUIElement,
     pid: Pid,
-) -> Result<Option<CFRetained<AXUIElement>>, String> {
+) -> Result<Option<CFRetained<AXUIElement>>, Failure> {
     match attribute(application, "AXMainWindow") {
         Ok(window) => Ok(window.downcast::<AXUIElement>().ok()),
         Err(error) => keep_looking(error, pid).map(|()| None),
@@ -134,7 +171,7 @@ fn window_id_of(
     element: &AXUIElement,
     get_window: GetWindow,
     pid: Pid,
-) -> Result<Option<WindowId>, String> {
+) -> Result<Option<WindowId>, Failure> {
     let mut id: CGWindowID = 0;
     // SAFETY: the private lookup writes the window ID of an accessibility window.
     let error = unsafe { get_window(element, &raw mut id) };
@@ -149,8 +186,9 @@ fn scanned_window(
     window_id: WindowId,
     from_token: CreateWithRemoteToken,
     get_window: GetWindow,
-) -> Result<Option<CFRetained<AXUIElement>>, String> {
-    let token_pid = i32::try_from(pid.0).map_err(|_| format!("{pid} is not a process id"))?;
+) -> Result<Option<CFRetained<AXUIElement>>, Failure> {
+    let token_pid = i32::try_from(pid.0)
+        .map_err(|_| Failure::internal(format!("{pid} is not a process id")))?;
     for number in ELEMENT_NUMBERS {
         let Some(element) = element_from_token(token_pid, number, from_token) else {
             continue;
@@ -177,7 +215,7 @@ fn element_from_token(
     Some(unsafe { CFRetained::from_raw(element) })
 }
 
-fn role_of(element: &AXUIElement, pid: Pid) -> Result<Option<String>, String> {
+fn role_of(element: &AXUIElement, pid: Pid) -> Result<Option<String>, Failure> {
     match attribute(element, "AXRole") {
         Ok(role) => Ok(role.downcast::<CFString>().ok().map(|role| role.to_string())),
         Err(error) => keep_looking(error, pid).map(|()| None),
@@ -202,7 +240,13 @@ fn unreachable_window(window_id: WindowId) -> String {
 
 #[cfg(test)]
 mod tests {
+    use serde_json::Value;
+
     use super::*;
+
+    fn details(failure: &Failure) -> Value {
+        failure.details.clone().expect("the data needed to recover")
+    }
 
     #[test]
     fn a_remote_token_carries_the_process_the_magic_word_and_the_element_number() {
@@ -215,12 +259,14 @@ mod tests {
     }
 
     #[test]
-    fn an_application_that_stops_answering_ends_the_search() {
+    fn an_application_that_stops_answering_ends_the_search_with_a_retryable_timeout() {
         assert_eq!(lookup_outcome(AXError::CannotComplete), Lookup::Unresponsive);
-        assert_eq!(
-            keep_looking(AXError::CannotComplete, Pid(412)),
-            Err("process 412 did not answer an accessibility request within 2 seconds".to_owned())
-        );
+
+        let failure = keep_looking(AXError::CannotComplete, Pid(412)).unwrap_err();
+
+        assert_eq!(failure.code, ErrorCode::Timeout);
+        assert!(failure.retryable, "the same command can succeed once the application answers");
+        assert_eq!(details(&failure), json!({ "pid": 412, "timeoutSeconds": 2 }));
     }
 
     #[test]

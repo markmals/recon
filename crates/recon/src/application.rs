@@ -4,10 +4,13 @@ use std::error::Error;
 use std::fmt;
 use std::path::{Path, PathBuf};
 
+use schemars::JsonSchema;
 use serde::Serialize;
 
+pub mod response;
+
 /// The process ID of one running instance of an application.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, JsonSchema)]
 #[serde(transparent)]
 pub struct Pid(pub u32);
 
@@ -19,8 +22,8 @@ impl fmt::Display for Pid {
 
 /// An application bundle at one location, with the running instances observed for exactly that
 /// location. Copies of an application at other paths are other applications.
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Application {
     pub name: String,
     pub bundle_id: Option<String>,

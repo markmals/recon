@@ -46,11 +46,15 @@ fn inspected(path: &Path) -> Value {
     response["application"].clone()
 }
 
-fn rejection(path: &Path) -> String {
+/// The `error` member of the one JSON object a rejected inspection printed to standard error.
+fn rejection(path: &Path) -> Value {
     let output = inspect(path);
-    assert!(!output.status.success(), "{path:?} should be rejected");
+    assert_eq!(output.status.code(), Some(1), "{path:?} should be rejected");
     assert!(output.stdout.is_empty(), "{path:?} should print no result");
-    String::from_utf8(output.stderr).expect("UTF-8 diagnostic")
+    let diagnostic = String::from_utf8(output.stderr).expect("UTF-8 diagnostic");
+    let reported: Value =
+        serde_json::from_str(diagnostic.trim_end()).expect("one JSON error object");
+    reported["error"].clone()
 }
 
 #[test]
@@ -84,7 +88,10 @@ fn a_path_that_is_not_an_application_bundle_is_rejected() {
     fs::write(&file, "").expect("create the file");
 
     for path in [plugin, file] {
-        let diagnostic = rejection(&path);
-        assert!(diagnostic.starts_with("recon: not an application: "), "{path:?}: {diagnostic}");
+        let error = rejection(&path);
+        assert_eq!(error["code"], "NOT_AN_APPLICATION", "{path:?}");
+        assert_eq!(error["details"]["reason"], "not-a-bundle-directory", "{path:?}");
+        assert_eq!(error["details"]["path"], path.canonicalize().unwrap().to_str().unwrap());
+        assert_eq!(error["details"]["detail"], Value::Null, "{path:?}");
     }
 }

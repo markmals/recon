@@ -4,6 +4,8 @@
 mod accessibility;
 mod attributes;
 mod capture;
+mod child_output;
+pub(super) mod context;
 mod forwarding;
 mod permissions;
 mod private;
@@ -15,9 +17,11 @@ use std::env;
 use std::path::{Path, PathBuf};
 
 use accessibility::{Accessibility, Element};
+use serde_json::json;
 
 use super::encode;
 use crate::application::{Application, Pid};
+use crate::error::{ErrorCode, Failure, NotFound};
 use crate::ui::instance::select_instance;
 use crate::ui::output::{prepare_output, write_new};
 use crate::ui::permission::Permission;
@@ -34,8 +38,9 @@ use crate::ui::window::{Window, WindowId, select_window};
 /// Recon becomes responsible for its own privacy requests first, then resolves the application,
 /// the instance, the output file, and the window, so that a mistaken argument is reported before
 /// macOS is ever asked for a permission.
-pub fn observe(request: &UiRequest) -> Result<String, String> {
-    responsibility::take_responsibility()?;
+pub fn observe(request: &UiRequest) -> Result<String, Failure> {
+    responsibility::take_responsibility()
+        .map_err(responsibility::ResponsibilityError::into_failure)?;
     match request {
         UiRequest::Windows { selection } => windows(selection),
         UiRequest::Tree { selection, window } => tree(selection, *window),
@@ -43,7 +48,7 @@ pub fn observe(request: &UiRequest) -> Result<String, String> {
     }
 }
 
-fn windows(selection: &Selection) -> Result<String, String> {
+fn windows(selection: &Selection) -> Result<String, Failure> {
     with_instance(selection, |application, pid| {
         permissions::require(&[Permission::ScreenRecording])?;
         let windows = window_server::windows_owned_by(pid)?;
@@ -51,7 +56,7 @@ fn windows(selection: &Selection) -> Result<String, String> {
     })
 }
 
-fn tree(selection: &Selection, window: Option<WindowId>) -> Result<String, String> {
+fn tree(selection: &Selection, window: Option<WindowId>) -> Result<String, Failure> {
     with_instance(selection, |application, pid| {
         if let Some(id) = window {
             select_window(window_server::windows_owned_by(pid)?, id, pid)?;
@@ -79,7 +84,7 @@ fn screenshot(
     selection: &Selection,
     window: Option<WindowId>,
     out: &Path,
-) -> Result<String, String> {
+) -> Result<String, Failure> {
     with_instance(selection, |application, pid| {
         let out = prepare_output(out, &current_directory()?)?;
         let window = match window {
@@ -117,13 +122,28 @@ fn screenshot(
 }
 
 /// The window the application itself reports as its main one, as the window server lists it.
-fn main_window(application: &Application, pid: Pid) -> Result<Window, String> {
+///
+/// # Errors
+///
+/// [`ErrorCode::NotFound`] with the kind `main-window` when the application reports none.
+fn main_window(application: &Application, pid: Pid) -> Result<Window, Failure> {
     accessibility::bound_messaging();
     let application_element = accessibility::application_element(pid)?;
     let id = window_element::main_window_id(&application_element, pid)?.ok_or_else(|| {
-        format!(
-            "{} reports no main window; choose a window from recon ui windows and pass --window",
-            application.path.display()
+        Failure::new(
+            ErrorCode::NotFound,
+            format!(
+                "{} reports no main window; choose a window from recon ui windows and pass \
+                 --window",
+                application.path.display()
+            ),
+            NotFound {
+                kind: "main-window",
+                path: Some(application.path.display().to_string()),
+                pid: Some(pid.0),
+                ..Default::default()
+            }
+            .details(),
         )
     })?;
     select_window(window_server::windows_owned_by(pid)?, id, pid)
@@ -131,8 +151,8 @@ fn main_window(application: &Application, pid: Pid) -> Result<Window, String> {
 
 fn with_instance<T>(
     selection: &Selection,
-    observe_instance: impl FnOnce(&Application, Pid) -> Result<T, String>,
-) -> Result<T, String> {
+    observe_instance: impl FnOnce(&Application, Pid) -> Result<T, Failure>,
+) -> Result<T, Failure> {
     super::with_target(&selection.target, |application| {
         let pid = select_instance(&application.path, &application.running_pids, selection.pid)?;
         observe_instance(application, pid)
@@ -143,6 +163,18 @@ fn observed(application: &Application, pid: Pid) -> ObservedApplication<'_> {
     ObservedApplication { path: &application.path, pid }
 }
 
-fn current_directory() -> Result<PathBuf, String> {
-    env::current_dir().map_err(|error| format!("cannot read the current directory: {error}"))
+fn current_directory() -> Result<PathBuf, Failure> {
+    env::current_dir().map_err(|error| {
+        Failure::new(
+            ErrorCode::IoFailed,
+            format!("cannot read the current directory: {error}"),
+            json!({
+                "path": null,
+                "operation": "read-current-directory",
+                "reason": null,
+                "detail": error.to_string(),
+                "partialFile": null,
+            }),
+        )
+    })
 }

@@ -1,73 +1,101 @@
+//! A missing privacy permission as an error object: which permissions are missing, which
+//! executable macOS records them against, and whether its signature survives a rebuild. The
+//! recovery data is structured, so nothing here matches on the English sentence.
+
+mod support;
+
 use std::path::Path;
 
-use recon::ui::permission::{Permission, Signature, missing_permissions_message};
+use recon::error::ErrorCode;
+use recon::ui::permission::{Permission, permission_denied};
+use serde_json::json;
+use support::validate_failure;
 
 const EXECUTABLE: &str = "/usr/local/bin/recon";
 
+const SCREEN_RECORDING_PANE: &str =
+    "System Settings → Privacy & Security → Screen & System Audio Recording";
+const ACCESSIBILITY_PANE: &str = "System Settings → Privacy & Security → Accessibility";
+
 #[test]
-fn a_missing_permission_names_the_executable_and_the_settings_pane() {
-    let message = missing_permissions_message(
-        &[Permission::ScreenRecording],
-        Path::new(EXECUTABLE),
-        Signature::Stable,
-    );
+fn a_missing_permission_carries_the_executable_and_the_settings_pane() {
+    let failure = permission_denied(&[Permission::ScreenRecording], Path::new(EXECUTABLE), false);
+
+    validate_failure(&failure, &["ui", "windows"]);
+    assert_eq!(failure.code, ErrorCode::PermissionDenied);
+    assert!(!failure.retryable, "a person must grant it first");
+    assert_eq!(failure.exit_code(), 1);
     assert_eq!(
-        message,
-        "missing permission for /usr/local/bin/recon:\n  Screen Recording: System Settings → \
-         Privacy & Security → Screen & System Audio Recording"
+        failure.details,
+        Some(json!({
+            "permissions": [
+                {"permission": "screen-recording", "settingsPane": SCREEN_RECORDING_PANE},
+            ],
+            "executablePath": EXECUTABLE,
+            "adHocSigned": false,
+        }))
     );
 }
 
 #[test]
-fn accessibility_names_its_own_settings_pane() {
-    let message = missing_permissions_message(
-        &[Permission::Accessibility],
-        Path::new(EXECUTABLE),
-        Signature::Stable,
-    );
+fn accessibility_carries_its_own_settings_pane() {
+    let failure = permission_denied(&[Permission::Accessibility], Path::new(EXECUTABLE), false);
+
+    validate_failure(&failure, &["ui", "tree"]);
     assert_eq!(
-        message,
-        "missing permission for /usr/local/bin/recon:\n  Accessibility: System Settings → Privacy \
-         & Security → Accessibility"
+        failure.details.expect("details")["permissions"],
+        json!([{"permission": "accessibility", "settingsPane": ACCESSIBILITY_PANE}])
     );
 }
 
 #[test]
 fn both_missing_permissions_are_listed_in_order() {
-    let message = missing_permissions_message(
+    let failure = permission_denied(
         &[Permission::ScreenRecording, Permission::Accessibility],
         Path::new(EXECUTABLE),
-        Signature::Stable,
+        false,
+    );
+
+    assert_eq!(
+        failure.details.expect("details")["permissions"],
+        json!([
+            {"permission": "screen-recording", "settingsPane": SCREEN_RECORDING_PANE},
+            {"permission": "accessibility", "settingsPane": ACCESSIBILITY_PANE},
+        ])
+    );
+}
+
+/// An ad-hoc signature's designated requirement is the code hash itself, so macOS forgets the
+/// grant on the next rebuild. That is a fact about the binary, so it is a field an agent can read
+/// rather than a sentence it would have to parse.
+#[test]
+fn an_ad_hoc_signature_is_reported_as_a_field() {
+    let failure = permission_denied(&[Permission::Accessibility], Path::new(EXECUTABLE), true);
+
+    assert_eq!(failure.details.expect("details")["adHocSigned"], json!(true));
+}
+
+#[test]
+fn the_message_is_one_line_a_person_can_read() {
+    let failure = permission_denied(
+        &[Permission::ScreenRecording, Permission::Accessibility],
+        Path::new(EXECUTABLE),
+        true,
+    );
+
+    assert!(!failure.message.is_empty());
+    assert_eq!(failure.message.lines().count(), 1, "{}", failure.message);
+}
+
+#[test]
+fn every_permission_has_a_stable_identifier_and_a_settings_pane() {
+    assert_eq!(
+        Permission::ALL.map(Permission::identifier),
+        ["screen-recording", "accessibility"],
+        "the identifiers recon schema and recon context publish"
     );
     assert_eq!(
-        message,
-        "missing permissions for /usr/local/bin/recon:\n  Screen Recording: System Settings → \
-         Privacy & Security → Screen & System Audio Recording\n  Accessibility: System Settings → \
-         Privacy & Security → Accessibility"
+        Permission::ALL.map(Permission::settings_pane),
+        [SCREEN_RECORDING_PANE, ACCESSIBILITY_PANE]
     );
-}
-
-#[test]
-fn an_ad_hoc_signature_explains_that_rebuilding_forgets_the_grant() {
-    let message = missing_permissions_message(
-        &[Permission::Accessibility],
-        Path::new(EXECUTABLE),
-        Signature::AdHoc,
-    );
-    let rebuilt = message.lines().last().unwrap();
-    assert!(rebuilt.contains("ad-hoc signed"), "{message}");
-    assert!(rebuilt.contains("rebuilt"), "{message}");
-    assert!(rebuilt.contains("Developer ID Application"), "{message}");
-    assert!(message.contains("Privacy & Security → Accessibility"), "{message}");
-}
-
-#[test]
-fn a_stable_signature_does_not_mention_rebuilding() {
-    let message = missing_permissions_message(
-        &[Permission::ScreenRecording],
-        Path::new(EXECUTABLE),
-        Signature::Stable,
-    );
-    assert!(!message.contains("ad-hoc"), "{message}");
-    assert!(!message.contains("Developer ID"), "{message}");
 }
