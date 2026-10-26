@@ -20,6 +20,8 @@ The version suffix and `context.recon.commit` report the checkout's `HEAD` basel
 
 The next build refreshes metadata when `HEAD` moves or a source archive becomes a checkout. Changes to a linked or separate checkout's `.git` locator are also observed.
 
+Unchanged eligible checkouts remain fresh with the same build inputs. When the workspace's `.git` locator is absent, Cargo reruns the metadata build script on each build so repository creation is detected; this is a build-time cost for archives.
+
 `recon schema` returns the command index in stable order, with effects, supported hosts, and the complete error contract. `recon schema <command>` returns that command's arguments, options, constraints, defaults, effects, permissions, supported hosts, output JSON Schema, and possible error codes. `recon schema schema` and `recon schema context` describe the discovery commands themselves. An unknown schema path is an `INVALID_ARGUMENT` error listing accepted paths.
 
 Output schemas use JSON Schema 2020-12. Each is self-contained; local `$defs` resolve every reference without a network request. Objects Recon controls reject unknown properties. The schemas describe serialized output, including optional truncation markers and the repeated and failed node forms of an accessibility tree.
