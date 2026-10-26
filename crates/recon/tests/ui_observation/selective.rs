@@ -93,6 +93,14 @@ fn proposal_0004_root_zero_and_depth_one_preserve_distinct_omission_markers() {
     let window = main_window_id(&fixture).to_string();
     let tree = run_ui(&["tree", fixture.target(), "--window", &window, "--depth", "0"]);
     assert_eq!(tree["root"]["role"], "AXWindow");
+    assert_eq!(tree["root"]["title"], MAIN_WINDOW_TITLE);
+    assert!(
+        tree["root"]["actions"]
+            .as_array()
+            .expect("the frontier window still reports its action names")
+            .iter()
+            .any(|action| action == "AXRaise")
+    );
     assert_eq!(tree["root"]["depthLimited"], true);
     assert_eq!(tree["narrowed"], true);
     assert_eq!(tree["truncated"], false);
