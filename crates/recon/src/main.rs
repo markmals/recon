@@ -3,6 +3,7 @@
 use recon::error::{ErrorCode, Failure};
 use serde_json::json;
 use std::env;
+use std::io::{self, Write};
 
 #[cfg(target_os = "macos")]
 use recon::macos::{investigate, observe};
@@ -11,16 +12,27 @@ use recon::request::{Request, parse_arguments};
 use recon::ui::request::UiRequest;
 
 fn main() {
-    match run() {
-        Ok(json) => println!("{json}"),
-        Err(error) => {
-            eprintln!("{}", serde_json::to_string(&error.report()).expect("error JSON serializes"));
-            std::process::exit(error.exit_code());
-        }
+    if let Err(error) = run() {
+        render_failure(&error);
+        std::process::exit(error.exit_code());
     }
 }
 
-fn run() -> Result<String, Failure> {
+fn render_failure(error: &Failure) {
+    let Ok(encoded) = serde_json::to_string(&error.report()) else {
+        return;
+    };
+    let mut stderr = io::stderr().lock();
+    if stderr.write_all(encoded.as_bytes()).is_err() {
+        return;
+    }
+    if stderr.write_all(b"\n").is_err() {
+        return;
+    }
+    let _ = stderr.flush();
+}
+
+fn run() -> Result<(), Failure> {
     let arguments = arguments()?;
     let request = parse_arguments(&arguments)?;
     let command = command_path(&request);
@@ -37,7 +49,18 @@ fn run() -> Result<String, Failure> {
         }),
         Request::Context => recon::context::context(),
     };
-    response.map_err(|error| if command.is_empty() { error } else { error.with_command(command) })
+    let response = response
+        .map_err(|error| if command.is_empty() { error } else { error.with_command(command) })?;
+    let delivered = (|| -> io::Result<()> {
+        let mut stdout = recon::output::stdout()?;
+        stdout.write_all(response.as_bytes())?;
+        stdout.write_all(b"\n")?;
+        stdout.flush()
+    })();
+    delivered.map_err(|error| {
+        let failure = Failure::internal(format!("cannot write response: {error}"));
+        if command.is_empty() { failure } else { failure.with_command(command) }
+    })
 }
 
 fn arguments() -> Result<Vec<String>, Failure> {

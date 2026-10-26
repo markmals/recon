@@ -15,6 +15,7 @@ use serde_json::json;
 use super::child_output::OutputPipes;
 use super::{forwarding, private};
 use crate::error::{ErrorCode, Failure};
+use crate::macos::ui::child_output;
 
 /// Marks the re-executed child. Its value is the process ID of the `recon` that spawned it, so a
 /// marker some other launcher set cannot make Recon believe it has already re-executed.
@@ -138,7 +139,10 @@ fn relaunch_disclaimed() -> Result<(), ResponsibilityError> {
     // On a failed wait the reader handles are dropped, not joined: an unconfirmed child may
     // still be alive. The caller emits the final failure and exits without signalling its PID.
     let captured = streams.collect().map_err(output_failure)?;
-    captured.forward().map_err(output_failure)?;
+    captured.forward().map_err(|failure| match failure {
+        child_output::ForwardFailure::Stdout(error) => output_failure(error),
+        child_output::ForwardFailure::Stderr => std::process::exit(1),
+    })?;
     forwarding::exit_like(status)
 }
 

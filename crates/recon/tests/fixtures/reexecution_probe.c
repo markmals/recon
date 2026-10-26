@@ -20,17 +20,17 @@ static int refused_reader;
 static int preparing_child;
 static int threads_started;
 
-static void emit(int descriptor, unsigned char byte) {
+static void emit(int descriptor, unsigned char byte, unsigned length) {
     unsigned char block[4096];
     for (unsigned i = 0; i < sizeof(block); ++i) block[i] = byte;
-    for (unsigned i = 0; i < 256; ++i) {
-        unsigned offset = 0;
-        while (offset < sizeof(block)) {
-            ssize_t written = write(descriptor, block + offset, sizeof(block) - offset);
-            if (written < 0 && errno == EINTR) continue;
-            if (written <= 0) _exit(99);
-            offset += (unsigned)written;
-        }
+    unsigned sent = 0;
+    while (sent < length) {
+        unsigned remaining = length - sent;
+        unsigned chunk = remaining < sizeof(block) ? remaining : sizeof(block);
+        ssize_t written = write(descriptor, block, chunk);
+        if (written < 0 && errno == EINTR) continue;
+        if (written <= 0) _exit(99);
+        sent += (unsigned)written;
     }
 }
 
@@ -54,8 +54,10 @@ __attribute__((constructor)) static void prepare(void) {
         _exit(99);
     }
     if (reexecuted && getenv("RECON_TEST_LARGE_CHILD_OUTPUT") != NULL) {
-        emit(STDOUT_FILENO, 'o');
-        emit(STDERR_FILENO, 'e');
+        const char *requested = getenv("RECON_TEST_CHILD_OUTPUT_BYTES");
+        unsigned length = requested == NULL ? 1048576 : (unsigned)strtoul(requested, NULL, 10);
+        emit(STDOUT_FILENO, 'o', length);
+        emit(STDERR_FILENO, 'e', length);
         _exit(7);
     }
 }
@@ -97,6 +99,10 @@ static int observed_spawn(pid_t *child, const char *path,
     if (spawned == 0 && spawn_marker != NULL && disclaimed(envp)) {
         int marked = open(spawn_marker, O_WRONLY | O_CREAT | O_TRUNC, 0600);
         if (marked >= 0) close(marked);
+    }
+    if (!reexecuted && spawned == 0 && disclaimed(envp)
+        && getenv("RECON_TEST_CLOSE_UNUSED_STDOUT") != NULL) {
+        close(STDOUT_FILENO);
     }
     return spawned;
 }

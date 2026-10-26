@@ -181,13 +181,24 @@ pub(super) struct Captured {
     stderr: Vec<u8>,
 }
 
+pub(super) enum ForwardFailure {
+    Stdout(io::Error),
+    Stderr,
+}
 impl Captured {
-    pub(super) fn forward(self) -> io::Result<()> {
-        let mut stdout = io::stdout().lock();
-        stdout.write_all(&self.stdout)?;
-        stdout.flush()?;
+    pub(super) fn forward(self) -> Result<(), ForwardFailure> {
+        if !self.stdout.is_empty() {
+            let mut stdout = crate::output::stdout().map_err(ForwardFailure::Stdout)?;
+            stdout.write_all(&self.stdout).map_err(ForwardFailure::Stdout)?;
+            stdout.flush().map_err(ForwardFailure::Stdout)?;
+        }
+        if self.stderr.is_empty() {
+            return Ok(());
+        }
         let mut stderr = io::stderr().lock();
-        stderr.write_all(&self.stderr)?;
-        stderr.flush()
+        stderr
+            .write_all(&self.stderr)
+            .and_then(|()| stderr.flush())
+            .map_err(|_| ForwardFailure::Stderr)
     }
 }

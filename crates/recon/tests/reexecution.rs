@@ -30,6 +30,7 @@ fn probe(arguments: &[&str]) -> Command {
         .args(arguments)
         .env("DYLD_INSERT_LIBRARIES", PROBE.path().join("probe.dylib"))
         .env_remove("RECON_RESPONSIBILITY_DISCLAIMED")
+        .env_remove("RECON_TEST_CHILD_OUTPUT_BYTES")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .process_group(0);
@@ -147,12 +148,19 @@ fn proposal0003_context_schema_advertises_post_spawn_wait_failure() {
 
 #[test]
 fn proposal0003_a_signalled_child_is_reraised_after_stream_collection() {
-    let mut command = probe(&["context"]);
-    command.env("RECON_TEST_CHILD_SIGNAL", "1");
-    let output = capture(&mut command);
-    assert_eq!(output.status.signal(), Some(libc::SIGTERM));
-    assert!(output.stdout.is_empty());
-    assert!(output.stderr.is_empty());
+    for close_unused_stdout in [false, true] {
+        let mut command = probe(&["context"]);
+        command.env("RECON_TEST_CHILD_SIGNAL", "1");
+        if close_unused_stdout {
+            command.env("RECON_TEST_CLOSE_UNUSED_STDOUT", "1");
+        } else {
+            command.env_remove("RECON_TEST_CLOSE_UNUSED_STDOUT");
+        }
+        let output = capture(&mut command);
+        assert_eq!(output.status.signal(), Some(libc::SIGTERM), "{output:?}");
+        assert!(output.stdout.is_empty());
+        assert!(output.stderr.is_empty());
+    }
 }
 
 /// Runs `recon context` with the probe refusing to start reader number `reader` of the child's
@@ -212,4 +220,120 @@ fn proposal0003_a_second_reader_that_cannot_start_spawns_no_child() {
 
     assert!(!child_spawned, "a child was spawned although only one reader could drain it");
     unknown_grants(&output);
+}
+
+static OUTPUT_PROBE: LazyLock<tempfile::TempDir> = LazyLock::new(|| {
+    let scratch = tempfile::tempdir().unwrap();
+    let source =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/output_delivery_probe.c");
+    let status = Command::new("cc")
+        .arg("-dynamiclib")
+        .arg(source)
+        .arg("-o")
+        .arg(scratch.path().join("probe.dylib"))
+        .status()
+        .unwrap();
+    assert!(status.success());
+    scratch
+});
+
+fn failed_delivery(
+    arguments: &[&str],
+    descriptor: u8,
+    child_bytes: Option<usize>,
+) -> (Output, usize) {
+    let scratch = tempfile::tempdir().unwrap();
+    let marker = scratch.path().join("accepted");
+    let mut command = probe(arguments);
+    command
+        .env(
+            "DYLD_INSERT_LIBRARIES",
+            std::env::join_paths([
+                OUTPUT_PROBE.path().join("probe.dylib"),
+                PROBE.path().join("probe.dylib"),
+            ])
+            .unwrap(),
+        )
+        .env("RECON_TEST_OUTPUT_DESCRIPTOR", descriptor.to_string())
+        .env("RECON_TEST_ACCEPTED_PREFIX", &marker);
+    if let Some(bytes) = child_bytes {
+        command
+            .env("RECON_TEST_LARGE_CHILD_OUTPUT", "1")
+            .env("RECON_TEST_CHILD_OUTPUT_BYTES", bytes.to_string());
+    }
+    let output = capture(&mut command);
+    let trace = std::fs::read(marker).unwrap();
+    assert_eq!(trace.len(), 2, "the sink must accept a prefix then fail: {trace:?}");
+    assert!((1..=16).contains(&trace[0]), "{trace:?}");
+    assert_eq!(trace[1], 0, "the controlled write must actually fail");
+    (output, usize::from(trace[0]))
+}
+
+fn internal_delivery_failure(output: &Output, command: Option<&[&str]>) {
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    let envelope: Value = serde_json::from_slice(&output.stderr).unwrap();
+    assert_eq!(envelope["error"]["code"], "INTERNAL");
+    assert_eq!(envelope["error"]["command"], serde_json::json!(command));
+    assert_eq!(output.stderr.last(), Some(&b'\n'));
+    assert_eq!(output.stderr.iter().filter(|byte| **byte == b'\n').count(), 1);
+    let schema = recon::cli::schema::output_schema::<recon::error::ErrorReport<'static>>();
+    assert!(jsonschema::draft202012::is_valid(&schema, &envelope));
+    if let Some(path) = command {
+        let registry = recon::cli::registry::registry();
+        let entry = registry.iter().find(|entry| entry.path == path).unwrap();
+        assert!(
+            entry
+                .errors
+                .iter()
+                .any(|code| { serde_json::to_value(code).unwrap() == envelope["error"]["code"] })
+        );
+    }
+}
+
+#[test]
+fn proposal0003_stdout_delivery_failure_after_success_is_internal() {
+    let ordinary = capture(&mut probe(&["--version"]));
+    assert!(ordinary.status.success(), "{ordinary:?}");
+    let (output, accepted) = failed_delivery(&["--version"], 1, None);
+    internal_delivery_failure(&output, None);
+    assert_eq!(output.stdout, ordinary.stdout[..accepted]);
+}
+
+#[test]
+fn proposal0003_fatal_renderer_failure_keeps_the_original_classification() {
+    let scratch = tempfile::tempdir().unwrap();
+    let missing = scratch.path().join("missing.app");
+    for (arguments, exit) in [
+        (vec!["schema", "no-such-command"], 2),
+        (vec!["app", "inspect", missing.to_str().unwrap()], 1),
+    ] {
+        let ordinary = capture(&mut probe(&arguments));
+        assert_eq!(ordinary.status.code(), Some(exit), "{ordinary:?}");
+        let (output, accepted) = failed_delivery(&arguments, 2, None);
+        assert_eq!(output.status.code(), Some(exit), "{output:?}");
+        assert!(output.stdout.is_empty(), "{output:?}");
+        assert_eq!(output.stderr, ordinary.stderr[..accepted]);
+    }
+}
+
+#[test]
+fn proposal0003_child_stdout_failure_stops_before_child_stderr() {
+    for child_bytes in [64, 1_048_576] {
+        let (output, accepted) = failed_delivery(&["context"], 1, Some(child_bytes));
+        internal_delivery_failure(&output, Some(&["context"]));
+        assert_eq!(output.stdout, vec![b'o'; accepted]);
+    }
+}
+
+#[test]
+fn proposal0003_child_stderr_failure_never_appends_a_parent_error() {
+    let scratch = tempfile::tempdir().unwrap();
+    let missing = scratch.path().join("missing.app");
+    let arguments = ["ui", "windows", missing.to_str().unwrap()];
+    let ordinary = capture(&mut probe(&arguments));
+    assert_eq!(ordinary.status.code(), Some(1), "{ordinary:?}");
+    let (output, accepted) = failed_delivery(&arguments, 2, None);
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(output.stdout.is_empty(), "{output:?}");
+    assert_eq!(output.stderr, ordinary.stderr[..accepted]);
 }
