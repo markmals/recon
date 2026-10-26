@@ -5,6 +5,7 @@ use recon::error::{ErrorCode, Failure};
 use recon::request::{Request, parse_arguments};
 use recon::ui::request::{Selection, UiRequest};
 use recon::ui::window::WindowId;
+mod support;
 
 fn arguments(words: &[&str]) -> Vec<String> {
     words.iter().map(|word| (*word).to_owned()).collect()
@@ -22,7 +23,10 @@ fn parse(words: &[&str]) -> Result<UiRequest, Failure> {
 fn rejects(words: &[&str]) {
     match parse(words) {
         Ok(request) => panic!("{words:?} should not parse, got {request:?}"),
-        Err(error) => assert_eq!(error.code, ErrorCode::InvalidArgument),
+        Err(error) => {
+            support::validate_failure(&error.report(), &[]);
+            assert_eq!(error.code, ErrorCode::InvalidArgument);
+        }
     }
 }
 

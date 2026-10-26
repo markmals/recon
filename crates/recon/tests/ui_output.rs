@@ -15,6 +15,7 @@ fn scratch() -> TempDir {
 }
 
 fn details(failure: &Failure) -> Value {
+    validate_failure(&failure.report(), &["ui", "screenshot"]);
     failure.details.clone().expect("the data needed to recover")
 }
 
@@ -52,7 +53,6 @@ fn a_parent_that_is_not_an_existing_directory_is_refused() {
     assert_eq!(reported["partialFile"], Value::Null);
     let detail = reported["detail"].as_str().expect("what macOS could not do");
     assert!(detail.contains(&directory.join("nested").display().to_string()), "{detail}");
-    validate_failure(&failure, &["ui", "screenshot"]);
 
     let file = directory.join("file");
     fs::write(&file, b"x").unwrap();
@@ -83,7 +83,6 @@ fn an_existing_output_file_is_never_overwritten() {
     assert_eq!(failure.code, ErrorCode::AlreadyExists);
     assert!(!failure.retryable);
     assert_eq!(details(&failure), json!({ "path": target.to_str().unwrap() }));
-    validate_failure(&failure, &["ui", "screenshot"]);
     assert_eq!(fs::read(&target).unwrap(), b"old");
 }
 
@@ -93,7 +92,9 @@ fn an_existing_directory_at_the_output_path_is_refused() {
     let directory = scratch.path();
     let target = directory.join("shot.png");
     fs::create_dir(&target).unwrap();
-    assert_eq!(prepare_output(&target, directory).unwrap_err().code, ErrorCode::AlreadyExists);
+    let failure = prepare_output(&target, directory).unwrap_err();
+    validate_failure(&failure.report(), &["ui", "screenshot"]);
+    assert_eq!(failure.code, ErrorCode::AlreadyExists);
 }
 
 #[test]

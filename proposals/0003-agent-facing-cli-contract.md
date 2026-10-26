@@ -106,6 +106,8 @@ Claims are labelled **established** (authoritative external source), **repositor
 - Whether a repeated, cheap `mdfind` probe is an acceptable way to report application-discovery availability on a machine where Spotlight is disabled, as against parsing `mdutil -s`, has not been measured.
 - The exact per-`ErrorKind` context clap populates is established for the kinds Recon can provoke, but clap's `ErrorKind` is `#[non_exhaustive]`; a kind Recon does not anticipate must map to a defined code rather than escape the contract.
 
+**Repository evidence from implementation, 2026-10-26:** clap's defaults accept a bare `-` and attached hyphen-prefixed string values such as `--out=--pid`, and can classify `--pid -1` as an unknown short option rather than a bad value of `--pid`. Typed value parsers must therefore own the hyphen rejection as well as the numeric constraints. This refines the parsing mechanism without changing the approved strictness rules.
+
 ## Existing baseline
 
 Recon's own CLI is the baseline, and most of it is already what this proposal needs.
@@ -164,7 +166,7 @@ recon ui screenshot Notes --out /tmp/n.png → PERMISSION_DENIED with the pane t
 - The argument parser is constructed from the registry. There is no second place where a command, an option, or a constraint is written, and a command absent from the registry cannot be invoked.
 - Help is rendered from the registry. `recon schema` is serialized from the registry. Argument and option facts in the schema are read back from the constructed parser rather than from the declaration, so that what is advertised is what is enforced.
 - The parser is built with clap 4. Recon takes clap's parsing, help rendering, and error introspection, and takes none of its output behaviour: clap's own help and version flags, its error rendering, its exit calls, and its colour are all disabled, and Recon prints help, version, and errors itself.
-- The strictness rules are contract, not accident. Options may appear before or after the target. A repeated option is an error. An unknown option is an error. An option whose value is missing, or whose value is another option, is an error. An extra positional argument is an error. A number is written as plain decimal digits with no sign, space, separator, radix prefix, or fractional part, so `+12`, ` 12`, `12.0`, and `0x10` are all rejected. `--pid` must be greater than zero. The first five hold by clap's defaults; the last two are enforced by a value parser that tests for ASCII digits before parsing and applies a lower bound of 1.
+- The strictness rules are contract, not accident. Options may appear before or after the target. A repeated option is an error. An unknown option is an error. An option whose value is missing, or whose value is another option, is an error. An extra positional argument is an error. A number is written as plain decimal digits with no sign, space, separator, radix prefix, or fractional part, so `+12`, ` 12`, `12.0`, and `0x10` are all rejected. `--pid` must be greater than zero. Clap enforces repetition, unknown options, and positional cardinality. Numeric and output-path options route hyphen-prefixed tokens, including attached values, through their typed value parsers so rejection identifies the option that needs a value. The numeric parser tests for ASCII digits before parsing and applies a lower bound of 1 to `--pid`; the output-path parser rejects a leading hyphen.
 
 ### `recon schema`
 

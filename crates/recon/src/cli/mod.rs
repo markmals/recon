@@ -1,10 +1,12 @@
 mod decimal;
 mod help;
+mod output_path;
 mod parse_error;
 pub mod registry;
 pub mod schema;
 
 use decimal::Decimal;
+use output_path::OutputPath;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 
@@ -14,10 +16,13 @@ use crate::request::{AppRequest, Request};
 use crate::ui::request::{Selection, UiRequest};
 use crate::ui::window::WindowId;
 
+const HELP_FLAGS: [&str; 2] = ["--help", "-h"];
+const VERSION_FLAG: &str = "--version";
+
 pub fn help_requested(arguments: &[impl AsRef<OsStr>]) -> bool {
     arguments.is_empty()
         || arguments.first().is_some_and(|word| word.as_ref() == "help")
-        || arguments.iter().any(|word| word.as_ref() == "--help" || word.as_ref() == "-h")
+        || arguments.iter().any(|word| HELP_FLAGS.iter().any(|flag| word.as_ref() == *flag))
 }
 
 pub fn parse(arguments: &[String]) -> Result<Request, Failure> {
@@ -27,12 +32,12 @@ pub fn parse(arguments: &[String]) -> Result<Request, Failure> {
         .iter()
         .skip(usize::from(arguments.first().is_some_and(|word| word == "help")))
         .map(String::as_str)
-        .filter(|word| !matches!(*word, "--help" | "-h"));
+        .filter(|word| !HELP_FLAGS.contains(word));
     let path = resolved_path([words.next(), words.next()], &registry);
     if help_requested {
         return Ok(Request::Help(help::render(&registry, path)));
     }
-    if arguments == ["--version"] {
+    if arguments == [VERSION_FLAG] {
         return Ok(Request::Version(version()));
     }
     let entry = registry.iter().find(|entry| entry.path == path);
@@ -72,10 +77,19 @@ pub fn parse(arguments: &[String]) -> Result<Request, Failure> {
         "screenshot" => UiRequest::Screenshot {
             selection,
             window: window(),
-            out: PathBuf::from(matches.get_one::<String>("out").expect("required output")),
+            out: PathBuf::from(&matches.get_one::<OutputPath>("out").expect("required output").0),
         },
         _ => unreachable!("registry operation"),
     }))
+}
+
+pub fn resolved_command(arguments: &[String]) -> Option<&'static [&'static str]> {
+    let registry = registry::registry();
+    let path = resolved_path(
+        [arguments.first().map(String::as_str), arguments.get(1).map(String::as_str)],
+        &registry,
+    );
+    registry.iter().find(|entry| entry.path == path).map(|entry| entry.path)
 }
 
 fn resolved_path(

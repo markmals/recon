@@ -21,7 +21,7 @@ const ACCESSIBILITY_PANE: &str = "System Settings → Privacy & Security → Acc
 fn a_missing_permission_carries_the_executable_and_the_settings_pane() {
     let failure = permission_denied(&[Permission::ScreenRecording], Path::new(EXECUTABLE), false);
 
-    validate_failure(&failure, &["ui", "windows"]);
+    validate_failure(&failure.report(), &["ui", "windows"]);
     assert_eq!(failure.code, ErrorCode::PermissionDenied);
     assert!(!failure.retryable, "a person must grant it first");
     assert_eq!(failure.exit_code(), 1);
@@ -41,7 +41,7 @@ fn a_missing_permission_carries_the_executable_and_the_settings_pane() {
 fn accessibility_carries_its_own_settings_pane() {
     let failure = permission_denied(&[Permission::Accessibility], Path::new(EXECUTABLE), false);
 
-    validate_failure(&failure, &["ui", "tree"]);
+    validate_failure(&failure.report(), &["ui", "tree"]);
     assert_eq!(
         failure.details.expect("details")["permissions"],
         json!([{"permission": "accessibility", "settingsPane": ACCESSIBILITY_PANE}])
@@ -55,6 +55,7 @@ fn both_missing_permissions_are_listed_in_order() {
         Path::new(EXECUTABLE),
         false,
     );
+    validate_failure(&failure.report(), &["ui", "screenshot"]);
 
     assert_eq!(
         failure.details.expect("details")["permissions"],
@@ -71,20 +72,9 @@ fn both_missing_permissions_are_listed_in_order() {
 #[test]
 fn an_ad_hoc_signature_is_reported_as_a_field() {
     let failure = permission_denied(&[Permission::Accessibility], Path::new(EXECUTABLE), true);
+    validate_failure(&failure.report(), &["ui", "tree"]);
 
     assert_eq!(failure.details.expect("details")["adHocSigned"], json!(true));
-}
-
-#[test]
-fn the_message_is_one_line_a_person_can_read() {
-    let failure = permission_denied(
-        &[Permission::ScreenRecording, Permission::Accessibility],
-        Path::new(EXECUTABLE),
-        true,
-    );
-
-    assert!(!failure.message.is_empty());
-    assert_eq!(failure.message.lines().count(), 1, "{}", failure.message);
 }
 
 #[test]

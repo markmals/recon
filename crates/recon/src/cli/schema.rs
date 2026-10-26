@@ -4,6 +4,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use super::decimal;
+use super::output_path;
 use super::registry::{CommandSpec, registry};
 use crate::error::{ErrorCode, ErrorReport, Failure};
 
@@ -162,9 +163,11 @@ fn description(entry: &CommandSpec) -> Description {
             .unwrap_or_default();
         let numeric = decimal::constraints(argument.get_value_parser());
         let kind = if numeric.is_some() { "integer" } else { "string" }.to_owned();
-        let constraints = numeric.map(|constraints| {
-            serde_json::to_value(constraints).expect("numeric constraints serialize")
-        });
+        let constraints = numeric
+            .map(|constraints| {
+                serde_json::to_value(constraints).expect("numeric constraints serialize")
+            })
+            .or_else(|| output_path::constraints(argument.get_value_parser()));
         let description = argument.get_help().map(ToString::to_string).unwrap_or_default();
         if argument.is_positional() {
             arguments.push(Argument {

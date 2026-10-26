@@ -38,20 +38,33 @@ fn run() -> Result<String, Failure> {
 }
 
 fn arguments() -> Result<Vec<String>, Failure> {
-    let arguments: Vec<_> = env::args_os().skip(1).collect();
+    let mut first_invalid = None;
+    let arguments: Vec<_> = env::args_os()
+        .skip(1)
+        .enumerate()
+        .map(|(index, argument)| match argument.into_string() {
+            Ok(argument) => argument,
+            Err(argument) => {
+                first_invalid.get_or_insert(index);
+                argument.to_string_lossy().into_owned()
+            }
+        })
+        .collect();
     if recon::cli::help_requested(&arguments) {
-        return Ok(arguments
-            .into_iter()
-            .map(|argument| argument.to_string_lossy().into_owned())
-            .collect());
+        return Ok(arguments);
     }
-    arguments.into_iter().map(|argument| {
-        argument.into_string().map_err(|argument| Failure::new(
-            ErrorCode::InvalidArgument,
-            "invalid UTF-8 argument",
-            json!({"argument":null,"value":argument.to_string_lossy(),"expected":"a UTF-8 argument","accepted":null}),
-        ))
-    }).collect()
+    let Some(index) = first_invalid else {
+        return Ok(arguments);
+    };
+    let failure = Failure::new(
+        ErrorCode::InvalidArgument,
+        "invalid UTF-8 argument",
+        json!({"argument":null,"value":arguments[index],"expected":"a UTF-8 argument","accepted":null}),
+    );
+    Err(match recon::cli::resolved_command(&arguments[..index]) {
+        Some(command) => failure.with_command(command),
+        None => failure,
+    })
 }
 
 fn command_path(request: &Request) -> &'static [&'static str] {

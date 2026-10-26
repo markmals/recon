@@ -7,6 +7,7 @@ use crate::error::ErrorCode;
 use crate::ui::response::{ScreenshotResponse, TreeResponse, WindowsResponse};
 
 use super::decimal::Decimal;
+use super::output_path::OutputPath;
 use super::schema::{SchemaResponse, output_schema};
 
 pub struct CommandSpec {
@@ -70,6 +71,7 @@ fn number<const MINIMUM: u32>(
         .long(name)
         .value_name(value_name)
         .help(description)
+        .allow_hyphen_values(true)
         .value_parser(Decimal::<MINIMUM>::parser())
 }
 
@@ -147,7 +149,9 @@ pub fn registry() -> Vec<CommandSpec> {
                     .long("out")
                     .value_name("FILE")
                     .required(true)
-                    .help("A path to a PNG file that does not exist yet"),
+                    .allow_hyphen_values(true)
+                    .value_parser(OutputPath::parser())
+                    .help("A path to a PNG file that does not exist yet and does not start with a hyphen"),
             ],
             output_schema::<ScreenshotResponse<'static>>,
         ),
