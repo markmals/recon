@@ -2,7 +2,7 @@
 id: proposal.0003
 title: Agent-Facing CLI Contract
 authors: [Mark Malstrom]
-status: draft
+status: awaiting-implementation
 pull-request: https://github.com/markmals/recon/pull/34
 issues: []
 supersedes: []
@@ -18,7 +18,8 @@ Give Recon's CLI a contract an unfamiliar agent can learn at runtime: help and v
 
 - Authority: Mark consented on 2026-10-17, in conversation, to this proposal after reviewing a strategist analysis of Recon's CLI against external agent-first CLI guidance. No build mandate applies.
 - Fit: This proposal is limited to the interface contract shared by every existing command — orientation, argument validation, error reporting, command discovery, and execution-context reporting. It changes no observation behavior and adds no capability that touches a target application.
-- Decisions recorded: None yet.
+- Decisions recorded: Mark selected one compact JSON error object on a single line as the default standard-error format on 2026-10-26. There is no prose prefix or alternate error-format mode.
+- Approval: Mark explicitly approved implementation of this proposal on 2026-10-26 once that clarification was recorded, in Sesh session `5d3d3975-ea96-4a45-bc27-063741e02e03`. Approval includes the privacy-identity exception and the registry/error policy specified below. Acceptance of the finished implementation and permission to merge remain separate.
 
 ## Motivation
 
@@ -203,7 +204,7 @@ recon ui screenshot Notes --out /tmp/n.png → PERMISSION_DENIED with the pane t
     - `retryable` is `true` when repeating the identical command, unchanged, could succeed because the cause is a transient condition of the system, and `false` when something must change first — the arguments, the state of the target application, or a permission a person must grant.
     - `command` is the resolved command path, or `null` when the arguments named no command.
     - `details` carries the data needed to recover, as structured values rather than prose. It is `null` only when there is nothing to carry.
-- The object is printed indented, so that a person reading a terminal can read it, and parses identically either way. Its shape is published in `recon schema`'s `errors.schema`.
+- The object is printed compactly on a single line followed by a newline. There is no indentation, prose prefix, or second diagnostic on standard error. Its shape is published in `recon schema`'s `errors.schema`.
 - Exit status is 0 on success, 2 for a failure Recon can determine from the command line alone without consulting macOS or the filesystem, and 1 for every other failure. Recon never exits 126 or 127; POSIX reserves those for the shell. A command stopped by a signal is unchanged by this proposal: the re-executed child's termination is re-raised by its parent as decision 0001 requires, so the shell reports a status greater than 128.
 - A failure raised by the re-executing parent before the child exists is reported by the parent in exactly this form and exits 1. Once the child is running, the parent prints nothing of its own: the child's streams are the parent's, and the child reports its own failures.
 
@@ -217,7 +218,7 @@ recon ui screenshot Notes --out /tmp/n.png → PERMISSION_DENIED with the pane t
 | `UNSUPPORTED_HOST` | no | An `app` or `ui` command on a host other than macOS | `{"host":string,"supportedHosts":["macos"]}` |
 | `DISCOVERY_UNAVAILABLE` | yes | `mdfind` could not be run, exited unsuccessfully, or reported no indexed applications | `{"mechanism":"spotlight","detail":string\|null}` |
 | `NOT_FOUND` | no | No application matches the selector; a path that cannot be read; `--pid` naming a process that is not an instance of the bundle; `--window` naming a window the instance does not own; a window with no reachable accessibility element; an application reporting no main window | `{"kind":"application"\|"path"\|"instance"\|"window"\|"window-element"\|"main-window","selector":string\|null,"path":string\|null,"pid":integer\|null,"windowId":integer\|null,"runningPids":[integer,…]\|null,"detail":string\|null}` |
-| `NOT_AN_APPLICATION` | no | A path that exists but is not an application bundle, whose `Info.plist` cannot be read or is not a dictionary, whose package type is not `APPL`, or that yields no name | `{"path":string,"reason":"not-a-bundle-directory"\|"unreadable-info-plist"\|"not-an-application-package"\|"no-name","detail":string\|null}` |
+| `NOT_AN_APPLICATION` | no | A path that exists but is not an application bundle, whose `Info.plist` cannot be read as a dictionary, or that yields no name. Package type is not a rejection criterion, as corrected in PR #29 | `{"path":string,"reason":"not-a-bundle-directory"\|"unreadable-info-plist"\|"no-name","detail":string\|null}` |
 | `AMBIGUOUS_TARGET` | no | A name or identifier matching more than one bundle | `{"selector":string,"candidates":[{"name":string,"bundleId":string\|null,"path":string},…]}` |
 | `AMBIGUOUS_INSTANCE` | no | A bundle with several running processes and no `--pid` | `{"application":string,"pids":[integer,…]}` |
 | `NOT_RUNNING` | no | A `ui` command against a bundle with no running process | `{"application":string}` |
@@ -281,13 +282,13 @@ Two existing messages are split rather than carried over verbatim, because each 
 
 ### A policy for later commands
 
-With Mark's approval, completion of this work records a policy: **every Recon command is defined by a registry entry, and every failure Recon reports carries a code from the published enumeration**. The policy exists because the enforcement is partly structural and partly a test, and a future contributor needs to know which rule those mechanisms are protecting; the mechanisms themselves, not the prose, are what keep it true. Adding an error code is an ordinary change; removing or renaming one changes the published contract.
+Mark's approval of this proposal authorizes recording this policy at completion: **every Recon command is defined by a registry entry, and every failure Recon reports carries a code from the published enumeration**. The policy exists because the enforcement is partly structural and partly a test, and a future contributor needs to know which rule those mechanisms are protecting; the mechanisms themselves, not the prose, are what keep it true. Adding an error code is an ordinary change; removing or renaming one changes the published contract.
 
 ## Compatibility
 
 Success output is unchanged. Every command that succeeds today prints the same compact JSON object to standard output and exits 0.
 
-Failure output changes shape. `recon: <message>` on standard error becomes one indented JSON object whose `message` is, in nearly every case, the same sentence. Anything matching on the old text breaks; nothing is known to.
+Failure output changes shape. `recon: <message>` on standard error becomes one compact JSON object on a single line whose `message` is, in nearly every case, the same sentence. Anything matching on the old text breaks; nothing is known to.
 
 Exit codes change. A usage error now exits 2 rather than 1. Everything that exits nonzero still exits nonzero, so a caller that only checks success or failure is unaffected.
 
@@ -303,7 +304,7 @@ Recon has no released version, no package, and no users outside this repository,
 
 - The CLI gains dependencies: `clap` for parsing and help, `schemars` for output schemas, `objc2-security` for reading Recon's own signing information, and a JSON Schema validator as a development dependency. All are ordinary registry crates; none changes how Recon is installed or signed.
 - The build script gains the commit hash and date for `--version` and `recon context`, and must rebuild when `HEAD` moves. A build from a source archive with no Git metadata keeps working and reports no commit.
-- Decision 0001 needs the revision described in **Policies and decisions checked** before `recon context` can be implemented as specified.
+- Decision 0001 must be superseded as described in **Policies and decisions checked** before `recon context` can be implemented as specified.
 - Nothing about granting, signing, or installing Recon changes. An existing grant stays valid; `recon context` reads it and never asks for it.
 - Adoption is reversible in the sense that matters here: no stored state, no configuration, nothing a user must undo.
 
@@ -313,10 +314,10 @@ Recon has no released version, no package, and no users outside this repository,
 - The structured error object, the code enumeration, the exit-code scheme, and the conversion of every failure path in the crate — including those raised by the re-executing parent — onto it.
 - `recon schema`, with the index, per-command specifications, and output schemas generated from the serialized types.
 - `recon context`, including the self-disclaiming re-execution with its non-fatal fallback, preflight-only permission checks, code-signing facts, host facts, private-interface availability, and application-discovery availability.
-- The revision to decision 0001 covering `recon context`'s re-execution and preflight-only checks.
+- A decision superseding decision 0001 to cover `recon context`'s re-execution and preflight-only checks, preserving the original decision's rationale and history.
 - Tests: the strictness rules as behaviour tests against the new parser; help and version output; the schema index and every per-command specification; validation of real outputs and real errors against the advertised schemas; the code-coverage and registry-coverage checks described in **Keeping the schema true**; and macOS integration tests for `recon context` under the existing opt-in gate.
 - Updates to `guides/macos-application-investigation.md` and `guides/macos-ui-observation.md`, and a short guide section covering orientation, `recon schema`, `recon context`, and how to read an error object.
-- The policy recorded at completion, subject to Mark's approval.
+- The policy recorded at completion under Mark's approval of this proposal.
 
 ### Out of scope
 
@@ -339,12 +340,12 @@ Recon has no released version, no package, and no users outside this repository,
 
 ## Policies and decisions checked
 
-- `policies/` contains only a README; no policy applies. This proposal asks to add the first one at completion, as described in **A policy for later commands**.
-- `decisions/0001-macos-privacy-identity.md` — honored in every respect but one, and that one is a conflict this proposal asks Mark to resolve by revising the decision.
+- `policies/` contains only a README; no policy applies. Mark approved recording the first one at completion, as described in **A policy for later commands**.
+- `decisions/0001-macos-privacy-identity.md` is honored except for the approved extension below, which requires a superseding decision rather than rewriting the original decision's meaning.
     - Honored: Recon's privacy identifier is unchanged; `recon context` makes Recon responsible for itself before reading permission state, so a grant still means the same thing under every launcher; Recon never writes to the TCC database or works around a missing grant; and the `PERMISSION_DENIED` error still names the permission, the executable's path, and the System Settings pane, now as structured fields.
     - Conflict: the decision says "Commands that need no permission do not re-execute", and `recon context` needs no permission yet must re-execute, because a preflight check run under the launcher's identity reports the launcher's grants. The decision also says Recon "checks a permission without prompting, asks macOS to request it when it is missing, and then fails"; `recon context` checks without prompting and then neither requests nor fails.
-    - Revision Mark would approve with this proposal: replace "Commands that need no permission do not re-execute." with "A command re-executes when its result depends on Recon's own privacy identity, whether because it needs a permission or because it reports Recon's permission state. Other commands do not re-execute." And add: "A command may report permission state without requesting it. `recon context` checks each permission with a preflight call only, never asks macOS to request one, and succeeds whether or not a permission is held. If the self-disclaiming re-execution is impossible, `recon context` still reports, saying that Recon is not responsible for itself and that its permission state is therefore unknown; every other command still fails rather than running under the launcher's permissions."
-- `VISION.md` — the proposal serves "Favor a Rust CLI and structured, durable… records that an agent can read" and "every claim remains traceable to… conditions, applications, and versions", through the version string, the context report, and the error contract. The same principle's second half, "Human readers need the same trail to be legible", is the reason the error object is printed indented and keeps its existing sentences, and it is the open question below.
+    - Approved superseding decision: record a new decision established by this proposal and superseding decision 0001, preserving the original rationale. The new rule is: "A command re-executes when its result depends on Recon's own privacy identity, whether because it needs a permission or because it reports Recon's permission state. Other commands do not re-execute." It also states: "A command may report permission state without requesting it. `recon context` checks each permission with a preflight call only, never asks macOS to request one, and succeeds whether or not a permission is held. If the self-disclaiming re-execution is impossible, `recon context` still reports, saying that Recon is not responsible for itself and that its permission state is therefore unknown; every other command still fails rather than running under the launcher's permissions."
+- `VISION.md` is served by version, context, and error contracts that an agent can parse and trace to their conditions. Human-readable `message` sentences preserve legibility within the compact single-line JSON error format Mark selected.
 
 ## Future directions
 
@@ -359,9 +360,9 @@ Recon has no released version, no package, and no users outside this repository,
 
 - **A hand-written registry and parser, with no clap.** Recon's parser is 99 lines and already enforces every strictness rule, and avoiding clap would keep the dependency tree small for a binary whose supply chain is part of its evidence. Rejected because the grounding showed clap's defaults preserve five of the seven rules outright and the sixth is a three-line value parser; because clap's structured error context removes the need to invent one; and because a hand-written help renderer and schema walker is work clap and `clap_complete` have already done and tested. The reason to prefer hand-writing would be clap getting in the way of strictness, and it does not.
 - **clap's derive macros rather than a builder-based registry.** Rejected because the registry must carry metadata clap has no field for — effects, permissions, hosts, output type, error codes — and attaching that to derive attributes would put half of each command's description in a macro and half elsewhere. The builder takes the registry entry as a value and returns a `Command`.
-- **Prose errors by default, with structured errors behind `--error-format json`.** This matches clig.dev's opt-in `--json` advice and keeps today's terminal experience exactly. Rejected as the recommendation, because an agent with no prior knowledge of Recon cannot opt into a flag it does not know exists, which is the problem this proposal is for. Recorded as an option in **Open questions** because the choice is Mark's.
+- **Prose errors by default, with structured errors behind `--error-format json`.** Rejected because an agent with no prior knowledge of Recon cannot opt into a flag it does not know exists, which is the problem this proposal addresses. Every caller receives the same structured error format.
 - **A prose line followed by the JSON object on standard error.** Rejected: it gives a parser two things to find on one stream and a reader the same sentence twice.
-- **Compact single-line error objects.** Rejected in favour of indenting. Errors are small, nothing pipes them to `jq` by line, and indentation is what keeps the trail legible to a person.
+- **Indented error objects.** Rejected in favor of compact single-line JSON, as Mark selected on 2026-10-26. The human-readable `message` remains; callers can format the JSON for display without requiring a second output mode.
 - **`sysexits.h` codes — 64 for usage, 77 for permission denied, 69 for unavailable.** Rejected. Its two primary sources contradict each other, clap considered and declined it for the same reason, and a code table that varies by platform is worse than one number plus a stable string code that carries the real distinction.
 - **A distinct exit code per error class.** Rejected: the exit code answers "did it work and was it my command line", and `code` answers everything else. Spreading the taxonomy across both means an agent must learn two of them.
 - **`recon doctor`.** Rejected. "Doctor" implies diagnosis and repair, and this command must never repair anything — in particular it must never request a permission. The guidance's vocabulary has no `doctor`.
@@ -374,7 +375,7 @@ Recon has no released version, no package, and no users outside this repository,
 
 ## Open questions
 
-- [NEEDS CLARIFICATION: What is Recon's default error format on standard error? Options: (a) always one JSON error object, printed indented, with `message` carrying today's sentence — no flag, no mode; (b) always one JSON error object, printed compactly on a single line; (c) today's `recon: <message>` prose by default, with the JSON object behind a global `--error-format json` option; (d) both, a prose line followed by the object. Recommendation: (a). An agent that has never seen Recon cannot ask for a format it does not know exists, and the whole point of this proposal is that it should not have to; indenting answers VISION's requirement that a human reader find the trail legible, at no cost to a parser. The argument for (c) is that it preserves today's terminal experience exactly and matches clig.dev's opt-in `--json` advice — but clig.dev's advice is about tabular human output on standard output, which Recon has never had.]
+None. Mark resolved the default error format on 2026-10-26: always one compact JSON error object on a single line.
 
 ## Acknowledgments
 
