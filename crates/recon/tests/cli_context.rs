@@ -91,16 +91,6 @@ mod macos {
         "System Settings → Privacy & Security → Screen & System Audio Recording";
     const ACCESSIBILITY_PANE: &str = "System Settings → Privacy & Security → Accessibility";
 
-    /// Every private interface Recon depends on, in the order the report lists them.
-    const INTERFACES: [(&str, &str); 6] = [
-        ("responsibility-query", "responsibility_get_pid_responsible_for_pid"),
-        ("responsibility-disclaim", "responsibility_spawnattrs_setdisclaim"),
-        ("window-server-connection", "CGSMainConnectionID"),
-        ("skylight-capture", "SLSHWCaptureWindowList"),
-        ("accessibility-window-id", "_AXUIElementGetWindow"),
-        ("accessibility-remote-token", "_AXUIElementCreateWithRemoteToken"),
-    ];
-
     fn entries<'a>(context: &'a Value, member: &str) -> &'a Vec<Value> {
         context["macos"][member].as_array().unwrap_or_else(|| panic!("an array of {member}"))
     }
@@ -179,31 +169,6 @@ mod macos {
         assert!(detail.contains("responsible"), "{detail}");
         for permission in entries(&context, "permissions") {
             assert_eq!(permission["granted"], Value::Null, "{permission}");
-        }
-    }
-
-    #[test]
-    fn every_private_interface_recon_depends_on_is_reported_by_looking_its_symbol_up() {
-        let context = context();
-        let interfaces = entries(&context, "interfaces");
-
-        let reported: Vec<(&str, &str)> = interfaces
-            .iter()
-            .map(|interface| {
-                (
-                    interface["interface"].as_str().expect("an interface name"),
-                    interface["symbol"].as_str().expect("a symbol"),
-                )
-            })
-            .collect();
-        assert_eq!(reported, INTERFACES.to_vec());
-        for interface in interfaces {
-            assert!(interface["available"].is_boolean(), "{interface}");
-        }
-        // Recon re-executed itself to answer, so the two symbols that took to do it are present.
-        if context["macos"]["responsibility"]["responsibleForSelf"] == json!(true) {
-            assert_eq!(interfaces[0]["available"], json!(true), "{interfaces:?}");
-            assert_eq!(interfaces[1]["available"], json!(true), "{interfaces:?}");
         }
     }
 

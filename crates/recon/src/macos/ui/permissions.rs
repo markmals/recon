@@ -6,7 +6,7 @@ use objc2_application_services::{
 use objc2_core_foundation::{CFBoolean, CFDictionary, CFType};
 use objc2_core_graphics::{CGPreflightScreenCaptureAccess, CGRequestScreenCaptureAccess};
 
-use super::context::code_signing;
+use super::signing::facts;
 use crate::context::executable_path;
 use crate::error::Failure;
 use crate::ui::permission::{Permission, permission_denied};
@@ -25,7 +25,7 @@ pub(super) fn require(needed: &[Permission]) -> Result<(), Failure> {
     for permission in &missing {
         request(*permission);
     }
-    Err(permission_denied(&missing, &executable_path()?, code_signing()?.ad_hoc))
+    Err(permission_denied(&missing, &executable_path()?, facts()?.ad_hoc))
 }
 
 /// Whether macOS has granted the permission to this process, asked in the way that never
