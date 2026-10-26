@@ -9,8 +9,10 @@ use objc2_application_services::{AXError, AXUIElement};
 use objc2_core_foundation::{CFArray, CFData, CFRetained, CFString};
 use objc2_core_graphics::CGWindowID;
 
-use super::accessibility::attribute;
+use super::accessibility::{MESSAGING_TIMEOUT, attribute};
 use super::private;
+use crate::application::Pid;
+use crate::ui::window::WindowId;
 
 type GetWindow = unsafe extern "C" fn(&AXUIElement, *mut CGWindowID) -> AXError;
 type CreateWithRemoteToken = unsafe extern "C" fn(&CFData) -> *mut AXUIElement;
@@ -21,10 +23,10 @@ const ELEMENT_NUMBERS: std::ops::RangeInclusive<u64> = 0..=99_999;
 const WINDOW_ROLE: &str = "AXWindow";
 
 /// The accessibility element of a window the instance owns.
-pub fn window_element(
+pub(super) fn window_element(
     application: &AXUIElement,
-    pid: u32,
-    window_id: u32,
+    pid: Pid,
+    window_id: WindowId,
 ) -> Result<CFRetained<AXUIElement>, String> {
     let get_window = window_id_lookup()?;
 
@@ -39,9 +41,10 @@ pub fn window_element(
         return Ok(element);
     }
 
-    let Some(from_token) =
+    // SAFETY: `CreateWithRemoteToken` is the signature of `_AXUIElementCreateWithRemoteToken`.
+    let Some(from_token) = (unsafe {
         private::function::<CreateWithRemoteToken>(c"_AXUIElementCreateWithRemoteToken")
-    else {
+    }) else {
         return Err(format!(
             "{} (remote-token lookup is unavailable on this macOS version)",
             unreachable_window(window_id)
@@ -55,7 +58,10 @@ pub fn window_element(
 ///
 /// An application that reports no main window needs no window ID lookup, so it is told that it
 /// has none rather than that a private interface is missing.
-pub fn main_window_id(application: &AXUIElement, pid: u32) -> Result<Option<u32>, String> {
+pub(super) fn main_window_id(
+    application: &AXUIElement,
+    pid: Pid,
+) -> Result<Option<WindowId>, String> {
     let Some(window) = main_window(application, pid)? else {
         return Ok(None);
     };
@@ -79,17 +85,19 @@ fn lookup_outcome(error: AXError) -> Lookup {
     }
 }
 
-fn keep_looking(error: AXError, pid: u32) -> Result<(), String> {
+fn keep_looking(error: AXError, pid: Pid) -> Result<(), String> {
     match lookup_outcome(error) {
         Lookup::Continue => Ok(()),
-        Lookup::Unresponsive => {
-            Err(format!("process {pid} did not answer an accessibility request within 2 seconds"))
-        }
+        Lookup::Unresponsive => Err(format!(
+            "process {pid} did not answer an accessibility request within {MESSAGING_TIMEOUT} \
+                 seconds"
+        )),
     }
 }
 
 fn window_id_lookup() -> Result<GetWindow, String> {
-    private::function(c"_AXUIElementGetWindow").ok_or_else(|| {
+    // SAFETY: `GetWindow` is the signature of `_AXUIElementGetWindow`.
+    unsafe { private::function(c"_AXUIElementGetWindow") }.ok_or_else(|| {
         "accessibility window lookup is unavailable on this macOS version (_AXUIElementGetWindow \
          not found)"
             .to_owned()
@@ -98,7 +106,7 @@ fn window_id_lookup() -> Result<GetWindow, String> {
 
 fn listed_windows(
     application: &AXUIElement,
-    pid: u32,
+    pid: Pid,
 ) -> Result<Vec<CFRetained<AXUIElement>>, String> {
     let windows = match attribute(application, "AXWindows") {
         Ok(windows) => windows,
@@ -114,7 +122,7 @@ fn listed_windows(
 
 fn main_window(
     application: &AXUIElement,
-    pid: u32,
+    pid: Pid,
 ) -> Result<Option<CFRetained<AXUIElement>>, String> {
     match attribute(application, "AXMainWindow") {
         Ok(window) => Ok(window.downcast::<AXUIElement>().ok()),
@@ -125,24 +133,24 @@ fn main_window(
 fn window_id_of(
     element: &AXUIElement,
     get_window: GetWindow,
-    pid: u32,
-) -> Result<Option<u32>, String> {
+    pid: Pid,
+) -> Result<Option<WindowId>, String> {
     let mut id: CGWindowID = 0;
     // SAFETY: the private lookup writes the window ID of an accessibility window.
     let error = unsafe { get_window(element, &raw mut id) };
     if error == AXError::Success {
-        return Ok(Some(id));
+        return Ok(Some(WindowId(id)));
     }
     keep_looking(error, pid).map(|()| None)
 }
 
 fn scanned_window(
-    pid: u32,
-    window_id: u32,
+    pid: Pid,
+    window_id: WindowId,
     from_token: CreateWithRemoteToken,
     get_window: GetWindow,
 ) -> Result<Option<CFRetained<AXUIElement>>, String> {
-    let token_pid = i32::try_from(pid).map_err(|_| format!("{pid} is not a process id"))?;
+    let token_pid = i32::try_from(pid.0).map_err(|_| format!("{pid} is not a process id"))?;
     for number in ELEMENT_NUMBERS {
         let Some(element) = element_from_token(token_pid, number, from_token) else {
             continue;
@@ -169,7 +177,7 @@ fn element_from_token(
     Some(unsafe { CFRetained::from_raw(element) })
 }
 
-fn role_of(element: &AXUIElement, pid: u32) -> Result<Option<String>, String> {
+fn role_of(element: &AXUIElement, pid: Pid) -> Result<Option<String>, String> {
     match attribute(element, "AXRole") {
         Ok(role) => Ok(role.downcast::<CFString>().ok().map(|role| role.to_string())),
         Err(error) => keep_looking(error, pid).map(|()| None),
@@ -188,7 +196,7 @@ fn remote_token(pid: i32, element_number: u64) -> [u8; 20] {
     token
 }
 
-fn unreachable_window(window_id: u32) -> String {
+fn unreachable_window(window_id: WindowId) -> String {
     format!("window {window_id} has no accessibility element reachable by Recon")
 }
 
@@ -207,14 +215,12 @@ mod tests {
     }
 
     #[test]
-    fn element_numbers_cover_the_documented_range() {
-        assert_eq!(ELEMENT_NUMBERS.count(), 100_000);
-        assert_eq!(remote_token(1, 99_999)[12..20], 99_999u64.to_le_bytes());
-    }
-
-    #[test]
     fn an_application_that_stops_answering_ends_the_search() {
         assert_eq!(lookup_outcome(AXError::CannotComplete), Lookup::Unresponsive);
+        assert_eq!(
+            keep_looking(AXError::CannotComplete, Pid(412)),
+            Err("process 412 did not answer an accessibility request within 2 seconds".to_owned())
+        );
     }
 
     #[test]

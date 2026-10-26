@@ -10,12 +10,12 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { expect, onTestFinished, test } from "vite-plus/test";
+import { beforeAll, expect, onTestFinished, test } from "vite-plus/test";
 
+import { buildRecon, recon } from "./recon-cli.ts";
 import { registerLaunchTests } from "./recon-launch-cases.ts";
 
-let manifest = fileURLToPath(new URL("../crates/recon/Cargo.toml", import.meta.url));
+beforeAll(buildRecon, 600_000);
 
 test.skipIf(process.platform !== "darwin")(
     "proposal.0001 inspects a selected bundle without launching it",
@@ -41,13 +41,7 @@ test.skipIf(process.platform !== "darwin")(
         writeFileSync(path.join(macOS, "fixture"), `#!/bin/sh\ntouch '${marker}'\n`);
         chmodSync(path.join(macOS, "fixture"), 0o755);
 
-        let inspection = spawnSync(
-            "cargo",
-            ["run", "--quiet", "--manifest-path", manifest, "--", "app", "inspect", bundle],
-            {
-                encoding: "utf8",
-            },
-        );
+        let inspection = recon(["app", "inspect", bundle]);
         expect(inspection.status, inspection.stderr).toBe(0);
         expect(JSON.parse(inspection.stdout)).toEqual({
             application: {
@@ -62,7 +56,6 @@ test.skipIf(process.platform !== "darwin")(
         });
         expect(existsSync(marker)).toBe(false);
     },
-    60_000,
 );
 
 test.skipIf(process.platform !== "darwin")(
@@ -77,11 +70,7 @@ test.skipIf(process.platform !== "darwin")(
             '<?xml version="1.0"?><plist version="1.0"><dict><key>CFBundlePackageType</key><string>APPL</string></dict></plist>',
         );
 
-        let inspection = spawnSync(
-            "cargo",
-            ["run", "--quiet", "--manifest-path", manifest, "--", "app", "inspect", bundle],
-            { encoding: "utf8" },
-        );
+        let inspection = recon(["app", "inspect", bundle]);
         expect(inspection.status, inspection.stderr).toBe(0);
         expect(JSON.parse(inspection.stdout)).toEqual({
             application: {
@@ -104,11 +93,7 @@ test.skipIf(process.platform !== "darwin")(
         onTestFinished(() => rmSync(root, { force: true, recursive: true }));
         let directory = path.join(root, "Not An App.app");
         mkdirSync(directory);
-        let inspection = spawnSync(
-            "cargo",
-            ["run", "--quiet", "--manifest-path", manifest, "--", "app", "inspect", directory],
-            { encoding: "utf8" },
-        );
+        let inspection = recon(["app", "inspect", directory]);
         expect(inspection.status).not.toBe(0);
         expect(inspection.stdout).toBe("");
         expect(inspection.stderr).toContain("not an application");
@@ -118,13 +103,7 @@ test.skipIf(process.platform !== "darwin")(
 test.skipIf(process.platform !== "darwin")(
     "proposal.0001 lists indexed bundles and resolves an identifier to its path",
     () => {
-        let listing = spawnSync(
-            "cargo",
-            ["run", "--quiet", "--manifest-path", manifest, "--", "app", "list"],
-            {
-                encoding: "utf8",
-            },
-        );
+        let listing = recon(["app", "list"]);
         expect(listing.status, listing.stderr).toBe(0);
         let inventory = JSON.parse(listing.stdout);
         expect(inventory.discovery).toBe("indexed-and-running");
@@ -137,20 +116,7 @@ test.skipIf(process.platform !== "darwin")(
             path: "/System/Applications/Calculator.app",
             runningPids: expect.any(Array),
         });
-        let inspection = spawnSync(
-            "cargo",
-            [
-                "run",
-                "--quiet",
-                "--manifest-path",
-                manifest,
-                "--",
-                "app",
-                "inspect",
-                "COM.APPLE.CALCULATOR",
-            ],
-            { encoding: "utf8" },
-        );
+        let inspection = recon(["app", "inspect", "COM.APPLE.CALCULATOR"]);
         expect(inspection.status, inspection.stderr).toBe(0);
         expect(JSON.parse(inspection.stdout).application.path).toBe(calculator.path);
     },
@@ -177,11 +143,7 @@ test.skipIf(process.platform !== "darwin")(
             ["app", "list"],
             ["app", "inspect", "/System/Applications/Calculator.app"],
         ]) {
-            let command = spawnSync(
-                "cargo",
-                ["run", "--quiet", "--manifest-path", manifest, "--", ...args],
-                { encoding: "utf8" },
-            );
+            let command = recon(args);
             expect(command.status, command.stderr).toBe(0);
             expect(foreground()).toBe(before);
         }
@@ -200,11 +162,7 @@ test.skipIf(process.platform !== "darwin")(
             path.join(bundle, "Contents", "Info.plist"),
             '<?xml version="1.0"?><plist version="1.0"><dict><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleDisplayName</key><string>Original Name</string></dict></plist>',
         );
-        let inspection = spawnSync(
-            "cargo",
-            ["run", "--quiet", "--manifest-path", manifest, "--", "app", "inspect", bundle],
-            { encoding: "utf8" },
-        );
+        let inspection = recon(["app", "inspect", bundle]);
         expect(inspection.status, inspection.stderr).toBe(0);
         expect(JSON.parse(inspection.stdout).application.name).toBe("Renamed App");
     },
@@ -213,18 +171,11 @@ test.skipIf(process.platform !== "darwin")(
 test.skipIf(process.platform === "darwin")(
     "proposal.0001 reports unsupported hosts instead of a successful empty list",
     () => {
-        let listing = spawnSync(
-            "cargo",
-            ["run", "--quiet", "--manifest-path", manifest, "--", "app", "list"],
-            {
-                encoding: "utf8",
-            },
-        );
+        let listing = recon(["app", "list"]);
         expect(listing.status).not.toBe(0);
         expect(listing.stdout).toBe("");
         expect(listing.stderr).toContain("supported only on macOS");
     },
-    60_000,
 );
 
 registerLaunchTests();

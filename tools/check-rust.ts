@@ -39,12 +39,15 @@ function checkRust(): void {
         return;
     }
 
+    // Rustdoc warnings, such as a broken intra-doc link, fail the gate as Clippy's do.
+    let env = { ...process.env, RUSTDOCFLAGS: "-D warnings" };
     for (let args of [
         ["fmt", "--all", "--check"],
         ["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"],
         ["test", "--workspace"],
+        ["doc", "--workspace", "--no-deps"],
     ]) {
-        execFileSync("cargo", args, { stdio: "inherit" });
+        execFileSync("cargo", args, { env, stdio: "inherit" });
     }
 }
 

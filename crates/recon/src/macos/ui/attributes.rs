@@ -14,7 +14,7 @@ use crate::ui::tree::AttributeValue;
 
 /// The attributes Recon reads, in the order it requests them.
 #[derive(Clone, Copy)]
-pub enum Attribute {
+pub(super) enum Attribute {
     Role,
     Subrole,
     Title,
@@ -29,7 +29,7 @@ pub enum Attribute {
 }
 
 impl Attribute {
-    pub const ALL: [Attribute; 11] = [
+    pub(super) const ALL: [Attribute; 11] = [
         Attribute::Role,
         Attribute::Subrole,
         Attribute::Title,
@@ -43,7 +43,7 @@ impl Attribute {
         Attribute::Children,
     ];
 
-    pub fn name(self) -> &'static str {
+    pub(super) fn name(self) -> &'static str {
         match self {
             Attribute::Role => "AXRole",
             Attribute::Subrole => "AXSubrole",
@@ -63,7 +63,7 @@ impl Attribute {
 /// The error macOS returned instead of a value, or `None` when there is a value. A bulk read
 /// reports each attribute it could not supply as an `AXValue` holding the error for that one
 /// attribute, which is not always the same as the element having no such attribute.
-pub fn attribute_error(value: &CFType) -> Option<AXError> {
+pub(super) fn attribute_error(value: &CFType) -> Option<AXError> {
     let value = value.downcast_ref::<AXValue>()?;
     // SAFETY: reading the kind of an AXValue does not message the application.
     if unsafe { value.r#type() } != AXValueType::AXError {
@@ -75,16 +75,16 @@ pub fn attribute_error(value: &CFType) -> Option<AXError> {
     Some(error)
 }
 
-pub fn text(value: &CFType) -> Option<String> {
+pub(super) fn text(value: &CFType) -> Option<String> {
     Some(value.downcast_ref::<CFString>()?.to_string())
 }
 
-pub fn boolean(value: &CFType) -> Option<bool> {
+pub(super) fn boolean(value: &CFType) -> Option<bool> {
     Some(value.downcast_ref::<CFBoolean>()?.as_bool())
 }
 
 /// A value Recon can report; anything else is reported as no value at all.
-pub fn attribute_value(value: &CFType) -> Option<AttributeValue> {
+pub(super) fn attribute_value(value: &CFType) -> Option<AttributeValue> {
     if let Some(text) = value.downcast_ref::<CFString>() {
         return Some(AttributeValue::Text(text.to_string()));
     }
@@ -98,12 +98,12 @@ pub fn attribute_value(value: &CFType) -> Option<AttributeValue> {
     Some(AttributeValue::Integer(number.as_i64()?))
 }
 
-pub fn point(value: &CFType) -> Option<CGPoint> {
+pub(super) fn point(value: &CFType) -> Option<CGPoint> {
     let mut point = CGPoint::ZERO;
     geometry(value, AXValueType::CGPoint, NonNull::from(&mut point).cast()).then_some(point)
 }
 
-pub fn size(value: &CFType) -> Option<CGSize> {
+pub(super) fn size(value: &CFType) -> Option<CGSize> {
     let mut size = CGSize::ZERO;
     geometry(value, AXValueType::CGSize, NonNull::from(&mut size).cast()).then_some(size)
 }
@@ -112,12 +112,12 @@ pub fn size(value: &CFType) -> Option<CGSize> {
 /// anything else. An application controls what goes in `AXChildren`, so a member that is not an
 /// element is a child Recon could not read rather than one it quietly drops.
 #[derive(Default)]
-pub struct Children {
+pub(super) struct Children {
     pub elements: Vec<Element>,
     pub unreadable: bool,
 }
 
-pub fn children_of(children: &CFType) -> Option<Children> {
+pub(super) fn children_of(children: &CFType) -> Option<Children> {
     let children = children.downcast_ref::<CFArray>()?.retain();
     // SAFETY: the members of a Core Foundation array are Core Foundation values.
     let children: CFRetained<CFArray<CFType>> = unsafe { CFRetained::cast_unchecked(children) };

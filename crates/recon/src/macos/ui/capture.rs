@@ -9,7 +9,8 @@ use objc2_core_graphics::{CGDataProvider, CGImage, CGWindowID};
 use objc2_image_io::CGImageDestination;
 
 use super::private;
-use crate::ui::image::is_uniform;
+use crate::ui::image::{PixelLayout, is_uniform};
+use crate::ui::window::WindowId;
 
 type MainConnection = unsafe extern "C" fn() -> c_int;
 type CaptureWindowList = unsafe extern "C" fn(c_int, *const CGWindowID, u32, u32) -> *mut CFArray;
@@ -17,7 +18,7 @@ type CaptureWindowList = unsafe extern "C" fn(c_int, *const CGWindowID, u32, u32
 const PNG: &str = "public.png";
 
 /// One window's pixels, ready to be written as a PNG file.
-pub struct Capture {
+pub(super) struct Capture {
     pub width: u32,
     pub height: u32,
     pub uniform: bool,
@@ -25,7 +26,7 @@ pub struct Capture {
 }
 
 /// Captures the window server's current content for one window.
-pub fn capture(window_id: u32) -> Result<Capture, String> {
+pub(super) fn capture(window_id: WindowId) -> Result<Capture, String> {
     let image = window_image(window_id)?;
     let width = CGImage::width(Some(&image));
     let height = CGImage::height(Some(&image));
@@ -38,14 +39,17 @@ pub fn capture(window_id: u32) -> Result<Capture, String> {
     })
 }
 
-fn window_image(window_id: u32) -> Result<CFRetained<CGImage>, String> {
+fn window_image(window_id: WindowId) -> Result<CFRetained<CGImage>, String> {
+    // SAFETY: `MainConnection` is the signature of `CGSMainConnectionID`.
     let connection: MainConnection =
-        private::function(c"CGSMainConnectionID").ok_or_else(unavailable)?;
+        unsafe { private::function(c"CGSMainConnectionID") }.ok_or_else(unavailable)?;
+    // SAFETY: `CaptureWindowList` is the signature of `SLSHWCaptureWindowList`.
     let capture_windows: CaptureWindowList =
-        private::function(c"SLSHWCaptureWindowList").ok_or_else(unavailable)?;
+        unsafe { private::function(c"SLSHWCaptureWindowList") }.ok_or_else(unavailable)?;
 
-    let windows = [window_id];
-    // SAFETY: captures the one window named by the list; the returned array is owned.
+    let windows = [window_id.0];
+    // SAFETY: the main connection takes no arguments, and the capture reads the one window the
+    // list names and returns an owned array.
     let images = unsafe { capture_windows(connection(), windows.as_ptr(), 1, 0) };
     let images = NonNull::new(images).ok_or_else(|| no_image(window_id))?;
     // SAFETY: the array is owned, and hardware capture fills it with images.
@@ -56,7 +60,12 @@ fn window_image(window_id: u32) -> Result<CFRetained<CGImage>, String> {
 
 /// A capture of an invisible or fully transparent window is uniform; Recon records that rather
 /// than treating it as a failure.
-fn uniform(image: &CGImage, width: usize, height: usize, window_id: u32) -> Result<bool, String> {
+fn uniform(
+    image: &CGImage,
+    width: usize,
+    height: usize,
+    window_id: WindowId,
+) -> Result<bool, String> {
     let bits_per_pixel = CGImage::bits_per_pixel(Some(image));
     if bits_per_pixel == 0 || !bits_per_pixel.is_multiple_of(8) {
         return Err(format!("macOS returned window {window_id} in an unsupported pixel format"));
@@ -66,11 +75,16 @@ fn uniform(image: &CGImage, width: usize, height: usize, window_id: u32) -> Resu
         .ok_or_else(|| format!("macOS returned no pixels for window {window_id}"))?;
     // SAFETY: the copied pixels are not mutated while they are read.
     let pixels = unsafe { pixels.as_bytes_unchecked() };
-    let bytes_per_row = CGImage::bytes_per_row(Some(image));
-    Ok(is_uniform(pixels, width, height, bytes_per_row, bits_per_pixel / 8))
+    let layout = PixelLayout {
+        width,
+        height,
+        bytes_per_row: CGImage::bytes_per_row(Some(image)),
+        bytes_per_pixel: bits_per_pixel / 8,
+    };
+    Ok(is_uniform(pixels, layout))
 }
 
-fn png(image: &CGImage, window_id: u32) -> Result<Vec<u8>, String> {
+fn png(image: &CGImage, window_id: WindowId) -> Result<Vec<u8>, String> {
     let encoded = CFMutableData::new(None, 0).ok_or_else(|| encoding_failed(window_id))?;
     // SAFETY: a PNG destination holding one image, with no options.
     let destination = unsafe {
@@ -91,14 +105,14 @@ fn unavailable() -> String {
         .to_owned()
 }
 
-fn no_image(window_id: u32) -> String {
+fn no_image(window_id: WindowId) -> String {
     format!("macOS returned no image for window {window_id}")
 }
 
-fn oversized(window_id: u32) -> String {
+fn oversized(window_id: WindowId) -> String {
     format!("macOS returned an image of window {window_id} that is too large to report")
 }
 
-fn encoding_failed(window_id: u32) -> String {
+fn encoding_failed(window_id: WindowId) -> String {
     format!("macOS could not encode the capture of window {window_id} as PNG")
 }

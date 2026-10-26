@@ -1,12 +1,9 @@
 use proptest::prelude::*;
-use recon::ui::image::is_uniform;
+use recon::ui::image::{PixelLayout, is_uniform};
 
 struct Image {
     pixels: Vec<u8>,
-    width: usize,
-    height: usize,
-    bytes_per_row: usize,
-    bytes_per_pixel: usize,
+    layout: PixelLayout,
 }
 
 impl Image {
@@ -20,17 +17,18 @@ impl Image {
                 pixels[start..start + bytes_per_pixel].copy_from_slice(pixel);
             }
         }
-        Self { pixels, width, height, bytes_per_row, bytes_per_pixel }
+        Self { pixels, layout: PixelLayout { width, height, bytes_per_row, bytes_per_pixel } }
     }
 
     fn is_uniform(&self) -> bool {
-        is_uniform(&self.pixels, self.width, self.height, self.bytes_per_row, self.bytes_per_pixel)
+        is_uniform(&self.pixels, self.layout)
     }
 
     fn change_byte(&mut self, pixel_index: usize, byte_in_pixel: usize) {
-        let row = pixel_index / self.width;
-        let column = pixel_index % self.width;
-        let offset = row * self.bytes_per_row + column * self.bytes_per_pixel + byte_in_pixel;
+        let PixelLayout { width, bytes_per_row, bytes_per_pixel, .. } = self.layout;
+        let row = pixel_index / width;
+        let column = pixel_index % width;
+        let offset = row * bytes_per_row + column * bytes_per_pixel + byte_in_pixel;
         self.pixels[offset] = self.pixels[offset].wrapping_add(1);
     }
 }
@@ -39,7 +37,8 @@ impl Image {
 fn an_image_whose_pixels_all_match_is_uniform() {
     let image = Image::new(4, 3, 0, &[0, 0, 0, 255], 0);
     assert!(image.is_uniform());
-    assert!(is_uniform(&[1, 2, 3, 4], 1, 1, 4, 4), "one pixel always matches itself");
+    let one_pixel = PixelLayout { width: 1, height: 1, bytes_per_row: 4, bytes_per_pixel: 4 };
+    assert!(is_uniform(&[1, 2, 3, 4], one_pixel), "one pixel always matches itself");
 }
 
 #[test]
@@ -61,9 +60,10 @@ fn a_single_differing_pixel_is_not_uniform() {
 
 #[test]
 fn an_image_without_pixels_is_uniform() {
-    assert!(is_uniform(&[], 0, 0, 0, 4));
-    assert!(is_uniform(&[1, 2, 3, 4], 0, 5, 4, 4));
-    assert!(is_uniform(&[9; 16], 5, 0, 4, 4));
+    let empty = PixelLayout { width: 0, height: 0, bytes_per_row: 0, bytes_per_pixel: 4 };
+    assert!(is_uniform(&[], empty));
+    assert!(is_uniform(&[1, 2, 3, 4], PixelLayout { height: 5, bytes_per_row: 4, ..empty }));
+    assert!(is_uniform(&[9; 16], PixelLayout { width: 5, bytes_per_row: 4, ..empty }));
 }
 
 proptest! {

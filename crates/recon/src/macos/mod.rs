@@ -1,5 +1,9 @@
+//! Recon on macOS: finding applications through Spotlight and the running workspace, and
+//! observing them through Accessibility and the window server.
+
+mod investigation;
 mod metadata;
-pub mod ui;
+mod ui;
 mod workspace;
 
 use std::ffi::OsStr;
@@ -7,16 +11,23 @@ use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 use std::process::{Command, Output};
 
-use crate::application::{Application, TargetError, normalize_applications, resolve_target};
+use serde::Serialize;
 
-pub use workspace::launch;
+use crate::application::{Application, normalize_applications, resolve_target};
 
-pub fn applications() -> Result<Vec<Application>, String> {
+pub use investigation::investigate;
+pub use ui::observe;
+
+/// The readable application bundles that the Spotlight index lists or that running processes were
+/// launched from.
+fn applications() -> Result<Vec<Application>, String> {
     let output = Command::new("/usr/bin/mdfind")
         .args(["-0", "kMDItemContentTypeTree == 'com.apple.application-bundle'"])
         .output()
         .map_err(|error| format!("cannot search indexed applications: {error}"))?;
     let indexed_paths = checked_indexed_output(&output)?;
+    // The listing promises only bundles it can read, so an indexed or running path that is not a
+    // readable application bundle is left out rather than failing the whole listing.
     let mut discovered: Vec<Application> = indexed_paths
         .split(|byte| *byte == 0)
         .filter(|path| !path.is_empty())
@@ -41,12 +52,18 @@ fn checked_indexed_output(output: &Output) -> Result<&[u8], String> {
         ));
     }
     if output.stdout.iter().all(|byte| *byte == 0) {
-        return Err("cannot search indexed applications: no indexed applications found; check Spotlight indexing".to_owned());
+        return Err("cannot search indexed applications: no indexed applications found; check \
+                    Spotlight indexing"
+            .to_owned());
     }
     Ok(&output.stdout)
 }
 
-pub fn with_target<T>(
+/// Resolves a selector and runs `use_application` on the application it names.
+///
+/// An absolute path is inspected directly rather than looked up among discovered applications, so
+/// it can name a bundle the index does not list.
+fn with_target<T>(
     selector: &str,
     use_application: impl FnOnce(&Application) -> Result<T, String>,
 ) -> Result<T, String> {
@@ -56,29 +73,17 @@ pub fn with_target<T>(
             .into_iter()
             .filter_map(|(path, pid)| (path == application.path).then_some(pid))
             .collect();
-        application.running_pids.sort_unstable();
-        application.running_pids.dedup();
+        application.normalize_running_pids();
         return use_application(&application);
     }
 
     let applications = applications()?;
-    let application = resolve_target(&applications, selector).map_err(|error| match error {
-        TargetError::NotFound => format!("no application matches {selector:?}"),
-        TargetError::Ambiguous(candidates) => format!(
-            "ambiguous application {selector:?}; choose a bundle path:\n{}",
-            candidates
-                .iter()
-                .map(|app| format!(
-                    "  {} [{}] {}",
-                    app.name,
-                    app.bundle_id.as_deref().unwrap_or("-"),
-                    app.path.display()
-                ))
-                .collect::<Vec<_>>()
-                .join("\n")
-        ),
-    })?;
+    let application = resolve_target(&applications, selector).map_err(|error| error.to_string())?;
     use_application(application)
+}
+
+fn encode(response: &impl Serialize) -> Result<String, String> {
+    serde_json::to_string(response).map_err(|error| format!("cannot encode response: {error}"))
 }
 
 #[cfg(test)]
