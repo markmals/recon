@@ -1,0 +1,1 @@
+import{t as e}from"./framework.DnzEF-oq.js";var t={root:()=>e(()=>import(`./@localSearchIndexroot.BEWu-yCm.js`),[])};export{t as default};
