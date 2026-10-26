@@ -1,46 +1,88 @@
-//! The `recon` executable: it runs one command against this Mac and prints the result as one JSON
-//! object, or prints a `recon:` diagnostic to standard error and exits unsuccessfully.
+//! The executable keeps successful output and the single structured error stream separate.
 
+use recon::error::{ErrorCode, Failure};
+use serde_json::json;
 use std::env;
 
 #[cfg(target_os = "macos")]
 use recon::macos::{investigate, observe};
-#[cfg(not(target_os = "macos"))]
 use recon::request::AppRequest;
 use recon::request::{Request, parse_arguments};
-#[cfg(not(target_os = "macos"))]
 use recon::ui::request::UiRequest;
 
 fn main() {
     match run() {
         Ok(json) => println!("{json}"),
         Err(error) => {
-            eprintln!("recon: {error}");
-            std::process::exit(1);
+            eprintln!("{}", serde_json::to_string(&error.report()).expect("error JSON serializes"));
+            std::process::exit(error.exit_code());
         }
     }
 }
 
-fn run() -> Result<String, String> {
-    match parse_arguments(&arguments()?)? {
+fn run() -> Result<String, Failure> {
+    let arguments = arguments()?;
+    let request = parse_arguments(&arguments)?;
+    let command = command_path(&request);
+    let response = match request {
         Request::App(request) => investigate(&request),
         Request::Ui(request) => observe(&request),
+        Request::Help(text) | Request::Version(text) => Ok(text.trim_end_matches('\n').to_owned()),
+        Request::Schema(path) => recon::cli::schema::describe(&path).and_then(|response| {
+            serde_json::to_string(&response)
+                .map_err(|error| Failure::internal(format!("cannot encode response: {error}")))
+        }),
+        Request::Context => recon::context::context(),
+    };
+    response.map_err(|error| if command.is_empty() { error } else { error.with_command(command) })
+}
+
+fn arguments() -> Result<Vec<String>, Failure> {
+    let arguments: Vec<_> = env::args_os().skip(1).collect();
+    if recon::cli::help_requested(&arguments) {
+        return Ok(arguments
+            .into_iter()
+            .map(|argument| argument.to_string_lossy().into_owned())
+            .collect());
+    }
+    arguments.into_iter().map(|argument| {
+        argument.into_string().map_err(|argument| Failure::new(
+            ErrorCode::InvalidArgument,
+            "invalid UTF-8 argument",
+            json!({"argument":null,"value":argument.to_string_lossy(),"expected":"a UTF-8 argument","accepted":null}),
+        ))
+    }).collect()
+}
+
+fn command_path(request: &Request) -> &'static [&'static str] {
+    match request {
+        Request::App(AppRequest::List) => &["app", "list"],
+        Request::App(AppRequest::Inspect { .. }) => &["app", "inspect"],
+        Request::App(AppRequest::Launch { .. }) => &["app", "launch"],
+        Request::Ui(UiRequest::Windows { .. }) => &["ui", "windows"],
+        Request::Ui(UiRequest::Tree { .. }) => &["ui", "tree"],
+        Request::Ui(UiRequest::Screenshot { .. }) => &["ui", "screenshot"],
+        Request::Schema(_) => &["schema"],
+        Request::Context => &["context"],
+        Request::Help(_) | Request::Version(_) => &[],
     }
 }
 
-fn arguments() -> Result<Vec<String>, String> {
-    env::args_os()
-        .skip(1)
-        .map(|argument| argument.into_string().map_err(|_| "invalid UTF-8 argument".to_owned()))
-        .collect()
+#[cfg(not(target_os = "macos"))]
+fn investigate(_request: &AppRequest) -> Result<String, Failure> {
+    Err(unsupported("application investigation is supported only on macOS"))
 }
 
 #[cfg(not(target_os = "macos"))]
-fn investigate(_request: &AppRequest) -> Result<String, String> {
-    Err("application investigation is supported only on macOS".to_owned())
+fn observe(_request: &UiRequest) -> Result<String, Failure> {
+    Err(unsupported("UI observation is supported only on macOS"))
 }
 
 #[cfg(not(target_os = "macos"))]
-fn observe(_request: &UiRequest) -> Result<String, String> {
-    Err("UI observation is supported only on macOS".to_owned())
+fn unsupported(message: &str) -> Failure {
+    Failure::new(
+        ErrorCode::UnsupportedHost,
+        message,
+        json!({"host":env::consts::OS,"supportedHosts":["macos"]}),
+    )
 }

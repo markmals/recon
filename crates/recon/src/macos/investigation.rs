@@ -1,45 +1,21 @@
 //! Running one `recon app` command against the applications on this Mac.
 
-use std::path::Path;
-
-use serde::Serialize;
+use serde_json::json;
 
 use super::workspace::launch;
 use super::{applications, encode, with_target};
-use crate::application::{Application, Pid};
+use crate::application::Application;
+use crate::application::response::{
+    InspectResponse, LaunchResponse, ListResponse, ListedApplication,
+};
+use crate::error::{ErrorCode, Failure};
 use crate::request::AppRequest;
 
 /// How `app list` found its applications: the Spotlight index, plus whatever is running.
 const DISCOVERY: &str = "indexed-and-running";
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ListedApplication<'a> {
-    name: &'a str,
-    bundle_id: Option<&'a str>,
-    path: &'a Path,
-    running_pids: &'a [Pid],
-}
-
-#[derive(Serialize)]
-struct ListResponse<'a> {
-    discovery: &'static str,
-    applications: Vec<ListedApplication<'a>>,
-}
-
-#[derive(Serialize)]
-struct InspectResponse<'a> {
-    application: &'a Application,
-}
-
-#[derive(Serialize)]
-struct LaunchResponse<'a> {
-    path: &'a Path,
-    pid: Pid,
-}
-
 /// Runs one `recon app` command and returns its result as JSON.
-pub fn investigate(request: &AppRequest) -> Result<String, String> {
+pub fn investigate(request: &AppRequest) -> Result<String, Failure> {
     match request {
         AppRequest::List => list(),
         AppRequest::Inspect { target } => {
@@ -49,7 +25,7 @@ pub fn investigate(request: &AppRequest) -> Result<String, String> {
     }
 }
 
-fn list() -> Result<String, String> {
+fn list() -> Result<String, Failure> {
     let applications = applications()?;
     let entries = applications
         .iter()
@@ -63,11 +39,19 @@ fn list() -> Result<String, String> {
     encode(&ListResponse { discovery: DISCOVERY, applications: entries })
 }
 
-fn launch_application(application: &Application) -> Result<String, String> {
+fn launch_application(application: &Application) -> Result<String, Failure> {
     if application.executable_path.is_none() {
-        return Err(format!(
-            "cannot launch {}: application executable is missing",
-            application.path.display()
+        return Err(Failure::new(
+            ErrorCode::LaunchFailed,
+            format!(
+                "cannot launch {}: application executable is missing",
+                application.path.display()
+            ),
+            json!({
+                "application": application.path.display().to_string(),
+                "reason": "executable-missing",
+                "detail": null,
+            }),
         ));
     }
     let pid = launch(&application.path)?;

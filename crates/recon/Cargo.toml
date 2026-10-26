@@ -12,6 +12,8 @@ build = "build.rs"
 workspace = true
 
 [dependencies]
+clap = { version = "4", features = ["string"] }
+schemars = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
@@ -53,6 +55,7 @@ objc2-foundation = { version = "0.3", features = [
     "NSError",
     "NSFileManager",
     "NSEnumerator",
+    "NSProcessInfo",
     "NSString",
     "NSURL",
 ], default-features = false }
@@ -61,9 +64,16 @@ objc2-image-io = { version = "0.3", features = [
     "objc2-core-graphics",
     "std",
 ], default-features = false }
+objc2-security = { version = "0.3", default-features = false, features = [
+    "CSCommon",
+    "SecCode",
+    "SecBase",
+    "std",
+] }
 plist = "1"
 
 [dev-dependencies]
+jsonschema = { version = "0.46", default-features = false }
 proptest = "1"
 tempfile = "3"
 

@@ -10,16 +10,17 @@ use objc2_core_graphics::{
 };
 
 use crate::application::Pid;
+use crate::error::Failure;
 use crate::ui::window::{Bounds, Window, WindowId, title_from, windows_of};
 
 /// The windows the given process owns, in the window server's front-to-back order.
-pub(super) fn windows_owned_by(pid: Pid) -> Result<Vec<Window>, String> {
+pub(super) fn windows_owned_by(pid: Pid) -> Result<Vec<Window>, Failure> {
     Ok(windows_of(windows()?, pid))
 }
 
-fn windows() -> Result<Vec<Window>, String> {
+fn windows() -> Result<Vec<Window>, Failure> {
     let listed = CGWindowListCopyWindowInfo(CGWindowListOption::OptionAll, kCGNullWindowID)
-        .ok_or_else(|| "macOS did not report its window list".to_owned())?;
+        .ok_or_else(|| Failure::internal("macOS did not report its window list"))?;
     // SAFETY: the window server describes each window with a dictionary keyed by CFString.
     let listed: CFRetained<CFArray<CFDictionary<CFString, CFType>>> =
         unsafe { CFRetained::cast_unchecked(listed) };

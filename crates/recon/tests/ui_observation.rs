@@ -14,6 +14,14 @@ use harness::{
 };
 use serde_json::Value;
 
+/// The `error` member of the one JSON object a failed command printed to standard error.
+fn reported_error(stderr: &[u8]) -> Value {
+    let diagnostic = String::from_utf8_lossy(stderr);
+    let reported: Value =
+        serde_json::from_str(diagnostic.trim_end()).expect("one JSON error object");
+    reported["error"].clone()
+}
+
 #[test]
 #[ignore = "needs target/signed/recon with Screen Recording and Accessibility granted; run vp run test:ui"]
 fn windows_reports_both_fixture_windows_with_their_window_server_facts() {
@@ -98,10 +106,10 @@ fn a_window_without_an_accessibility_element_is_reported_unreachable() {
 
     assert!(!output.status.success());
     assert!(output.stdout.is_empty());
-    assert_eq!(
-        String::from_utf8_lossy(&output.stderr),
-        format!("recon: window {id} has no accessibility element reachable by Recon\n")
-    );
+    let error = reported_error(&output.stderr);
+    assert_eq!(error["code"], "NOT_FOUND");
+    assert_eq!(error["details"]["kind"], "window-element");
+    assert_eq!(error["details"]["windowId"].as_u64().map(|id| id.to_string()), Some(id));
 }
 
 #[test]
@@ -180,8 +188,8 @@ fn a_screenshot_never_overwrites_an_existing_output_file() {
 
     assert!(!output.status.success());
     assert!(output.stdout.is_empty());
-    let diagnostic = String::from_utf8(output.stderr).expect("UTF-8 diagnostic");
-    assert!(diagnostic.starts_with("recon: "), "{diagnostic}");
-    assert!(diagnostic.to_lowercase().contains("overwrite"), "{diagnostic}");
+    let error = reported_error(&output.stderr);
+    assert_eq!(error["code"], "ALREADY_EXISTS");
+    assert_eq!(error["details"]["path"], path_argument(&out));
     assert_eq!(std::fs::read(&out).expect("read the existing file"), existing);
 }

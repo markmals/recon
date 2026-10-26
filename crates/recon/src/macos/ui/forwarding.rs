@@ -134,13 +134,15 @@ fn no_signals() -> libc::sigset_t {
     }
 }
 
-pub(super) fn wait_for(child: pid_t) -> Result<c_int, String> {
+/// Waits for the disclaimed child, reporting the reason the wait itself failed. How the child
+/// ended is the caller's business; this fails only when macOS could not say.
+pub(super) fn wait_for(child: pid_t) -> Result<c_int, io::Error> {
     let mut status: c_int = 0;
     // SAFETY: `child` is the process this one spawned, and `status` is a live local.
     while unsafe { libc::waitpid(child, &mut status, 0) } < 0 {
         let error = io::Error::last_os_error();
         if error.kind() != io::ErrorKind::Interrupted {
-            return Err(format!("cannot wait for the disclaimed recon process: {error}"));
+            return Err(error);
         }
     }
     Ok(status)

@@ -100,7 +100,44 @@ pub(crate) fn run_recon(arguments: &[&str]) -> Output {
         pointer,
         "recon {invocation} moved the pointer (or someone moved the mouse during the run)"
     );
+    validate_contract(arguments, &output);
     output
+}
+
+fn validate_contract(arguments: &[&str], output: &Output) {
+    let specification = Command::new(signed_recon())
+        .arg("schema")
+        .args(&arguments[..2])
+        .output()
+        .expect("read command schema");
+    assert!(specification.status.success(), "{specification:?}");
+    let specification: Value =
+        serde_json::from_slice(&specification.stdout).expect("command specification");
+    if output.status.success() {
+        assert!(output.stderr.is_empty(), "{output:?}");
+        let response: Value = serde_json::from_slice(&output.stdout).expect("success JSON");
+        let validator = jsonschema::draft202012::new(&specification["command"]["output"])
+            .expect("valid output schema");
+        let errors =
+            validator.iter_errors(&response).map(|error| error.to_string()).collect::<Vec<_>>();
+        assert!(errors.is_empty(), "{errors:?}: {response}");
+    } else {
+        assert!(output.stdout.is_empty(), "{output:?}");
+        assert_eq!(output.stderr.iter().filter(|byte| **byte == b'\n').count(), 1);
+        let envelope: Value = serde_json::from_slice(&output.stderr).expect("error JSON");
+        let index = Command::new(signed_recon()).arg("schema").output().expect("error contract");
+        let index: Value = serde_json::from_slice(&index.stdout).expect("schema index");
+        assert!(
+            jsonschema::draft202012::is_valid(&index["errors"]["schema"], &envelope),
+            "{envelope}"
+        );
+        assert!(
+            specification["command"]["errors"]
+                .as_array()
+                .expect("command codes")
+                .contains(&envelope["error"]["code"])
+        );
+    }
 }
 
 pub(crate) fn frontmost_pid() -> Option<u32> {
