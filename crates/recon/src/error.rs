@@ -115,7 +115,8 @@ impl Failure {
 
     pub fn internal(message: impl Into<String>) -> Self {
         let message = message.into();
-        Self::new(ErrorCode::Internal, &message, json!({"detail":message}))
+        let details = json!({"detail":message});
+        Self::new(ErrorCode::Internal, message, details)
     }
 
     pub fn with_command(mut self, command: &[&str]) -> Self {

@@ -27,7 +27,10 @@ fn run() -> Result<String, Failure> {
     let response = match request {
         Request::App(request) => investigate(&request),
         Request::Ui(request) => observe(&request),
-        Request::Help(text) | Request::Version(text) => Ok(text.trim_end_matches('\n').to_owned()),
+        Request::Help(mut text) | Request::Version(mut text) => {
+            text.truncate(text.trim_end_matches('\n').len());
+            Ok(text)
+        }
         Request::Schema(path) => recon::cli::schema::describe(&path).and_then(|response| {
             serde_json::to_string(&response)
                 .map_err(|error| Failure::internal(format!("cannot encode response: {error}")))
