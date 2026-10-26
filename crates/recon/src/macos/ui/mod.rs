@@ -14,11 +14,10 @@ mod window_server;
 use std::env;
 use std::path::{Path, PathBuf};
 
-use serde::Serialize;
-
 use accessibility::{Accessibility, Element};
 
-use crate::application::Application;
+use super::encode;
+use crate::application::{Application, Pid};
 use crate::ui::instance::select_instance;
 use crate::ui::output::{prepare_output, write_new};
 use crate::ui::permission::Permission;
@@ -28,7 +27,7 @@ use crate::ui::response::{
     WindowsResponse,
 };
 use crate::ui::tree::read_tree;
-use crate::ui::window::{Window, select_window};
+use crate::ui::window::{Window, WindowId, select_window};
 
 /// Runs one `recon ui` command and returns its result as JSON.
 ///
@@ -52,10 +51,10 @@ fn windows(selection: &Selection) -> Result<String, String> {
     })
 }
 
-fn tree(selection: &Selection, window: Option<u32>) -> Result<String, String> {
+fn tree(selection: &Selection, window: Option<WindowId>) -> Result<String, String> {
     with_instance(selection, |application, pid| {
         if let Some(id) = window {
-            select_window(&window_server::windows_owned_by(pid)?, id, pid)?;
+            select_window(window_server::windows_owned_by(pid)?, id, pid)?;
         }
         permissions::require(&[Permission::Accessibility])?;
 
@@ -76,13 +75,16 @@ fn tree(selection: &Selection, window: Option<u32>) -> Result<String, String> {
     })
 }
 
-fn screenshot(selection: &Selection, window: Option<u32>, out: &Path) -> Result<String, String> {
+fn screenshot(
+    selection: &Selection,
+    window: Option<WindowId>,
+    out: &Path,
+) -> Result<String, String> {
     with_instance(selection, |application, pid| {
         let out = prepare_output(out, &current_directory()?)?;
         let window = match window {
             Some(id) => {
-                let windows = window_server::windows_owned_by(pid)?;
-                let window = select_window(&windows, id, pid)?.clone();
+                let window = select_window(window_server::windows_owned_by(pid)?, id, pid)?;
                 permissions::require(&[Permission::ScreenRecording])?;
                 window
             }
@@ -115,7 +117,7 @@ fn screenshot(selection: &Selection, window: Option<u32>, out: &Path) -> Result<
 }
 
 /// The window the application itself reports as its main one, as the window server lists it.
-fn main_window(application: &Application, pid: u32) -> Result<Window, String> {
+fn main_window(application: &Application, pid: Pid) -> Result<Window, String> {
     accessibility::bound_messaging();
     let application_element = accessibility::application_element(pid)?;
     let id = window_element::main_window_id(&application_element, pid)?.ok_or_else(|| {
@@ -124,13 +126,12 @@ fn main_window(application: &Application, pid: u32) -> Result<Window, String> {
             application.path.display()
         )
     })?;
-    let windows = window_server::windows_owned_by(pid)?;
-    Ok(select_window(&windows, id, pid)?.clone())
+    select_window(window_server::windows_owned_by(pid)?, id, pid)
 }
 
 fn with_instance<T>(
     selection: &Selection,
-    observe_instance: impl FnOnce(&Application, u32) -> Result<T, String>,
+    observe_instance: impl FnOnce(&Application, Pid) -> Result<T, String>,
 ) -> Result<T, String> {
     super::with_target(&selection.target, |application| {
         let pid = select_instance(&application.path, &application.running_pids, selection.pid)?;
@@ -138,14 +139,10 @@ fn with_instance<T>(
     })
 }
 
-fn observed(application: &Application, pid: u32) -> ObservedApplication<'_> {
+fn observed(application: &Application, pid: Pid) -> ObservedApplication<'_> {
     ObservedApplication { path: &application.path, pid }
 }
 
 fn current_directory() -> Result<PathBuf, String> {
     env::current_dir().map_err(|error| format!("cannot read the current directory: {error}"))
-}
-
-fn encode(response: &impl Serialize) -> Result<String, String> {
-    serde_json::to_string(response).map_err(|error| format!("cannot encode response: {error}"))
 }

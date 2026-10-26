@@ -5,7 +5,7 @@
 
 use std::process::{Command, Output};
 
-use recon::ui::request::USAGE;
+use recon::request::USAGE;
 
 fn recon(arguments: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_recon")).args(arguments).output().expect("start recon")

@@ -389,7 +389,7 @@ vp check             # format check, lint, and type-check
 vp run validate      # artifact frontmatter, IDs, and cross-references
 vp run test          # the record tooling tests
 vp run docs:build    # the documentation site builds
-vp run rust          # rejects unregistered crates; checks registered crates with fmt, clippy, tests
+vp run rust          # rejects unregistered crates; checks registered crates with fmt, clippy, tests, rustdoc
 ```
 
 Run project-specific gates (unit, integration, end-to-end) as they exist. `vp run` with no task lists everything available.

@@ -23,7 +23,7 @@ type SetDisclaim = unsafe extern "C" fn(*mut posix_spawnattr_t, c_int) -> c_int;
 /// Makes `recon` responsible for its own privacy requests, re-executing it once if it is not.
 ///
 /// When a re-execution happens this never returns: the parent exits with the child's status.
-pub fn take_responsibility() -> Result<(), String> {
+pub(super) fn take_responsibility() -> Result<(), String> {
     let marker = env::var_os(MARKER);
     // SAFETY: reading this process's parent cannot fail.
     let parent = unsafe { libc::getppid() };
@@ -52,17 +52,21 @@ fn relaunched_by(marker: Option<&str>, parent: pid_t) -> bool {
 }
 
 fn responsible_for_self() -> Result<bool, String> {
+    // SAFETY: `ResponsibleForPid` is the signature of the responsibility lookup.
     let responsible_for: ResponsibleForPid =
-        private::function(c"responsibility_get_pid_responsible_for_pid")
+        unsafe { private::function(c"responsibility_get_pid_responsible_for_pid") }
             .ok_or_else(|| unavailable("responsibility_get_pid_responsible_for_pid"))?;
-    // SAFETY: the lookup reports the process macOS holds responsible for the given one.
+    // SAFETY: reading this process's own ID cannot fail.
     let own = unsafe { libc::getpid() };
+    // SAFETY: the lookup takes any process ID and reports the process macOS holds responsible.
     Ok(unsafe { responsible_for(own) } == own)
 }
 
 fn relaunch_disclaimed() -> Result<(), String> {
-    let set_disclaim: SetDisclaim = private::function(c"responsibility_spawnattrs_setdisclaim")
-        .ok_or_else(|| unavailable("responsibility_spawnattrs_setdisclaim"))?;
+    // SAFETY: `SetDisclaim` is the signature of the disclaim spawn-attribute setter.
+    let set_disclaim: SetDisclaim =
+        unsafe { private::function(c"responsibility_spawnattrs_setdisclaim") }
+            .ok_or_else(|| unavailable("responsibility_spawnattrs_setdisclaim"))?;
     let executable = env::current_exe()
         .map_err(|error| format!("cannot find the running recon executable: {error}"))?;
 

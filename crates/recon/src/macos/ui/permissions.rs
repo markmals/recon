@@ -11,7 +11,7 @@ use objc2_application_services::{
 use objc2_core_foundation::{CFBoolean, CFDictionary, CFType};
 use objc2_core_graphics::{CGPreflightScreenCaptureAccess, CGRequestScreenCaptureAccess};
 
-use crate::ui::permission::{Permission, missing_permissions_message};
+use crate::ui::permission::{Permission, Signature, missing_permissions_message};
 
 /// Reports the code-signing status of a process; see `cs_blobs.h` in the kernel sources.
 const CS_OPS_STATUS: u32 = 0;
@@ -25,7 +25,7 @@ unsafe extern "C" {
 ///
 /// Checking never prompts; requesting may, and macOS stays silent when the user denied the
 /// permission earlier. Either way a missing permission is reported rather than worked around.
-pub fn require(needed: &[Permission]) -> Result<(), String> {
+pub(super) fn require(needed: &[Permission]) -> Result<(), String> {
     let missing: Vec<Permission> =
         needed.iter().copied().filter(|permission| !granted(*permission)).collect();
     if missing.is_empty() {
@@ -35,7 +35,7 @@ pub fn require(needed: &[Permission]) -> Result<(), String> {
     for permission in &missing {
         request(*permission);
     }
-    Err(missing_permissions_message(&missing, &executable()?, ad_hoc_signed()))
+    Err(missing_permissions_message(&missing, &executable()?, signature()))
 }
 
 fn granted(permission: Permission) -> bool {
@@ -69,10 +69,10 @@ fn executable() -> Result<PathBuf, String> {
 
 /// An ad-hoc signature's designated requirement is the code hash itself, so macOS forgets a grant
 /// as soon as the executable is rebuilt. The error says so rather than leaving it a mystery.
-fn ad_hoc_signed() -> bool {
+fn signature() -> Signature {
     let mut flags: u32 = 0;
     let size = size_of_val(&flags);
     // SAFETY: `csops` writes `size` bytes of status flags for the given process.
     let status = unsafe { csops(libc::getpid(), CS_OPS_STATUS, (&raw mut flags).cast(), size) };
-    status == 0 && flags & CS_ADHOC != 0
+    if status == 0 && flags & CS_ADHOC != 0 { Signature::AdHoc } else { Signature::Stable }
 }

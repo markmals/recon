@@ -1,3 +1,5 @@
+//! What `NSWorkspace` knows: which applications are running, and how to launch one.
+
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 
@@ -5,12 +7,15 @@ use block2::RcBlock;
 use objc2_app_kit::{NSRunningApplication, NSWorkspace, NSWorkspaceOpenConfiguration};
 use objc2_foundation::{NSError, NSString, NSURL};
 
-pub fn running_applications() -> Vec<(PathBuf, u32)> {
+use crate::application::Pid;
+
+/// The bundle path and process ID of every running application that has an identifiable bundle.
+pub(super) fn running_applications() -> Vec<(PathBuf, Pid)> {
     NSWorkspace::sharedWorkspace()
         .runningApplications()
         .iter()
         .filter_map(|running| {
-            let pid = u32::try_from(running.processIdentifier()).ok()?;
+            let pid = Pid(u32::try_from(running.processIdentifier()).ok()?);
             let path = PathBuf::from(running.bundleURL()?.path()?.to_string());
             let path = path.canonicalize().ok()?;
             Some((path, pid))
@@ -18,7 +23,9 @@ pub fn running_applications() -> Vec<(PathBuf, u32)> {
         .collect()
 }
 
-pub fn launch(path: &Path) -> Result<u32, String> {
+/// Opens and activates the application at exactly `path`, reusing an instance already running
+/// from that path and never substituting a running copy from another location.
+pub(super) fn launch(path: &Path) -> Result<Pid, String> {
     let path_string = path
         .to_str()
         .ok_or_else(|| format!("application path is not UTF-8: {}", path.display()))?;
@@ -31,16 +38,20 @@ pub fn launch(path: &Path) -> Result<u32, String> {
     let (sender, receiver) = mpsc::sync_channel(1);
     let completion =
         RcBlock::new(move |running: *mut NSRunningApplication, error: *mut NSError| {
+            // SAFETY: AppKit passes each argument as null or as an object that stays valid for
+            // the duration of the completion handler.
             let response = unsafe {
                 if let Some(error) = error.as_ref() {
                     Err(error.localizedDescription().to_string())
                 } else if let Some(running) = running.as_ref() {
                     u32::try_from(running.processIdentifier())
+                        .map(Pid)
                         .map_err(|_| "macOS opened an application without a process ID".to_owned())
                 } else {
                     Err("macOS did not open the application".to_owned())
                 }
             };
+            // The receiver is gone only after `launch` has returned, when no one is left to tell.
             let _ = sender.send(response);
         });
     NSWorkspace::sharedWorkspace().openApplicationAtURL_configuration_completionHandler(

@@ -1,3 +1,6 @@
+//! Reading an accessibility tree depth first within Recon's limits, independently of where the
+//! elements come from.
+
 use std::collections::HashMap;
 use std::hash::Hash;
 
@@ -13,6 +16,7 @@ pub const MAX_NODES: usize = 25_000;
 /// A longer text value is cut to this many Unicode scalar values.
 pub const MAX_VALUE_SCALARS: usize = 4_096;
 
+/// An attribute value Recon reports, keeping the JSON type the application gave it.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum AttributeValue {
@@ -22,10 +26,15 @@ pub enum AttributeValue {
     Boolean(bool),
 }
 
+/// Why one element could not be read. The tree records the failure in the element's place and
+/// keeps going around it.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ReadFailure {
+    /// The element no longer exists.
     Unavailable,
+    /// The application did not answer within the messaging timeout, which also ends the read.
     Timeout,
+    /// Any other failure, carrying the `AXError` code the application returned.
     Failed(i32),
 }
 
@@ -48,6 +57,7 @@ pub struct ElementAttributes<E> {
     pub unreadable_children: bool,
 }
 
+// Not derived: deriving would require `E: Default`, which an accessibility element is not.
 impl<E> Default for ElementAttributes<E> {
     fn default() -> Self {
         Self {
@@ -71,12 +81,14 @@ impl<E> Default for ElementAttributes<E> {
 pub trait ElementSource {
     type Element: Clone + Eq + Hash;
 
+    /// Reads one element's attributes and the children it lists.
     fn read(
         &mut self,
         element: &Self::Element,
     ) -> Result<ElementAttributes<Self::Element>, ReadFailure>;
 }
 
+/// One element of a tree result.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ElementNode {
@@ -85,6 +97,7 @@ pub struct ElementNode {
     pub title: Option<String>,
     pub description: Option<String>,
     pub value: Option<AttributeValue>,
+    /// Set when `value` was cut to [`MAX_VALUE_SCALARS`].
     #[serde(skip_serializing_if = "is_unset")]
     pub value_truncated: bool,
     pub identifier: Option<String>,
@@ -93,20 +106,24 @@ pub struct ElementNode {
     pub frame: Option<Bounds>,
     pub actions: Vec<String>,
     pub children: Vec<Node>,
+    /// Set when `children` is incomplete: a limit or a timeout left some unread, or the element
+    /// listed a child that could not be read.
     #[serde(skip_serializing_if = "is_unset")]
     pub children_omitted: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Node {
+    /// An element read for this result.
     Element(Box<ElementNode>),
     /// An element already emitted in this result, carrying the role it reported then.
-    Repeated {
-        role: Option<String>,
-    },
+    Repeated { role: Option<String> },
+    /// An element that could not be read.
     Failed(ReadFailure),
 }
 
+/// The result of [`read_tree`]. It is `truncated` when a timeout ended the read or any element's
+/// children are incomplete.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Tree {
     pub truncated: bool,

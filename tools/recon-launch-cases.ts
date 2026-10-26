@@ -2,10 +2,9 @@ import { spawnSync } from "node:child_process";
 import { cpSync, mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { expect, onTestFinished, test } from "vite-plus/test";
 
-let manifest = fileURLToPath(new URL("../crates/recon/Cargo.toml", import.meta.url));
+import { recon } from "./recon-cli.ts";
 
 export function registerLaunchTests(): void {
     test.skipIf(process.platform !== "darwin")(
@@ -19,11 +18,7 @@ export function registerLaunchTests(): void {
                 path.join(bundle, "Contents", "Info.plist"),
                 '<?xml version="1.0"?><plist version="1.0"><dict><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleExecutable</key><string>missing</string></dict></plist>',
             );
-            let launch = spawnSync(
-                "cargo",
-                ["run", "--quiet", "--manifest-path", manifest, "--", "app", "launch", bundle],
-                { encoding: "utf8", timeout: 20_000 },
-            );
+            let launch = recon(["app", "launch", bundle], { timeout: 20_000 });
             expect(launch.status).not.toBe(0);
             expect(launch.stdout).toBe("");
             expect(launch.stderr).toContain("recon:");
@@ -72,35 +67,19 @@ export function registerLaunchTests(): void {
             );
             expect(compiled.status, compiled.stderr).toBe(0);
 
-            let first = spawnSync(
-                "cargo",
-                ["run", "--quiet", "--manifest-path", manifest, "--", "app", "launch", bundle],
-                { encoding: "utf8", timeout: 20_000 },
-            );
+            let first = recon(["app", "launch", bundle], { timeout: 20_000 });
             expect(first.status, first.stderr).toBe(0);
             let opened = JSON.parse(first.stdout);
             pid = opened.pid;
             expect(opened.path).toBe(realpathSync(bundle));
             expect(pid).toBeGreaterThan(0);
-            let second = spawnSync(
-                "cargo",
-                ["run", "--quiet", "--manifest-path", manifest, "--", "app", "launch", bundle],
-                { encoding: "utf8", timeout: 20_000 },
-            );
+            let second = recon(["app", "launch", bundle], { timeout: 20_000 });
             expect(second.status, second.stderr).toBe(0);
             expect(JSON.parse(second.stdout)).toEqual(opened);
-            let inspection = spawnSync(
-                "cargo",
-                ["run", "--quiet", "--manifest-path", manifest, "--", "app", "inspect", bundle],
-                { encoding: "utf8" },
-            );
+            let inspection = recon(["app", "inspect", bundle]);
             expect(inspection.status, inspection.stderr).toBe(0);
             expect(JSON.parse(inspection.stdout).application.runningPids).toContain(pid);
-            let listing = spawnSync(
-                "cargo",
-                ["run", "--quiet", "--manifest-path", manifest, "--", "app", "list"],
-                { encoding: "utf8" },
-            );
+            let listing = recon(["app", "list"]);
             expect(listing.status, listing.stderr).toBe(0);
             let listed = JSON.parse(listing.stdout).applications.find(
                 (app: { path: string }) => app.path === realpathSync(bundle),
@@ -113,11 +92,7 @@ export function registerLaunchTests(): void {
             });
             let copy = path.join(root, "Other Copy.app");
             cpSync(bundle, copy, { recursive: true });
-            let another = spawnSync(
-                "cargo",
-                ["run", "--quiet", "--manifest-path", manifest, "--", "app", "launch", copy],
-                { encoding: "utf8", timeout: 20_000 },
-            );
+            let another = recon(["app", "launch", copy], { timeout: 20_000 });
             if (another.status === 0) {
                 let selected = JSON.parse(another.stdout);
                 copyPid = selected.pid;
@@ -127,11 +102,7 @@ export function registerLaunchTests(): void {
                 expect(another.stdout).toBe("");
                 expect(another.stderr).toContain("Other Copy.app");
             }
-            let original = spawnSync(
-                "cargo",
-                ["run", "--quiet", "--manifest-path", manifest, "--", "app", "inspect", bundle],
-                { encoding: "utf8" },
-            );
+            let original = recon(["app", "inspect", bundle]);
             expect(original.status, original.stderr).toBe(0);
             expect(JSON.parse(original.stdout).application.runningPids).toContain(pid);
         },
