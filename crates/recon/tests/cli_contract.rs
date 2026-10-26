@@ -212,3 +212,11 @@ fn proposal0003_help_precedes_even_non_utf8_argument_validation() {
     assert!(output.stderr.is_empty());
     assert_eq!(output.stdout, success(&["ui", "tree", "--help"]));
 }
+
+#[test]
+fn proposal0003_help_word_inside_an_invalid_path_is_the_offending_operation() {
+    let error = invalid(&["app", "help", "list"]);
+    assert!(error["command"].is_null());
+    assert_eq!(error["details"]["value"], "help");
+    assert_eq!(error["details"]["accepted"], json!(["list", "inspect", "launch"]));
+}

@@ -23,14 +23,14 @@ pub fn help_requested(arguments: &[impl AsRef<OsStr>]) -> bool {
 pub fn parse(arguments: &[String]) -> Result<Request, Failure> {
     let registry = registry::registry();
     let help_requested = help_requested(arguments);
-    let words = arguments
+    let mut words = arguments
         .iter()
+        .skip(usize::from(arguments.first().is_some_and(|word| word == "help")))
         .map(String::as_str)
-        .filter(|word| !matches!(*word, "help" | "--help" | "-h"))
-        .collect::<Vec<_>>();
-    let path = resolved_path(&words, &registry);
+        .filter(|word| !matches!(*word, "--help" | "-h"));
+    let path = resolved_path([words.next(), words.next()], &registry);
     if help_requested {
-        return Ok(Request::Help(help::render(&registry, &path)));
+        return Ok(Request::Help(help::render(&registry, path)));
     }
     if arguments == ["--version"] {
         return Ok(Request::Version(version()));
@@ -38,7 +38,7 @@ pub fn parse(arguments: &[String]) -> Result<Request, Failure> {
     let entry = registry.iter().find(|entry| entry.path == path);
     let matches = registry::parser(&registry)
         .try_get_matches_from(std::iter::once("recon").chain(arguments.iter().map(String::as_str)))
-        .map_err(|error| parse_error::convert(error, arguments, entry, &path, &registry))?;
+        .map_err(|error| parse_error::convert(error, arguments, entry, path, &registry))?;
     let (group, group_matches) = matches.subcommand().expect("nonempty validated command");
     if group == "context" {
         return Ok(Request::Context);
@@ -78,15 +78,19 @@ pub fn parse(arguments: &[String]) -> Result<Request, Failure> {
     }))
 }
 
-fn resolved_path<'a>(words: &[&str], registry: &'a [registry::CommandSpec]) -> Vec<&'a str> {
-    if let Some(entry) = registry.iter().find(|entry| words.starts_with(entry.path)) {
-        return entry.path.to_vec();
+fn resolved_path(
+    words: [Option<&str>; 2],
+    registry: &[registry::CommandSpec],
+) -> &'static [&'static str] {
+    if let Some(entry) = registry.iter().find(|entry| {
+        words.iter().take(entry.path.len()).copied().flatten().eq(entry.path.iter().copied())
+    }) {
+        return entry.path;
     }
-    match words.first() {
-        Some(&"app") => vec!["app"],
-        Some(&"ui") => vec!["ui"],
-        _ => Vec::new(),
-    }
+    registry
+        .iter()
+        .find(|entry| entry.path.len() > 1 && entry.path.first().copied() == words[0])
+        .map_or(&[], |entry| &entry.path[..1])
 }
 
 pub fn version() -> String {

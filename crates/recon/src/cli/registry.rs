@@ -26,7 +26,7 @@ impl CommandSpec {
         base(self.path.last().expect("command path"))
             .about(self.summary)
             .long_about(self.description)
-            .args(self.arguments.clone())
+            .args(self.arguments.iter().cloned())
     }
 }
 
@@ -41,15 +41,17 @@ pub fn base(name: &'static str) -> Command {
 
 pub fn parser(registry: &[CommandSpec]) -> Command {
     let mut root = base("recon").subcommand_required(true);
-    for group in ["app", "ui"] {
-        let mut command = base(group).subcommand_required(true);
-        for specification in registry.iter().filter(|entry| entry.path[0] == group) {
-            command = command.subcommand(specification.parser());
+    for specification in registry {
+        let group = specification.path[0];
+        if specification.path.len() == 1 {
+            root = root.subcommand(specification.parser());
+        } else if root.find_subcommand(group).is_some() {
+            root = root.mut_subcommand(group, |command| command.subcommand(specification.parser()));
+        } else {
+            root = root.subcommand(
+                base(group).subcommand_required(true).subcommand(specification.parser()),
+            );
         }
-        root = root.subcommand(command);
-    }
-    for specification in registry.iter().filter(|entry| entry.path.len() == 1) {
-        root = root.subcommand(specification.parser());
     }
     root
 }
