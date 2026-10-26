@@ -1,1 +1,0 @@
-import{t as e}from"./framework.DnzEF-oq.js";var t={root:()=>e(()=>import(`./@localSearchIndexroot.D6EE-4Za.js`),[])};export{t as default};
