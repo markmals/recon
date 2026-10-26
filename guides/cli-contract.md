@@ -18,7 +18,7 @@ Run `recon --version` for the crate version and, when available at build time, t
 
 The version suffix and `context.recon.commit` report the checkout's `HEAD` baseline when the Git root matches this workspace and the committed `crates/recon/Cargo.toml` names package `recon`. Missing, malformed, or nonmatching metadata is omitted. Dirty dependency/version edits and linked worktrees keep that baseline. A same-name archive overlaid on another checkout can also qualify: this name-based check cannot attest to source origin or byte-for-byte correspondence. No remote or history allowlist is consulted.
 
-The next build refreshes metadata when `HEAD` moves, including a transition from unavailable to eligible metadata.
+The next build refreshes metadata when `HEAD` moves or a source archive becomes a checkout. Changes to a linked or separate checkout's `.git` locator are also observed.
 
 `recon schema` returns the command index in stable order, with effects, supported hosts, and the complete error contract. `recon schema <command>` returns that command's arguments, options, constraints, defaults, effects, permissions, supported hosts, output JSON Schema, and possible error codes. `recon schema schema` and `recon schema context` describe the discovery commands themselves. An unknown schema path is an `INVALID_ARGUMENT` error listing accepted paths.
 

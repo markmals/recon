@@ -1,24 +1,10 @@
 use std::fs;
 use std::io::{self, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 pub(crate) fn directives(package: &Path, sink: &mut impl Write) -> io::Result<()> {
-    if !has_matching_workspace_root(package) {
-        return Ok(());
-    }
-    // HEAD can become eligible without changing any source file.
-    for name in ["HEAD", "packed-refs"] {
-        if let Some(path) = git(package, &["rev-parse", "--git-path", name]) {
-            writeln!(sink, "cargo::rerun-if-changed={path}")?;
-        }
-    }
-    if let Some(reference) = git(package, &["symbolic-ref", "-q", "HEAD"])
-        && let Some(path) = git(package, &["rev-parse", "--git-path", &reference])
-    {
-        writeln!(sink, "cargo::rerun-if-changed={path}")?;
-    }
-    if !head_names_package(package) {
+    if !watch_checkout(package, sink)? || !head_names_package(package) {
         return Ok(());
     }
     for (variable, arguments) in [
@@ -31,6 +17,30 @@ pub(crate) fn directives(package: &Path, sink: &mut impl Write) -> io::Result<()
         }
     }
     Ok(())
+}
+
+fn watch_checkout(package: &Path, sink: &mut impl Write) -> io::Result<bool> {
+    let matching_root = has_matching_workspace_root(package);
+    let git_entry = package.join("../../.git");
+    // A missing locator detects git init; a locator file detects a worktree being redirected.
+    if !git_entry.is_dir() {
+        writeln!(sink, "cargo::rerun-if-changed={}", git_entry.display())?;
+    }
+    if !matching_root {
+        return Ok(false);
+    }
+    // Existing ref stores cover loose, packed, and reftable updates without missing-path rebuilds.
+    for name in ["HEAD", "packed-refs", "refs", "reftable"] {
+        let Some(path) = git(package, &["rev-parse", "--git-path", name]) else {
+            continue;
+        };
+        let path = PathBuf::from(path);
+        let path = if path.is_absolute() { path } else { package.join(path) };
+        if path.exists() {
+            writeln!(sink, "cargo::rerun-if-changed={}", path.display())?;
+        }
+    }
+    Ok(true)
 }
 
 fn has_matching_workspace_root(package: &Path) -> bool {
