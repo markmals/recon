@@ -3,8 +3,8 @@ use std::mem::{size_of, transmute_copy};
 
 /// Resolves a private macOS function at runtime.
 ///
-/// Recon links nothing private, so an interface that a macOS update removes becomes a reported
-/// unavailable capability instead of a process that cannot start.
+/// Recon links nothing private, so removed symbols are handled at runtime rather than
+/// preventing startup.
 ///
 /// # Safety
 ///

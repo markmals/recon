@@ -10,6 +10,7 @@ mod forwarding;
 mod permissions;
 mod private;
 mod responsibility;
+mod signing;
 mod window_element;
 mod window_server;
 

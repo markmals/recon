@@ -21,16 +21,61 @@ impl OutputPipes {
         Ok(Self { stdout, stderr, actions })
     }
 
+    /// Starts both readers while this process is still the only holder of the write ends. A
+    /// reader that cannot start therefore fails with no child to leave running, and with nothing
+    /// to release but this process's own descriptors and the reader that did start.
+    pub(super) fn readers(self) -> io::Result<Readers> {
+        let Self { stdout, stderr, actions } = self;
+        let writers = Writers { _stdout: stdout.write, _stderr: stderr.write, actions };
+        let first = reader(stdout.read)?;
+        match reader(stderr.read) {
+            Ok(second) => Ok(Readers { writers, stdout: first, stderr: second }),
+            Err(error) => {
+                // With no child, this process holds the only write ends, so closing them is what
+                // ends the reader that did start and joining it cannot block.
+                drop(writers);
+                let _ = first.join();
+                Err(error)
+            }
+        }
+    }
+}
+
+/// This process's copies of the write ends, with the file actions that give them to the child.
+/// Both outlive the spawn that hands them over, and are closed immediately afterwards.
+struct Writers {
+    _stdout: OwnedFd,
+    _stderr: OwnedFd,
+    actions: FileActions,
+}
+
+/// Both child output readers, draining concurrently from before the child exists until its
+/// streams close.
+pub(super) struct Readers {
+    writers: Writers,
+    stdout: JoinHandle<io::Result<Vec<u8>>>,
+    stderr: JoinHandle<io::Result<Vec<u8>>>,
+}
+
+impl Readers {
     pub(super) fn actions(&self) -> &libc::posix_spawn_file_actions_t {
-        &self.actions.0
+        &self.writers.actions.0
     }
 
-    pub(super) fn drain(self) -> io::Result<Draining> {
-        let Self { stdout, stderr, actions } = self;
-        drop(actions);
-        drop(stdout.write);
-        drop(stderr.write);
-        Ok(Draining { stdout: drain(stdout.read)?, stderr: drain(stderr.read)? })
+    /// The child owns the write ends now, so closing this process's copies is what lets each
+    /// reader see end of file once the child's streams close.
+    pub(super) fn drain(self) -> Draining {
+        let Self { writers, stdout, stderr } = self;
+        drop(writers);
+        Draining { stdout, stderr }
+    }
+
+    /// Ends both readers when no child took the write ends. There is nothing left to collect.
+    pub(super) fn release(self) {
+        let Self { writers, stdout, stderr } = self;
+        drop(writers);
+        let _ = stdout.join();
+        let _ = stderr.join();
     }
 }
 
@@ -107,7 +152,8 @@ fn checked(status: c_int) -> io::Result<()> {
     if status == 0 { Ok(()) } else { Err(io::Error::from_raw_os_error(status)) }
 }
 
-fn drain(descriptor: OwnedFd) -> io::Result<JoinHandle<io::Result<Vec<u8>>>> {
+/// Starts one reader on one pipe, which reads until the last write end is closed.
+fn reader(descriptor: OwnedFd) -> io::Result<JoinHandle<io::Result<Vec<u8>>>> {
     thread::Builder::new().spawn(move || {
         let mut bytes = Vec::new();
         File::from(descriptor).read_to_end(&mut bytes)?;
@@ -135,13 +181,24 @@ pub(super) struct Captured {
     stderr: Vec<u8>,
 }
 
+pub(super) enum ForwardFailure {
+    Stdout(io::Error),
+    Stderr,
+}
 impl Captured {
-    pub(super) fn forward(self) -> io::Result<()> {
-        let mut stdout = io::stdout().lock();
-        stdout.write_all(&self.stdout)?;
-        stdout.flush()?;
+    pub(super) fn forward(self) -> Result<(), ForwardFailure> {
+        if !self.stdout.is_empty() {
+            let mut stdout = crate::output::stdout().map_err(ForwardFailure::Stdout)?;
+            stdout.write_all(&self.stdout).map_err(ForwardFailure::Stdout)?;
+            stdout.flush().map_err(ForwardFailure::Stdout)?;
+        }
+        if self.stderr.is_empty() {
+            return Ok(());
+        }
         let mut stderr = io::stderr().lock();
-        stderr.write_all(&self.stderr)?;
-        stderr.flush()
+        stderr
+            .write_all(&self.stderr)
+            .and_then(|()| stderr.flush())
+            .map_err(|_| ForwardFailure::Stderr)
     }
 }

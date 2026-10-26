@@ -4,15 +4,21 @@
 
 use std::env;
 use std::fs;
+use std::io;
 use std::path::PathBuf;
-use std::process::Command;
+
+#[path = "build/revision.rs"]
+mod revision;
 
 const BUNDLE_IDENTIFIER: &str = "me.malstrom.recon";
 const BUNDLE_NAME: &str = "recon";
 
 fn main() {
     println!("cargo::rerun-if-changed=build.rs");
-    build_revision();
+    println!("cargo::rerun-if-changed=build/revision.rs");
+    let package =
+        PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").expect("cargo sets CARGO_MANIFEST_DIR"));
+    revision::directives(&package, &mut io::stdout().lock()).expect("write the build revision");
     if env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("macos") {
         return;
     }
@@ -46,35 +52,4 @@ fn info_plist(version: &str) -> String {
 </plist>
 "#
     )
-}
-
-fn git(arguments: &[&str]) -> Option<String> {
-    let output = Command::new("git").args(arguments).output().ok()?;
-    output
-        .status
-        .success()
-        .then(|| String::from_utf8(output.stdout).ok())?
-        .map(|text| text.trim().to_owned())
-}
-
-fn build_revision() {
-    for name in ["HEAD", "packed-refs"] {
-        if let Some(path) = git(&["rev-parse", "--git-path", name]) {
-            println!("cargo::rerun-if-changed={path}");
-        }
-    }
-    if let Some(reference) = git(&["symbolic-ref", "-q", "HEAD"])
-        && let Some(path) = git(&["rev-parse", "--git-path", &reference])
-    {
-        println!("cargo::rerun-if-changed={path}");
-    }
-    for (variable, arguments) in [
-        ("RECON_COMMIT", vec!["rev-parse", "HEAD"]),
-        ("RECON_COMMIT_SHORT", vec!["rev-parse", "--short", "HEAD"]),
-        ("RECON_COMMIT_DATE", vec!["log", "-1", "--format=%as"]),
-    ] {
-        if let Some(value) = git(&arguments) {
-            println!("cargo::rustc-env={variable}={value}");
-        }
-    }
 }

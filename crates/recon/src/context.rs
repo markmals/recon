@@ -61,17 +61,17 @@ pub struct MacosFacts {
     pub responsibility: ResponsibilityFacts,
     /// One entry per permission Recon can need, in a fixed order.
     pub permissions: Vec<PermissionState>,
-    /// One entry per private interface Recon depends on, in a fixed order.
+    /// One entry per private interface in a fixed order. The required code-signing-query
+    /// must be available; other absent symbols remain reportable context facts.
     pub interfaces: Vec<InterfaceState>,
     pub application_discovery: ApplicationDiscovery,
 }
 
-/// How the running executable is signed, which decides whether a grant survives a rebuild.
+/// Running-process signing facts, bound to its kernel hash without a validity or trust check.
 #[derive(Clone, Debug, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CodeSigningFacts {
-    /// Whether the signature carries an identifier, which it does when the code is signed and
-    /// never when it is not.
+    /// Whether the kernel reports a signature, even if that signature is invalid or untrusted.
     pub signed: bool,
     /// The code-signing identifier, or null when the code is unsigned.
     pub identifier: Option<String>,
@@ -157,7 +157,9 @@ pub fn report() -> Result<Context, Failure> {
     Ok(Context {
         recon: ReconFacts {
             version: env!("CARGO_PKG_VERSION").to_owned(),
-            commit: option_env!("RECON_COMMIT").map(str::to_owned),
+            commit: option_env!("RECON_COMMIT")
+                .filter(|commit| !commit.is_empty())
+                .map(str::to_owned),
             executable_path,
         },
         host: HostFacts {

@@ -117,7 +117,9 @@ fn resolved_path(
 pub fn version() -> String {
     let base = concat!("recon ", env!("CARGO_PKG_VERSION"));
     match (option_env!("RECON_COMMIT_SHORT"), option_env!("RECON_COMMIT_DATE")) {
-        (Some(commit), Some(date)) if !commit.is_empty() => format!("{base} ({commit} {date})"),
+        (Some(commit), Some(date)) if !commit.is_empty() && !date.is_empty() => {
+            format!("{base} ({commit} {date})")
+        }
         _ => base.to_owned(),
     }
 }

@@ -263,13 +263,15 @@ fn proposal0003_unknown_options_are_not_matched_by_value_name_text() {
 
 #[test]
 fn proposal0003_option_shaped_extra_positionals_keep_their_actual_role() {
-    for arguments in [
-        vec!["ui", "tree", "Calculator", "--", "--window"],
-        vec!["ui", "tree", "--window", "1", "Calculator", "--", "--window"],
+    for (arguments, value) in [
+        (vec!["ui", "tree", "Calculator", "--", "--window"], "--window"),
+        (vec!["ui", "tree", "--window", "1", "Calculator", "--", "--window"], "--window"),
+        (vec!["ui", "tree", "--window=9", "Notes", "--", "--window=9"], "--window=9"),
+        (vec!["ui", "tree", "--window=9", "Notes", "--", "--window"], "--window"),
     ] {
         let error = invalid(&arguments);
         assert!(error["details"]["argument"].is_null());
-        assert_eq!(error["details"]["value"], "--window");
+        assert_eq!(error["details"]["value"], value);
         assert!(error["details"]["accepted"].is_null());
     }
 }
@@ -354,4 +356,11 @@ fn proposal0003_version_recovery_explains_that_it_takes_no_other_arguments() {
     let error = invalid(&["--version", "extra"]);
     assert_eq!(error["details"]["argument"], "--version");
     assert_eq!(error["details"]["accepted"], json!([]));
+}
+
+#[test]
+fn proposal0003_unknown_attached_option_before_separator_remains_the_offending_option() {
+    let error = invalid_request(&["ui", "tree", "Notes", "--bogus=1", "--", "--bogus"]);
+    assert_eq!(error["details"]["argument"], "--bogus");
+    assert!(error["details"]["value"].is_null());
 }

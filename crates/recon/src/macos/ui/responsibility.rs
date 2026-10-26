@@ -15,6 +15,7 @@ use serde_json::json;
 use super::child_output::OutputPipes;
 use super::{forwarding, private};
 use crate::error::{ErrorCode, Failure};
+use crate::macos::ui::child_output;
 
 /// Marks the re-executed child. Its value is the process ID of the `recon` that spawned it, so a
 /// marker some other launcher set cannot make Recon believe it has already re-executed.
@@ -104,39 +105,44 @@ fn relaunch_disclaimed() -> Result<(), ResponsibilityError> {
         .map(|argument_| argument(argument_.as_os_str().as_bytes()))
         .collect::<Result<Vec<_>, _>>()?;
     let environment = disclaimed_environment()?;
-    let output = OutputPipes::new().map_err(spawn_failure)?;
+    let pipes = OutputPipes::new().map_err(spawn_failure)?;
 
-    let (child, forwarder) = {
+    let (child, forwarder, streams) = {
         // Holding the stop signals until the child exists means none is lost or mishandled.
+        // Holding them before the readers start means the readers hold them too, so a stop
+        // signal is handled by the thread that owns the child rather than by one reading a pipe.
         let held = forwarding::hold();
-        let child = spawn(
+        // A reader-start failure must not leave a child running after the command reports failure.
+        let readers = pipes.readers().map_err(drain_failure)?;
+        let child = match spawn(
             &program,
             &arguments,
             &environment,
             set_disclaim,
             held.launcher_mask(),
-            output.actions(),
-        )?;
+            readers.actions(),
+        ) {
+            Ok(child) => child,
+            Err(failure) => {
+                // Nothing took the write ends, so releasing them ends both readers.
+                readers.release();
+                return Err(failure.into());
+            }
+        };
         let forwarder = held.forward_to(child);
-        (child, forwarder)
+        (child, forwarder, readers.drain())
     };
 
-    let streams = match output.drain() {
-        Ok(streams) => streams,
-        Err(error) => {
-            forwarder.stop();
-            return Err(ResponsibilityError::AfterSpawn(Failure::internal(format!(
-                "cannot drain child output: {error}"
-            ))));
-        }
-    };
     let status = forwarding::wait_for(child);
     forwarder.stop();
     let status = status.map_err(|error| ResponsibilityError::AfterSpawn(wait_failure(error)))?;
     // On a failed wait the reader handles are dropped, not joined: an unconfirmed child may
     // still be alive. The caller emits the final failure and exits without signalling its PID.
     let captured = streams.collect().map_err(output_failure)?;
-    captured.forward().map_err(output_failure)?;
+    captured.forward().map_err(|failure| match failure {
+        child_output::ForwardFailure::Stdout(error) => output_failure(error),
+        child_output::ForwardFailure::Stderr => std::process::exit(1),
+    })?;
     forwarding::exit_like(status)
 }
 
@@ -171,6 +177,12 @@ fn spawn(
         return Err(spawn_failure(io::Error::from_raw_os_error(spawned)));
     }
     Ok(child)
+}
+
+/// A reader that cannot start is a local resource failure rather than anything macOS said about
+/// Recon's identity, and it happens before a child exists, so it stays reportable.
+fn drain_failure(error: io::Error) -> Failure {
+    Failure::internal(format!("cannot drain child output: {error}"))
 }
 
 fn output_failure(error: io::Error) -> ResponsibilityError {
