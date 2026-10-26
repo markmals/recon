@@ -181,6 +181,57 @@ fn non_finite_values_are_absent_rather_than_null_in_sparse_nodes() {
 }
 
 #[test]
+fn non_finite_frame_components_omit_only_the_atomic_frame() {
+    let schema = output_schema::<TreeResponse<'static>>();
+    let validator = jsonschema::draft202012::new(&schema).unwrap();
+    let observe = |[x, y, width, height]: [f64; 4]| {
+        encoded(&TreeResponse {
+            application: application(),
+            window_id: Some(WindowId(53510)),
+            truncated: false,
+            narrowed: false,
+            root: Node::Element(Box::new(ElementNode {
+                title: Some("Frame holder".to_owned()),
+                value: Some(AttributeValue::Boolean(false)),
+                actions: vec!["AXRaise".to_owned()],
+                frame: Some(Bounds { x, y, width, height }),
+                ..with_role("AXWindow")
+            })),
+        })
+    };
+    let mut expected = observe([1.0, 2.0, 3.0, 4.0]);
+    expected["root"].as_object_mut().unwrap().remove("frame");
+    for component in 0..4 {
+        for number in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            let mut coordinates = [1.0, 2.0, 3.0, 4.0];
+            coordinates[component] = number;
+            let observed = observe(coordinates);
+            assert_eq!(observed, expected);
+            assert!(validator.is_valid(&observed));
+        }
+    }
+}
+
+#[test]
+fn finite_frames_keep_every_component_unchanged() {
+    let schema = output_schema::<Node>();
+    let validator = jsonschema::draft202012::new(&schema).unwrap();
+    for coordinates in [
+        [0.0, -0.0, 0.0, -0.0],
+        [-1.0, 2.0, -3.0, 4.0],
+        [f64::MIN, f64::MAX, f64::MIN_POSITIVE, f64::from_bits(1)],
+    ] {
+        let [x, y, width, height] = coordinates;
+        let element = ElementNode { frame: Some(Bounds { x, y, width, height }), ..node() };
+        let observed = encoded(&Node::Element(Box::new(element)));
+        for (field, expected) in ["x", "y", "width", "height"].into_iter().zip(coordinates) {
+            assert_eq!(observed["frame"][field].as_f64().unwrap().to_bits(), expected.to_bits());
+        }
+        assert!(validator.is_valid(&observed));
+    }
+}
+
+#[test]
 fn a_repeated_node_carries_its_role_only_when_it_had_one() {
     assert_eq!(
         encoded(&Node::Repeated { role: Some("AXWindow".to_owned()) }),

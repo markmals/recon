@@ -82,6 +82,8 @@ A node reports only what the element has. `role`, `subrole`, `title`, `descripti
 
 A numeric `value` is omitted when it is NaN or infinity: neither is a JSON number, and Recon never substitutes `null`.
 
+A `frame` is atomic: if any coordinate or dimension is non-finite, the whole field is absent. Finite components are reported unchanged, without range checks, clamping, or normalization. An unavailable optional frame changes neither `narrowed` nor `truncated`.
+
 An element that answered and exposed nothing is `{}`.
 
 Two other node shapes appear in a tree:

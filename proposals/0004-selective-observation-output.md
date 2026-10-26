@@ -178,11 +178,14 @@ The marker locations above include an internal text correction settled by the pa
 ### Node shape
 
 - A node omits every field whose value would be `null` and every array that would be empty. `role`, `subrole`, `title`, `description`, `value`, `identifier`, `enabled`, `focused`, `frame`, `actions`, and `children` appear only when the element has them. An absent field means precisely what `null` and `[]` mean today: the element does not expose that attribute, exposes a value that is not a string, number, or boolean, advertises no action, or has no children.
+- A node's `frame` is one optional atomic rectangle. If any of `x`, `y`, `width`, or `height` is non-finite, the whole `frame` is omitted as unavailable. Every finite component is preserved unchanged, without positivity or range checks, clamping, or normalization. This changes no other node field, omission/truncation marker, or envelope summary, and introduces no error or output field. Global `Bounds` serialization, shared geometry helpers, and other command outputs are unchanged.
 - The boolean markers continue to appear only when true: `valueTruncated`, `childrenOmitted`, and the new `depthLimited` and `menuBarExcluded`.
 - A repeated node is `{"role": <role>, "repeated": true}`, or `{"repeated": true}` when the element had no role. A failed node is unchanged: `{"error":"element-unavailable"}`, `{"error":"timeout"}`, or `{"error":"read-failed","axError":<code>}`.
 - A node that has no attributes, no actions, and no children is `{}`. It says what it says today: the element answered, and exposed nothing.
 - The result envelope keeps every field at all times: `{"application":{"path":…,"pid":…},"windowId":<id or null>,"truncated":<bool>,"narrowed":<bool>,"root":<node>}`. The envelope appears once per result and names the observation; nodes repeat thousands of times, which is the only place where absent fields cost anything.
 - `app list`, `app inspect`, `ui windows`, and `ui screenshot` keep their current output, including their `null` fields.
+
+The atomic-frame rule records an internal implementation-contract clarification from the parent strategist on 2026-10-26. Proposal 0002 already defines one optional frame with four JSON numbers, not four independently optional coordinates; non-finite geometry cannot represent that approved type. Omitting the unavailable whole node frame restores the existing contract rather than introducing a product choice, new Mark approval, or acceptance. Proposal 0002's historical record is unchanged.
 
 ### `narrowed`
 

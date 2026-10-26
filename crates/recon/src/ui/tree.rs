@@ -159,7 +159,7 @@ pub struct ElementNode {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(with = "bool")]
     pub focused: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "is_absent_frame")]
     #[schemars(with = "Bounds")]
     pub frame: Option<Bounds>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -212,6 +212,15 @@ fn is_absent_value(value: &Option<AttributeValue>) -> bool {
     value
         .as_ref()
         .is_none_or(|value| matches!(value, AttributeValue::Real(number) if !number.is_finite()))
+}
+
+fn is_absent_frame(frame: &Option<Bounds>) -> bool {
+    frame.as_ref().is_none_or(|frame| {
+        !frame.x.is_finite()
+            || !frame.y.is_finite()
+            || !frame.width.is_finite()
+            || !frame.height.is_finite()
+    })
 }
 
 impl Serialize for Node {
