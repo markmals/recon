@@ -33,6 +33,8 @@ vp run check
 
 `vp run check` runs formatting, linting, TypeScript checks, artifact validation, tooling tests, the documentation build, and `vp run rust`. When a crate is added under `crates/`, register it in `Cargo.toml`: an unregistered crate fails the gate. Registered crates receive formatting, Clippy, test, and rustdoc checks, and Clippy and rustdoc warnings fail the gate. `vp run docs:dev` serves the project record locally; the docs preview workflow previews that record, while the `macos-preview` CI job supplies the executable.
 
+The tooling tests build `recon` once in `target/tools` and use the executable path reported by Cargo, including when `CARGO_BUILD_TARGET` or `build.target` is configured. Their build does not replace the executable used by the Rust tests.
+
 ### IntelliSense
 
 The repository's `.intellisense.jsonc` configures Rust, TypeScript/JavaScript, Vue, Swift, CSS, JSON/JSONC, YAML, TOML, Markdown, and shell language servers, including the extensionless Git hooks. Agents use the [using-intellisense skill](.agents/skills/using-intellisense/SKILL.md) for semantic queries and refactor previews.
