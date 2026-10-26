@@ -7,13 +7,17 @@ use plist::Value;
 
 use crate::application::Application;
 
-/// Describes the application bundle at `path`, which must be an existing `.app` directory whose
-/// `Info.plist` declares the `APPL` package type. Optional metadata it lacks is reported as absent.
+/// Describes the `path` bundle, an existing `.app` directory (case-insensitive) with a readable
+/// `Contents/Info.plist` dictionary. Missing optional metadata is reported as absent.
 pub(super) fn inspect_bundle(path: &Path) -> Result<Application, String> {
     let path = path
         .canonicalize()
         .map_err(|error| format!("cannot access {}: {error}", path.display()))?;
-    if !path.is_dir() || path.extension().is_none_or(|extension| extension != "app") {
+    // Like macOS, recognize an application bundle by its `app` extension in any case, not by its
+    // `CFBundlePackageType`: Finder declares `FNDR`, and Passwords declares `XPC!`.
+    if !path.is_dir()
+        || path.extension().is_none_or(|extension| !extension.eq_ignore_ascii_case("app"))
+    {
         return Err(format!("not an application: {}", path.display()));
     }
 
@@ -23,9 +27,6 @@ pub(super) fn inspect_bundle(path: &Path) -> Result<Application, String> {
     let info =
         info.as_dictionary().ok_or_else(|| format!("not an application: {}", path.display()))?;
     let field = |key: &str| info.get(key).and_then(Value::as_string);
-    if field("CFBundlePackageType") != Some("APPL") {
-        return Err(format!("not an application: {}", path.display()));
-    }
 
     let name = path
         .to_str()
