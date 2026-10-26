@@ -1,1 +1,0 @@
-import{t as e}from"./framework.BOvhuu-7.js";var t={root:()=>e(()=>import(`./@localSearchIndexroot.CMGN1CpL.js`),[])};export{t as default};
