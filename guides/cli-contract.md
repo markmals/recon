@@ -14,7 +14,9 @@ Recon describes its commands through help and a machine-readable schema. `recon 
 
 Run `recon`, `recon --help`, `recon -h`, or `recon help` for orientation. Help lists every command and the discovery commands. For a group or command, append `--help` or `-h`, or put its path after `recon help`. Help succeeds on standard output even when other arguments are malformed. Help has no terminal colors and is identical when redirected.
 
-Run `recon --version` for the crate version and, when available at build time, the short Git commit and its author date. A source-archive build prints only the version. `-v` and `-V` are usage errors.
+Run `recon --version` for the crate version and, when available at build time, the short Git commit and its author date. A build without eligible Git metadata prints only the version. `-v` and `-V` are usage errors.
+
+The version suffix and `context.recon.commit` report the checkout's `HEAD` baseline when the Git root matches this workspace and the committed `crates/recon/Cargo.toml` names package `recon`. Missing, malformed, or nonmatching metadata is omitted. Dirty dependency/version edits and linked worktrees keep that baseline. A same-name archive overlaid on another checkout can also qualify: this name-based check cannot attest to source origin or byte-for-byte correspondence. No remote or history allowlist is consulted.
 
 `recon schema` returns the command index in stable order, with effects, supported hosts, and the complete error contract. `recon schema <command>` returns that command's arguments, options, constraints, defaults, effects, permissions, supported hosts, output JSON Schema, and possible error codes. `recon schema schema` and `recon schema context` describe the discovery commands themselves. An unknown schema path is an `INVALID_ARGUMENT` error listing accepted paths.
 

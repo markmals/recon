@@ -22,6 +22,7 @@ Give Recon's CLI a contract an unfamiliar agent can learn at runtime: help and v
 - Approval: Mark explicitly approved implementation of this proposal on 2026-10-26 once that clarification was recorded, in Sesh session `5d3d3975-ea96-4a45-bc27-063741e02e03`. Approval includes the privacy-identity exception and the registry/error policy specified below. Acceptance of the finished implementation and permission to merge remain separate.
 - Output-ownership revision: on 2026-10-26, Mark selected “Guarantee exactly one final response” in the parent approval question in Sesh session `5d3d3975-ea96-4a45-bc27-063741e02e03`. This explicitly authorizes parent-owned arbitration of both child output streams, discarding child output on a genuine wait failure, and making a post-spawn wait failure fatal for `context` rather than producing a fallback report. It grants no acceptance or merge authority.
 - Internal factual clarification: on 2026-10-26, the parent strategist authorized correcting the disproven claim that clap defaults enforce every existing value-boundary rule, based on the observed `-` and attached-hyphen counterexamples. This records the native typed-parser mechanism, not new approval from Mark; all approved observable grammar, errors, effects, scope, clap 4, and the single registry/parser metadata source remain unchanged.
+- Internal metadata clarification: on 2026-10-26, the parent strategist authorized the bounded correction prompted by the real-Git adversarial regression: commit metadata is eligible only for a matching workspace root whose `HEAD` manifest declares `package.name = "recon"`. This is a name-based eligibility boundary for the checkout's baseline revision, with the same-name limitation recorded below. It grants no source-origin attestation or new approval from Mark. Reusing the locked TOML parser as a new direct build/development dependency is authorized; no new runtime dependency or newly resolved crate/version is authorized by this clarification. Evidence is retrievable in parent Sesh session `5d3d3975-ea96-4a45-bc27-063741e02e03`.
 
 ## Motivation
 
@@ -109,6 +110,10 @@ Claims are labelled **established** (authoritative external source), **repositor
 
 **Repository evidence from implementation, 2026-10-26:** clap's defaults accept a bare `-` and attached hyphen-prefixed string values such as `--out=--pid`, and can classify `--pid -1` as an unknown short option rather than a bad value of `--pid`. Typed value parsers must therefore own the hyphen rejection as well as the numeric constraints. This refines the parsing mechanism without changing the approved strictness rules.
 
+**Established knowledge:** a Cargo package name alone is not globally unique. Cargo's [package ID specification](https://doc.rust-lang.org/cargo/reference/pkgid-spec.html) uses version and source qualifiers when a short name is ambiguous. A Git `HEAD` identifies the checkout's baseline revision; it does not attest to uncommitted working-tree bytes or the origin of an overlaid archive.
+
+**Repository evidence from implementation, 2026-10-26:** an archive over an unrelated repository already tracking `crates/recon/Cargo.toml` with another package name passed a path-existence check and reported that repository's commit. Metadata eligibility therefore requires the matching workspace root and a parsed `HEAD` manifest naming `recon`, rather than a current or staged manifest. A same-name overlay can satisfy this boundary just as a dirty or forked checkout can; there is no remote/history allowlist or source-origin guarantee.
+
 ## Existing baseline
 
 Recon's own CLI is the baseline, and most of it is already what this proposal needs.
@@ -159,6 +164,7 @@ recon ui screenshot Notes --out /tmp/n.png → PERMISSION_DENIED with the pane t
 - Command help states the usage line, the summary, the description, each argument and option with its value name and constraints, the command's effects, the permissions it may need, the hosts it supports, and the error codes it can produce. It is rendered from the same registry entry `recon schema <command>` serializes, so the two cannot disagree.
 - Help output contains no terminal escape sequences and is byte-identical whether or not standard output is a terminal.
 - `recon --version` prints one line to standard output and exits 0, in the form `recon <version>` followed, when the build knows its commit, by ` (<short commit hash> <commit date>)` — for example `recon 0.1.0 (a3731c8 2026-10-17)`. `<version>` is the crate version from `Cargo.toml`; the hash is the abbreviated commit the build script captured; the date is that commit's author date as `YYYY-MM-DD`. A build made outside a Git checkout prints `recon 0.1.0` with no parenthetical rather than a placeholder. Nothing else is printed. The full commit hash, the target triple, and the executable path are reported by `recon context`, not here.
+- Build commit metadata is eligible when the Git root matches this workspace root and `HEAD` contains a readable TOML `crates/recon/Cargo.toml` declaring `package.name = "recon"`. Missing, malformed, or nonmatching metadata leaves the version suffix unavailable and `context.recon.commit` null, without failing an otherwise buildable archive. Dirty dependency/version edits and linked worktrees retain the eligible `HEAD` baseline. This is a name-based eligibility check, so a same-name overlay may also qualify; the reported commit is not a byte-for-byte or source-origin attestation.
 - `-v` and `-V` are not accepted and produce a usage error.
 
 ### The command registry
@@ -311,6 +317,7 @@ Recon has no released version, no package, and no users outside this repository,
 ## Implications on adoption
 
 - The CLI gains dependencies: `clap` for parsing and help, `schemars` for output schemas, `objc2-security` for reading Recon's own signing information, and a JSON Schema validator as a development dependency. All are ordinary registry crates; none changes how Recon is installed or signed.
+- The build script and its regression tests add a direct dependency on the already-locked `toml_edit` parser with only its `parse` feature. Immutable parsing reuses the owned manifest text. This build/development-only addition adds no runtime dependency and resolves no new crate or version.
 - The build script gains the commit hash and date for `--version` and `recon context`, and must rebuild when `HEAD` moves. A build from a source archive with no Git metadata keeps working and reports no commit.
 - Decision 0001 must be superseded as described in **Policies and decisions checked** before `recon context` can be implemented as specified.
 - Nothing about granting, signing, or installing Recon changes. An existing grant stays valid; `recon context` reads it and never asks for it.

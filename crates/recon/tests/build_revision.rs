@@ -103,10 +103,39 @@ fn proposal0003_a_staged_source_archive_does_not_inherit_the_foreign_commit() {
 }
 
 #[test]
+fn proposal0003_an_archive_over_an_unrelated_tracked_package_reports_no_revision() {
+    for manifest in [
+        "[package]\nname = \"other\"\n",
+        "[package]\nname = \"unterminated\n",
+        "[package]\nname = 17\n",
+        "[workspace]\n",
+    ] {
+        let scratch = tempfile::tempdir().unwrap();
+        let foreign = scratch.path().join("workspace");
+        foreign_checkout(&foreign);
+        let package = foreign.join("crates").join("recon");
+        fs::create_dir_all(&package).unwrap();
+        fs::write(package.join("Cargo.toml"), manifest).unwrap();
+        git(&foreign, &["add", "crates/recon/Cargo.toml"]);
+        git(&foreign, &["commit", "-qm", "unrelated package"]);
+        source_archive(&foreign);
+
+        let directives = directives(&package);
+
+        assert!(directives.is_empty(), "{manifest:?}: {directives:?}");
+    }
+}
+
+#[test]
 fn proposal0003_a_source_checkout_reports_its_commit_and_watches_its_head() {
     let scratch = tempfile::tempdir().unwrap();
     let checkout = scratch.path().join("recon");
     let package = source_checkout(&checkout);
+    fs::write(
+        package.join("Cargo.toml"),
+        "[package]\nname = \"recon\"\nversion = \"0.2.0\"\n[dependencies]\nserde = \"1\"\n",
+    )
+    .unwrap();
 
     let directives = directives(&package);
 

@@ -4,7 +4,7 @@ use std::path::Path;
 use std::process::Command;
 
 pub(crate) fn directives(package: &Path, sink: &mut impl Write) -> io::Result<()> {
-    if !is_source_checkout(package) {
+    if !is_revision_eligible(package) {
         return Ok(());
     }
     for name in ["HEAD", "packed-refs"] {
@@ -29,11 +29,8 @@ pub(crate) fn directives(package: &Path, sink: &mut impl Write) -> io::Result<()
     Ok(())
 }
 
-/// Whether the repository Git finds from `package` is Recon's own checkout rather than one the
-/// source was unpacked inside. Recon's source sits at `crates/recon` under the workspace root, so
-/// a Git root anywhere else merely encloses it, and a root whose `HEAD` lacks this manifest has
-/// had it overlaid; both would otherwise report a stranger's commit as this build's revision.
-fn is_source_checkout(package: &Path) -> bool {
+// Root and manifest paths can still match when an archive overlays an unrelated tracked package.
+fn is_revision_eligible(package: &Path) -> bool {
     let Some(root) = git(package, &["rev-parse", "--show-toplevel"]) else {
         return false;
     };
@@ -42,7 +39,20 @@ fn is_source_checkout(package: &Path) -> bool {
     else {
         return false;
     };
-    root == source && git(package, &["cat-file", "-e", "HEAD:./Cargo.toml"]).is_some()
+    if root != source {
+        return false;
+    }
+    let Some(manifest) = git(package, &["show", "HEAD:./Cargo.toml"]) else {
+        return false;
+    };
+    let Ok(manifest) = toml_edit::Document::parse(manifest) else {
+        return false;
+    };
+    manifest
+        .get("package")
+        .and_then(|package| package.get("name"))
+        .and_then(toml_edit::Item::as_str)
+        == Some(env!("CARGO_PKG_NAME"))
 }
 
 fn git(package: &Path, arguments: &[&str]) -> Option<String> {
