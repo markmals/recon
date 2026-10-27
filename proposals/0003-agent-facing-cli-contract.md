@@ -2,7 +2,7 @@
 id: proposal.0003
 title: Agent-Facing CLI Contract
 authors: [Mark Malstrom]
-status: awaiting-implementation
+status: active-review
 pull-request: https://github.com/markmals/recon/pull/34
 issues: []
 supersedes: []
