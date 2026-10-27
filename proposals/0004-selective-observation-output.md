@@ -2,7 +2,7 @@
 id: proposal.0004
 title: Selective Observation Output
 authors: [Mark Malstrom]
-status: awaiting-implementation
+status: active-review
 pull-request: https://github.com/markmals/recon/pull/35
 issues: []
 supersedes: []
