@@ -2,7 +2,7 @@
 id: proposal.0003
 title: Agent-Facing CLI Contract
 authors: [Mark Malstrom]
-status: active-review
+status: implemented
 pull-request: https://github.com/markmals/recon/pull/34
 issues: []
 supersedes: []
@@ -26,6 +26,7 @@ Give Recon's CLI a contract an unfamiliar agent can learn at runtime: help and v
 - Internal build-time tradeoff: on 2026-10-26, the parent strategist accepted Cargo rerunning the metadata build script on unchanged archive builds while the workspace's own `.git` locator is absent, so a later `git init` and first commit are observed. This bounded build-time cost does not apply to ordinary eligible checkouts and makes no runtime performance claim. It avoids recursive workspace/object scans, a daemon, a source-tree marker, or a new public mode. This is a technical resolution in parent Sesh session `5d3d3975-ea96-4a45-bc27-063741e02e03`, not new approval from Mark.
 - Internal delivery clarification: on 2026-10-26, the parent strategist resolved the physical output-sink boundary: successful capture, wait, and sink writes preserve child bytes and status; a failed stdout delivery creates `INTERNAL`, while a failed child-stderr delivery or fatal diagnostic rendering is terminal without another publication attempt. A failed fatal rendering retains its original exit classification. This is a technical interpretation in parent Sesh session `5d3d3975-ea96-4a45-bc27-063741e02e03`, not new approval from Mark or a relaxation of ownership on functioning streams.
 - Signing-source revision: on 2026-10-26, Mark selected “Self-only kernel binding” in parent question `context_signing_binding`, Sesh session `5d3d3975-ea96-4a45-bc27-063741e02e03`. This authorizes only read-only `csops` status and CDHash queries for the current process, one `code-signing-query` capability, the existing signing-output shape and positive unsigned reporting, and `INTERNAL` when the required query or metadata binding is unavailable, fails, or disagrees. The required-query absence is an explicit exception to the earlier missing-private-interface success rule. Nullable/public-only alternatives were not selected. It authorizes no validity/trust policy, other-process query, raw status/hash output, parser, new runtime dependency, mode, grant or credential action, feature acceptance, or merge.
+- Acceptance and merge authority: On 2026-10-27 UTC, Mark accepted the paired readiness handoff for proposals 0003 and 0004 and stated, “You have my approval to merge both,” in Sesh session `5d3d3975-ea96-4a45-bc27-063741e02e03`. The reviewed reports are [PR #34](https://github.com/markmals/recon/pull/34#issuecomment-6433608829) and [PR #35](https://github.com/markmals/recon/pull/35#issuecomment-6433609393). This authorizes completion records, the approved registry/error policy, the verified live-discovery test deadline correction, and serial merges of #34 then #35 into `main`. Acceptance is for the paired integration: proposal 0004 contains the sparse-node non-finite value/frame correction disclosed in those reports. No release, branch deletion, force-push, grant, credential, or access change is authorized.
 
 ## Motivation
 
@@ -414,6 +415,15 @@ Recon has no released version, no package, and no users outside this repository,
 ## Open questions
 
 None. Mark resolved the default error format on 2026-10-26: always one compact JSON error object on a single line.
+
+## Completion record
+
+- Accepted by Mark on 2026-10-27 UTC under the paired merge authorization in **Authorization**. No product-design revision was requested.
+- Established [policy 0001](../policies/0001-cli-command-and-error-contract.md) using the existing structural and behavioral checks. Decision 0002 already records the approved privacy-identity exception and supersedes decision 0001 without deleting its rationale.
+- Updated `VISION.md` to describe the implemented command-discovery, error, provenance, and context capabilities.
+- Carried the verified live-discovery integration-test correction into this feature PR: the indexed-discovery case uses the same 20-second deadline as the adjacent live-host check, with all assertions retained and no retry or runtime change.
+- Delivery is merge-only through PR #34 followed by PR #35 into `main`, preserving history. The paired readiness reports disclose the legacy non-finite node geometry edge corrected by proposal 0004; this record does not claim a separate release of #34.
+- The readiness report retains the independent reviews, exercised preview, and verification limits. Fresh completion-candidate checks and CLI smoke evidence are recorded in the PR before merge. `implemented` records the accepted implementation, not the act of merging or publishing.
 
 ## Acknowledgments
 
