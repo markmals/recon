@@ -2,7 +2,7 @@
 id: proposal.0004
 title: Selective Observation Output
 authors: [Mark Malstrom]
-status: active-review
+status: implemented
 pull-request: https://github.com/markmals/recon/pull/35
 issues: []
 supersedes: []
@@ -20,6 +20,7 @@ Let an agent ask for less: `recon app list --running`, `recon ui tree --depth`, 
 - Fit: This proposal is limited to options that narrow `recon app list` and `recon ui tree` results, to the shape of a tree node, and to the vocabulary a result uses to say what it left out.
 - Decisions recorded: On 2026-10-26, Mark selected keeping the application's menu bar in an unqualified `ui tree`, with `--no-menu-bar` as the opt-out, and making the smaller node encoding the only encoding, always omitting absent fields and empty arrays.
 - Approval: Mark explicitly approved implementation of this proposal on 2026-10-26 once those clarifications were recorded, in Sesh session `5d3d3975-ea96-4a45-bc27-063741e02e03`. Acceptance of the finished implementation and permission to merge remain separate.
+- Acceptance and merge authority: On 2026-10-27 UTC, Mark accepted the paired readiness handoff for proposals 0003 and 0004 and stated, “You have my approval to merge both,” in Sesh session `5d3d3975-ea96-4a45-bc27-063741e02e03`. The reviewed reports are [PR #34](https://github.com/markmals/recon/pull/34#issuecomment-6433608829) and [PR #35](https://github.com/markmals/recon/pull/35#issuecomment-6433609393). This authorizes completion records and serial merges of #34 then #35 into `main`, including fresh verification of the combined candidate. It grants no release, branch deletion, force-push, grant, credential, or access change.
 
 ## Motivation
 
@@ -239,8 +240,8 @@ Tree results gain `narrowed`. A reader that checks `truncated` to decide whether
 
 ## Policies and decisions checked
 
-- [decision.0001](../decisions/0001-macos-privacy-identity.md) — honored and unchanged. Narrowing adds no permission and no new privacy surface: `--no-menu-bar` issues one extra accessibility request after the self-disclaiming re-execution, under Recon's own grant, and `app list --running` needs no permission at all. Reading less never requests more.
-- `policies/` contains only a README; no policy applies.
+- [Decision 0002](../decisions/0002-macos-context-privacy-identity.md), which supersedes decision 0001, is honored. Narrowing adds no permission or privacy surface: `--no-menu-bar` issues its menu lookup under Recon's own existing grant, and `app list --running` needs no permission. The context and self-only signing boundaries introduced by proposal 0003 remain unchanged.
+- [Policy 0001](../policies/0001-cli-command-and-error-contract.md), established at proposal 0003's accepted completion, applies to the new options, response schemas, and coded errors. They use the same registry and typed failure contract; this proposal establishes no additional policy or architectural decision.
 
 ## Future directions
 
@@ -262,6 +263,14 @@ Tree results gain `narrowed`. A reader that checks `truncated` to decide whether
 - **Making `--depth 1` mean the root alone.** Rejected. Recon already says the root is at depth 0, and the depth cap of 64 is expressed the same way; a second counting convention in the same command would be a trap.
 - **Substring or pattern filtering for `app list`.** Rejected for now, though proposal 0001's rejection of substring matching does not forbid it: a filtered list selects nothing and shows every match. It would need its own matching semantics — case, Unicode normalization, which fields participate — and that is a second vocabulary beside proposal 0001's exact resolution rules. `--running` answers the question that was actually observed, and an exact name or identifier already answers "where is this application".
 - **Keeping the node encoding and adding `--compact`.** Rejected: two node shapes would have to be handled by every consumer, every test, and every stored observation, to avoid a change that no external caller would notice.
+
+## Completion record
+
+- Accepted by Mark on 2026-10-27 UTC under the paired merge authorization in **Authorization**. No product-design revision was requested.
+- Integrated the delivered proposal 0003 through a normal merge of `main` after PR #34 merged as `7302f4f9882d511df8bbc439a1d469f5d267f9d4`. The shared registry, error contract, signing-source binding, output ownership, build metadata, and verified test deadline correction are preserved.
+- Updated `VISION.md` with running-only listing, depth and main-menu narrowing, sparse node encoding, and distinct narrowing/completeness markers. Policy 0001 and decision 0002 remain governing records; no additional policy or decision is established.
+- The implementation retains the approved default menu catalogue and sole sparse encoding, including omission of non-finite scalar values and whole unrepresentable node frames. The readiness report contains the native boundary proof and the independently reviewed implementation evidence.
+- Delivery is merge-only through PR #35 into `main` after PR #34, preserving history. Fresh combined-candidate checks, exercised executable evidence, and the unchanged verification limits are recorded in the PR before merge. No release, branch deletion, or access/grant change is authorized.
 
 ## Open questions
 

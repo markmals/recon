@@ -15,6 +15,8 @@ Recon can list discovered and running macOS application bundles, inspect one bun
 
 Agents can learn the CLI through built-in help, inspect each command's schema, constraints, and effects, and classify compact JSON errors by stable code. Build-version and execution-context reports identify the running binary; on macOS, context checks its own signing identity and permission state without requesting grants.
 
+Agents can list only running bundles and limit accessibility-tree depth. Application trees can also exclude the main menu bar without dropping status menus; unqualified trees still include menus. Tree nodes use one sparse encoding, and results distinguish requested narrowing from incomplete reads.
+
 ## Goals
 
 - Make feature discovery systematic: find candidate behaviors, distinguish observations from hypotheses, and keep unanswered questions visible.
@@ -61,3 +63,4 @@ Native analysis through REA and supported UI adapters must report unavailable ca
 | 2026-10-15 | Limited the minimum viable product to macOS, including Electron and web applications; moved Windows and Android beyond it. | N/A |
 | 2026-10-15 | Added macOS UI observation of windows, accessibility trees, and window screenshots. | proposal.0002 |
 | 2026-10-27 | Added runtime command discovery, typed JSON errors, build provenance, and preflight-only execution-context reporting. | proposal.0003 |
+| 2026-10-27 | Added running-only application listing, depth and main-menu narrowing, and sparse tree output with explicit completeness markers. | proposal.0004 |
