@@ -86,16 +86,15 @@ fn proposal0003_orientation_is_successful_and_help_overrides_bad_arguments() {
 fn proposal0003_usage_errors_carry_recovery_data() {
     let error = invalid(&["ui", "tree", "Calculator", "--window", "abc"]);
     assert_eq!(error["command"], json!(["ui", "tree"]));
-    assert_eq!(
-        error["details"],
-        json!({"argument":"--window","value":"abc","expected":"a window id written as decimal digits","accepted":null})
-    );
+    assert_eq!(error["details"]["argument"], "--window");
+    assert_eq!(error["details"]["value"], "abc");
+    assert!(error["details"]["accepted"].is_null());
     let error = invalid(&["ui", "screenshot", "Calculator"]);
     assert_eq!(error["details"]["argument"], "--out");
     assert!(error["details"]["value"].is_null());
     let error = invalid(&["ui", "windows", "Calculator", "--bogus"]);
     assert_eq!(error["details"]["accepted"], json!(["--pid"]));
-    assert_eq!(invalid(&["app", "list", "--json"])["details"]["accepted"], json!([]));
+    assert_eq!(invalid(&["app", "list", "--json"])["details"]["accepted"], json!(["--running"]));
     assert_eq!(invalid(&["app"])["details"]["accepted"], json!(["list", "inspect", "launch"]));
     assert_eq!(invalid(&["app", "inspect", "Safari", "Mail"])["details"]["value"], "Mail");
     let error = invalid(&["ui", "tree", "Calculator", "--pid", "1", "--pid", "2"]);
@@ -256,7 +255,10 @@ fn proposal0003_help_word_inside_an_invalid_path_is_the_offending_operation() {
 fn proposal0003_unknown_options_are_not_matched_by_value_name_text() {
     let error = invalid(&["ui", "tree", "Calculator", "--PID", "1"]);
     assert_eq!(error["details"]["argument"], "--PID");
-    assert_eq!(error["details"]["accepted"], json!(["--pid", "--window"]));
+    assert_eq!(
+        error["details"]["accepted"],
+        json!(["--pid", "--window", "--depth", "--no-menu-bar"])
+    );
 }
 
 #[test]

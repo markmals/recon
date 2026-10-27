@@ -162,12 +162,30 @@ fn description(entry: &CommandSpec) -> Description {
             .map(ToString::to_string)
             .unwrap_or_default();
         let numeric = decimal::constraints(argument.get_value_parser());
-        let kind = if numeric.is_some() { "integer" } else { "string" }.to_owned();
-        let constraints = numeric
+        let boolean = matches!(argument.get_action(), ArgAction::SetTrue | ArgAction::SetFalse);
+        let kind = if boolean {
+            "boolean"
+        } else if numeric.is_some() {
+            "integer"
+        } else {
+            "string"
+        }
+        .to_owned();
+        let mut constraints = numeric
             .map(|constraints| {
                 serde_json::to_value(constraints).expect("numeric constraints serialize")
             })
             .or_else(|| output_path::constraints(argument.get_value_parser()));
+        let conflicts = parser.get_arg_conflicts_with(argument);
+        if !conflicts.is_empty() {
+            constraints.get_or_insert_with(|| json!({}))["conflictsWith"] = json!(
+                conflicts
+                    .iter()
+                    .filter_map(|conflict| conflict.get_long())
+                    .map(|name| format!("--{name}"))
+                    .collect::<Vec<_>>()
+            );
+        }
         let description = argument.get_help().map(ToString::to_string).unwrap_or_default();
         if argument.is_positional() {
             arguments.push(Argument {
@@ -179,10 +197,19 @@ fn description(entry: &CommandSpec) -> Description {
                 constraints,
             });
         } else {
-            let default = argument
-                .get_default_values()
-                .first()
-                .map(|value| Value::String(value.to_string_lossy().into_owned()));
+            let default = argument.get_default_values().first().map(|value| {
+                if boolean {
+                    Value::Bool(
+                        value
+                            .to_str()
+                            .expect("boolean default text")
+                            .parse()
+                            .expect("clap boolean default"),
+                    )
+                } else {
+                    Value::String(value.to_string_lossy().into_owned())
+                }
+            });
             options.push(OptionDescription {
                 name: format!("--{}", argument.get_long().expect("long option")),
                 value_name,

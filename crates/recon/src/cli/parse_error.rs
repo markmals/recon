@@ -157,6 +157,33 @@ fn unknown_argument(
     )
 }
 
+fn incompatible_options<'a>(
+    parser: &'a Command,
+    invalid: &Arg,
+    words: &[String],
+) -> Option<(&'a Arg, &'a Arg)> {
+    // Clap lists declared conflicts in one direction; input order can name either side.
+    parser.get_arguments().filter(|argument| is_supplied(argument, words)).find_map(|argument| {
+        parser
+            .get_arg_conflicts_with(argument)
+            .into_iter()
+            .find(|conflict| {
+                is_supplied(conflict, words)
+                    && (argument.get_id() == invalid.get_id()
+                        || conflict.get_id() == invalid.get_id())
+            })
+            .map(|conflict| (argument, conflict))
+    })
+}
+
+fn is_supplied(argument: &Arg, words: &[String]) -> bool {
+    argument.get_long().is_some_and(|name| {
+        words.iter().take_while(|word| *word != "--").any(|word| {
+            word.strip_prefix("--").is_some_and(|word| word.split('=').next() == Some(name))
+        })
+    })
+}
+
 fn after_separator(argument: &str, words: &[String], parser: &Command) -> bool {
     let Some(separator) = words.iter().position(|word| word == "--") else {
         return false;
@@ -210,6 +237,24 @@ fn argument_error(
         );
     }
     if error.kind() == ErrorKind::ArgumentConflict {
+        if let Some(argument) = declaration
+            && let Some((argument, conflict)) = incompatible_options(parser, argument, words)
+        {
+            let argument_name = name(argument);
+            let other_name = name(conflict);
+            return invalid(
+                format!(
+                    "{argument_name} cannot be combined with {other_name}; {}; {}",
+                    description(argument),
+                    description(conflict),
+                ),
+                path,
+                Some(&argument_name),
+                None,
+                &format!("{argument_name} without {other_name}"),
+                None,
+            );
+        }
         let name = declaration.map(name).unwrap_or_else(|| argument_name.to_owned());
         return invalid(
             format!("{name} was given more than once"),
@@ -231,7 +276,11 @@ fn argument_error(
         );
     };
     let name = name(argument);
-    let expected = description(argument);
+    let expected = if argument.get_action().takes_values() {
+        description(argument)
+    } else {
+        "no value".to_owned()
+    };
     let supplied = supplied_value(words, &name, 0);
     let value = text(error, ContextKind::InvalidValue)
         .filter(|value| !value.is_empty() || supplied.is_some())

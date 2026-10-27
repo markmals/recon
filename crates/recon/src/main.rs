@@ -95,7 +95,7 @@ fn arguments() -> Result<Vec<String>, Failure> {
 
 fn command_path(request: &Request) -> &'static [&'static str] {
     match request {
-        Request::App(AppRequest::List) => &["app", "list"],
+        Request::App(AppRequest::List { .. }) => &["app", "list"],
         Request::App(AppRequest::Inspect { .. }) => &["app", "inspect"],
         Request::App(AppRequest::Launch { .. }) => &["app", "launch"],
         Request::Ui(UiRequest::Windows { .. }) => &["ui", "windows"],

@@ -28,12 +28,16 @@ pub struct WindowsResponse<'a> {
 }
 
 /// What `recon ui tree` prints. `window_id` is the `--window` the command was given, if any.
+/// `truncated` reports what Recon could not finish reading and `narrowed` what the caller's
+/// options told it to leave out; both are always present, so a stored result answers "is this
+/// the whole tree?" on its own.
 #[derive(Debug, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct TreeResponse<'a> {
     pub application: ObservedApplication<'a>,
     pub window_id: Option<WindowId>,
     pub truncated: bool,
+    pub narrowed: bool,
     pub root: Node,
 }
 

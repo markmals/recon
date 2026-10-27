@@ -1,7 +1,7 @@
 ---
 id: guide.cli-contract
 title: Discover and Diagnose Recon
-describes: [proposal.0003]
+describes: [proposal.0003, proposal.0004]
 ---
 
 # Discover and Diagnose Recon
@@ -28,7 +28,7 @@ Unchanged eligible checkouts remain fresh with the same build inputs. When the w
 
 Output schemas use JSON Schema 2020-12. Each is self-contained; local `$defs` resolve every reference without a network request. Objects Recon controls reject unknown properties. The schemas describe serialized output, including optional truncation markers and the repeated and failed node forms of an accessibility tree.
 
-Options use long names and take one value. Options may precede or follow the target. Repeated or unknown options, missing values, a value beginning with a hyphen, and extra positionals are errors. Numbers contain ASCII decimal digits only, within the unsigned 32-bit range; `--pid` must exceed zero. A group alone requires an operation. Only an empty invocation shows top-level help automatically.
+Options use long names. Flags take no value; value-taking options take exactly one. Options may precede or follow the target. Repeated or unknown options, missing values, a value beginning with a hyphen, and extra positionals are errors. Numbers contain ASCII decimal digits only, within the unsigned 32-bit range; `--pid` must exceed zero. A group alone requires an operation. Only an empty invocation shows top-level help automatically.
 
 ## Read the execution context
 

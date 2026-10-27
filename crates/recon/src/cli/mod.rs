@@ -60,7 +60,7 @@ pub fn parse(arguments: &[String]) -> Result<Request, Failure> {
     let target = || matches.get_one::<String>("target").expect("required target").clone();
     if group == "app" {
         return Ok(Request::App(match operation {
-            "list" => AppRequest::List,
+            "list" => AppRequest::List { running: matches.get_flag("running") },
             "inspect" => AppRequest::Inspect { target: target() },
             "launch" => AppRequest::Launch { target: target() },
             _ => unreachable!("registry operation"),
@@ -73,7 +73,14 @@ pub fn parse(arguments: &[String]) -> Result<Request, Failure> {
     let window = || matches.get_one::<Decimal<0>>("window").map(|number| WindowId(number.0));
     Ok(Request::Ui(match operation {
         "windows" => UiRequest::Windows { selection },
-        "tree" => UiRequest::Tree { selection, window: window() },
+        "tree" => UiRequest::Tree {
+            selection,
+            window: window(),
+            depth: matches
+                .get_one::<Decimal<0, { crate::ui::tree::MAX_DEPTH as u32 }>>("depth")
+                .map(|number| number.0 as usize),
+            no_menu_bar: matches.get_flag("no-menu-bar"),
+        },
         "screenshot" => UiRequest::Screenshot {
             selection,
             window: window(),

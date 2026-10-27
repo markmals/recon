@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use proptest::prelude::*;
 use proptest::test_runner::TestCaseError;
 use recon::ui::tree::{
-    AttributeValue, ElementAttributes, ElementNode, ElementSource, MAX_DEPTH, MAX_NODES,
-    MAX_VALUE_SCALARS, Node, ReadFailure, Tree, read_tree,
+    AttributeValue, ElementAttributes, ElementChildren, ElementNode, ElementSource, MAX_DEPTH,
+    MAX_NODES, MAX_VALUE_SCALARS, Node, ReadFailure, Tree, TreeOptions, read_tree,
 };
 use recon::ui::window::Bounds;
 
@@ -12,6 +12,8 @@ use recon::ui::window::Bounds;
 struct RecordedSource {
     elements: HashMap<u32, Result<ElementAttributes<u32>, ReadFailure>>,
     reads: Vec<u32>,
+    /// The elements read without expanding their children, in the order they were read.
+    unexpanded_reads: Vec<u32>,
 }
 
 impl RecordedSource {
@@ -20,7 +22,7 @@ impl RecordedSource {
             element,
             Ok(ElementAttributes {
                 role: Some(role.to_owned()),
-                children: children.to_vec(),
+                children: ElementChildren::Read { elements: children.to_vec(), unreadable: false },
                 ..ElementAttributes::default()
             }),
         );
@@ -35,8 +37,10 @@ impl RecordedSource {
     /// Marks an element that listed a child the source could not read, as the macOS adapter does
     /// for an `AXChildren` member that is not an accessibility element.
     fn unreadable_children(mut self, element: u32) -> Self {
-        if let Some(Ok(attributes)) = self.elements.get_mut(&element) {
-            attributes.unreadable_children = true;
+        if let Some(Ok(attributes)) = self.elements.get_mut(&element)
+            && let ElementChildren::Read { unreadable, .. } = &mut attributes.children
+        {
+            *unreadable = true;
         }
         self
     }
@@ -45,10 +49,43 @@ impl RecordedSource {
 impl ElementSource for RecordedSource {
     type Element = u32;
 
-    fn read(&mut self, element: &u32) -> Result<ElementAttributes<u32>, ReadFailure> {
+    fn read(
+        &mut self,
+        element: &u32,
+        expand_children: bool,
+    ) -> Result<ElementAttributes<u32>, ReadFailure> {
         self.reads.push(*element);
-        self.elements.get(element).cloned().unwrap_or(Err(ReadFailure::Unavailable))
+        if !expand_children {
+            self.unexpanded_reads.push(*element);
+        }
+        let mut attributes =
+            self.elements.get(element).cloned().unwrap_or(Err(ReadFailure::Unavailable))?;
+        if !expand_children {
+            attributes.children = ElementChildren::Unread { present: lists_children(&attributes) };
+        }
+        Ok(attributes)
     }
+}
+
+/// Without expanding, a source counts the members of the children attribute without examining
+/// them, so a member it could not have read still counts as present.
+fn lists_children(attributes: &ElementAttributes<u32>) -> bool {
+    match &attributes.children {
+        ElementChildren::Read { elements, unreadable } => !elements.is_empty() || *unreadable,
+        ElementChildren::Unread { present } => *present,
+    }
+}
+
+fn whole_tree() -> TreeOptions<u32> {
+    TreeOptions::default()
+}
+
+fn to_depth(limit: usize) -> TreeOptions<u32> {
+    TreeOptions { depth: Some(limit), ..TreeOptions::default() }
+}
+
+fn excluding(element: u32) -> TreeOptions<u32> {
+    TreeOptions { excluded_root_child: Some(element), ..TreeOptions::default() }
 }
 
 fn element_of(node: &Node) -> &ElementNode {
@@ -100,6 +137,17 @@ fn omits_children(node: &Node) -> bool {
     }
 }
 
+fn leaves_out_what_was_asked_for(node: &Node) -> bool {
+    match node {
+        Node::Element(element) => {
+            element.depth_limited
+                || element.menu_bar_excluded
+                || element.children.iter().any(leaves_out_what_was_asked_for)
+        }
+        _ => false,
+    }
+}
+
 #[test]
 fn children_are_read_depth_first_in_the_order_the_application_reports() {
     let mut source = RecordedSource::default()
@@ -108,9 +156,10 @@ fn children_are_read_depth_first_in_the_order_the_application_reports() {
         .with(3, "AXWindow", &[])
         .with(4, "AXMenu", &[]);
 
-    let tree = read_tree(&mut source, 1);
+    let tree = read_tree(&mut source, 1, whole_tree());
 
     assert_eq!(source.reads, vec![1, 2, 4, 3]);
+    assert!(source.unexpanded_reads.is_empty(), "an unbounded read expands every element");
     assert_eq!(
         roles(&tree.root),
         vec![
@@ -121,7 +170,11 @@ fn children_are_read_depth_first_in_the_order_the_application_reports() {
         ]
     );
     assert!(!tree.truncated);
-    assert!(!element_of(&tree.root).children_omitted);
+    assert!(!tree.narrowed, "a tree nobody narrowed is not narrowed");
+    let root = element_of(&tree.root);
+    assert!(!root.children_omitted);
+    assert!(!root.depth_limited);
+    assert!(!root.menu_bar_excluded);
 }
 
 #[test]
@@ -140,12 +193,11 @@ fn every_attribute_the_application_reports_reaches_the_node() {
             focused: Some(false),
             frame: Some(Bounds { x: 1.0, y: 2.0, width: 3.0, height: 4.0 }),
             actions: vec!["AXPress".to_owned()],
-            children: Vec::new(),
-            unreadable_children: false,
+            children: ElementChildren::Read { elements: Vec::new(), unreadable: false },
         }),
     );
 
-    let tree = read_tree(&mut source, 1);
+    let tree = read_tree(&mut source, 1, whole_tree());
     let node = element_of(&tree.root);
 
     assert_eq!(node.subrole.as_deref(), Some("AXSearchField"));
@@ -167,13 +219,14 @@ fn the_children_of_a_node_at_depth_64_are_not_read() {
         source = source.with(element, "AXGroup", &[element + 1]);
     }
 
-    let tree = read_tree(&mut source, 1);
+    let tree = read_tree(&mut source, 1, whole_tree());
 
     assert_eq!(source.reads.len(), MAX_DEPTH + 1);
     assert_eq!(*source.reads.last().unwrap(), MAX_DEPTH as u32 + 1);
     assert_eq!(count_nodes(&tree.root), MAX_DEPTH + 1);
     assert_eq!(deepest(&tree.root), MAX_DEPTH + 1);
     assert!(tree.truncated);
+    assert!(!tree.narrowed, "the safety cap is a cut Recon made, not one the caller asked for");
 
     let mut node = &tree.root;
     for _ in 0..MAX_DEPTH {
@@ -182,6 +235,7 @@ fn the_children_of_a_node_at_depth_64_are_not_read() {
         node = &element.children[0];
     }
     assert!(element_of(node).children_omitted);
+    assert!(!element_of(node).depth_limited);
     assert!(element_of(node).children.is_empty());
 }
 
@@ -193,12 +247,13 @@ fn a_result_holds_at_most_25000_nodes() {
         source = source.with(*child, "AXGroup", &[]);
     }
 
-    let tree = read_tree(&mut source, 1);
+    let tree = read_tree(&mut source, 1, whole_tree());
 
     assert_eq!(count_nodes(&tree.root), MAX_NODES);
     assert_eq!(source.reads.len(), MAX_NODES);
     assert!(element_of(&tree.root).children_omitted);
     assert!(tree.truncated);
+    assert!(!tree.narrowed);
 }
 
 #[test]
@@ -206,7 +261,7 @@ fn an_element_already_emitted_is_repeated_without_being_read_again() {
     let mut source =
         RecordedSource::default().with(1, "AXApplication", &[2]).with(2, "AXWindow", &[1, 2]);
 
-    let tree = read_tree(&mut source, 1);
+    let tree = read_tree(&mut source, 1, whole_tree());
 
     assert_eq!(source.reads, vec![1, 2]);
     let window = element_of(&element_of(&tree.root).children[0]);
@@ -218,6 +273,7 @@ fn an_element_already_emitted_is_repeated_without_being_read_again() {
         ]
     );
     assert!(!tree.truncated);
+    assert!(!tree.narrowed, "an element seen twice is not an element left unread");
     assert_eq!(count_nodes(&tree.root), 4);
 }
 
@@ -226,12 +282,13 @@ fn an_element_that_no_longer_exists_becomes_an_unavailable_node() {
     let mut source =
         RecordedSource::default().with(1, "AXApplication", &[2, 3]).with(3, "AXWindow", &[]);
 
-    let tree = read_tree(&mut source, 1);
+    let tree = read_tree(&mut source, 1, whole_tree());
 
     let children = &element_of(&tree.root).children;
     assert_eq!(children[0], Node::Failed(ReadFailure::Unavailable));
     assert_eq!(element_of(&children[1]).role.as_deref(), Some("AXWindow"));
     assert!(!tree.truncated);
+    assert!(!tree.narrowed);
     assert!(!element_of(&tree.root).children_omitted);
 }
 
@@ -241,10 +298,11 @@ fn a_failed_read_carries_the_accessibility_error_code() {
         .with(1, "AXApplication", &[2])
         .failing(2, ReadFailure::Failed(-25_200));
 
-    let tree = read_tree(&mut source, 1);
+    let tree = read_tree(&mut source, 1, whole_tree());
 
     assert_eq!(element_of(&tree.root).children[0], Node::Failed(ReadFailure::Failed(-25_200)));
     assert!(!tree.truncated);
+    assert!(!tree.narrowed);
 }
 
 #[test]
@@ -255,7 +313,7 @@ fn a_timeout_ends_reading_and_truncates_the_tree() {
         .failing(3, ReadFailure::Timeout)
         .with(4, "AXWindow", &[]);
 
-    let tree = read_tree(&mut source, 1);
+    let tree = read_tree(&mut source, 1, whole_tree());
 
     assert_eq!(source.reads, vec![1, 2, 3]);
     let root = element_of(&tree.root);
@@ -263,6 +321,7 @@ fn a_timeout_ends_reading_and_truncates_the_tree() {
     assert_eq!(root.children[1], Node::Failed(ReadFailure::Timeout));
     assert!(root.children_omitted);
     assert!(tree.truncated);
+    assert!(!tree.narrowed);
 }
 
 #[test]
@@ -270,7 +329,7 @@ fn a_timeout_truncates_even_when_no_children_remain() {
     let mut source =
         RecordedSource::default().with(1, "AXApplication", &[2]).failing(2, ReadFailure::Timeout);
 
-    let tree = read_tree(&mut source, 1);
+    let tree = read_tree(&mut source, 1, whole_tree());
 
     assert_eq!(source.reads, vec![1, 2]);
     assert!(!element_of(&tree.root).children_omitted);
@@ -284,13 +343,15 @@ fn a_child_the_source_could_not_read_is_reported_as_an_omitted_child() {
         .with(2, "AXWindow", &[])
         .unreadable_children(1);
 
-    let tree = read_tree(&mut source, 1);
+    let tree = read_tree(&mut source, 1, whole_tree());
 
     let root = element_of(&tree.root);
     assert_eq!(root.children.len(), 1);
     assert!(root.children_omitted);
+    assert!(!root.depth_limited);
     assert!(!element_of(&root.children[0]).children_omitted);
     assert!(tree.truncated);
+    assert!(!tree.narrowed);
 }
 
 #[test]
@@ -302,7 +363,7 @@ fn a_string_value_longer_than_4096_scalars_is_cut_and_flagged() {
         1,
         Ok(ElementAttributes {
             value: Some(AttributeValue::Text(long.clone())),
-            children: vec![2, 3],
+            children: ElementChildren::Read { elements: vec![2, 3], unreadable: false },
             ..ElementAttributes::default()
         }),
     );
@@ -321,12 +382,13 @@ fn a_string_value_longer_than_4096_scalars_is_cut_and_flagged() {
         }),
     );
 
-    let tree = read_tree(&mut source, 1);
+    let tree = read_tree(&mut source, 1, whole_tree());
     let root = element_of(&tree.root);
 
     assert_eq!(root.value, Some(AttributeValue::Text("é".repeat(MAX_VALUE_SCALARS))));
     assert!(root.value_truncated);
     assert!(!tree.truncated, "a cut value is not a truncated tree");
+    assert!(!tree.narrowed, "a cut value is not a narrowed tree");
 
     let unchanged = element_of(&root.children[0]);
     assert_eq!(unchanged.value, Some(AttributeValue::Text(exact)));
@@ -335,6 +397,292 @@ fn a_string_value_longer_than_4096_scalars_is_cut_and_flagged() {
     let number = element_of(&root.children[1]);
     assert_eq!(number.value, Some(AttributeValue::Integer(9)));
     assert!(!number.value_truncated);
+}
+
+#[test]
+fn a_requested_depth_stops_the_walk_without_examining_the_children_it_leaves_out() {
+    let mut source = RecordedSource::default()
+        .with(1, "AXApplication", &[2])
+        .with(2, "AXWindow", &[3])
+        .with(3, "AXGroup", &[4])
+        .with(4, "AXButton", &[]);
+
+    let tree = read_tree(&mut source, 1, to_depth(2));
+
+    assert_eq!(source.reads, vec![1, 2, 3], "nothing below the requested depth is read");
+    assert_eq!(source.unexpanded_reads, vec![3], "only the deepest node is read without children");
+    let group = element_of(&element_of(&element_of(&tree.root).children[0]).children[0]);
+    assert!(group.children.is_empty());
+    assert!(group.depth_limited);
+    assert!(!group.children_omitted, "a cut the caller asked for is not a truncation");
+    assert!(tree.narrowed);
+    assert!(!tree.truncated);
+}
+
+#[test]
+fn a_requested_depth_of_zero_returns_the_root_alone() {
+    let mut source =
+        RecordedSource::default().with(1, "AXApplication", &[2]).with(2, "AXWindow", &[]);
+
+    let tree = read_tree(&mut source, 1, to_depth(0));
+
+    assert_eq!(source.reads, vec![1]);
+    assert_eq!(source.unexpanded_reads, vec![1]);
+    let root = element_of(&tree.root);
+    assert_eq!(root.role.as_deref(), Some("AXApplication"));
+    assert!(root.children.is_empty());
+    assert!(root.depth_limited);
+    assert!(!root.children_omitted);
+    assert!(tree.narrowed);
+    assert!(!tree.truncated);
+}
+
+#[test]
+fn a_node_at_the_requested_depth_with_no_children_carries_no_marker() {
+    let mut source = RecordedSource::default()
+        .with(1, "AXApplication", &[2, 3])
+        .with(2, "AXWindow", &[])
+        .with(3, "AXMenuBar", &[4])
+        .with(4, "AXMenu", &[]);
+
+    let tree = read_tree(&mut source, 1, to_depth(1));
+
+    let root = element_of(&tree.root);
+    let window = element_of(&root.children[0]);
+    let menu_bar = element_of(&root.children[1]);
+    assert!(!window.depth_limited, "nothing was omitted below a node with no children");
+    assert!(menu_bar.depth_limited);
+    assert!(!root.depth_limited);
+    assert!(tree.narrowed);
+    assert!(!tree.truncated);
+}
+
+#[test]
+fn a_requested_depth_deeper_than_the_tree_narrows_nothing() {
+    let mut source = RecordedSource::default()
+        .with(1, "AXApplication", &[2])
+        .with(2, "AXWindow", &[3])
+        .with(3, "AXButton", &[]);
+
+    let tree = read_tree(&mut source, 1, to_depth(MAX_DEPTH));
+
+    assert_eq!(source.reads, vec![1, 2, 3]);
+    assert_eq!(count_nodes(&tree.root), 3);
+    assert!(!tree.narrowed, "a depth the tree never reaches leaves nothing unread");
+    assert!(!tree.truncated);
+    assert!(!leaves_out_what_was_asked_for(&tree.root));
+}
+
+#[test]
+fn a_child_the_source_could_not_read_at_the_requested_depth_is_part_of_the_omission() {
+    let mut source = RecordedSource::default()
+        .with(1, "AXApplication", &[2])
+        .with(2, "AXWindow", &[])
+        .unreadable_children(2);
+
+    let tree = read_tree(&mut source, 1, to_depth(1));
+
+    let window = element_of(&element_of(&tree.root).children[0]);
+    assert!(window.depth_limited);
+    assert!(!window.children_omitted, "the members of the children attribute were not examined");
+    assert!(tree.narrowed);
+    assert!(!tree.truncated);
+}
+
+#[test]
+fn a_requested_depth_at_the_safety_cap_marks_the_cut_as_requested() {
+    let mut source = RecordedSource::default();
+    for element in 1..=200u32 {
+        source = source.with(element, "AXGroup", &[element + 1]);
+    }
+
+    let tree = read_tree(&mut source, 1, to_depth(MAX_DEPTH));
+
+    assert_eq!(source.reads.len(), MAX_DEPTH + 1);
+    assert_eq!(source.unexpanded_reads, vec![MAX_DEPTH as u32 + 1]);
+    let mut node = &tree.root;
+    for _ in 0..MAX_DEPTH {
+        node = &element_of(node).children[0];
+    }
+    assert!(element_of(node).depth_limited);
+    assert!(!element_of(node).children_omitted);
+    assert!(tree.narrowed);
+    assert!(!tree.truncated);
+}
+
+#[test]
+fn a_requested_depth_beyond_the_safety_cap_still_stops_at_the_cap() {
+    let mut source = RecordedSource::default();
+    for element in 1..=200u32 {
+        source = source.with(element, "AXGroup", &[element + 1]);
+    }
+
+    let tree = read_tree(&mut source, 1, to_depth(MAX_DEPTH + 10));
+
+    assert_eq!(source.reads.len(), MAX_DEPTH + 1);
+    assert!(source.unexpanded_reads.is_empty());
+    let mut node = &tree.root;
+    for _ in 0..MAX_DEPTH {
+        node = &element_of(node).children[0];
+    }
+    assert!(element_of(node).children_omitted, "the cap is Recon's own cut, not the caller's");
+    assert!(!element_of(node).depth_limited);
+    assert!(tree.truncated);
+    assert!(!tree.narrowed);
+}
+
+#[test]
+fn the_node_budget_still_applies_within_a_requested_depth() {
+    let children = (2..=40_000u32).collect::<Vec<_>>();
+    let mut source = RecordedSource::default().with(1, "AXApplication", &children);
+    for child in &children {
+        source = source.with(*child, "AXGroup", &[1]);
+    }
+
+    let tree = read_tree(&mut source, 1, to_depth(1));
+
+    assert_eq!(count_nodes(&tree.root), MAX_NODES);
+    let root = element_of(&tree.root);
+    assert!(root.children_omitted, "the budget ran out before the children did");
+    assert!(element_of(&root.children[0]).depth_limited);
+    assert!(tree.truncated);
+    assert!(tree.narrowed, "a tree can be both narrowed and truncated");
+}
+
+#[test]
+fn the_nominated_child_is_not_charged_against_the_node_budget() {
+    let children = (2..=40_000u32).collect::<Vec<_>>();
+    let mut source = RecordedSource::default().with(1, "AXApplication", &children);
+    for child in &children {
+        source = source.with(*child, "AXGroup", &[]);
+    }
+
+    let tree = read_tree(&mut source, 1, excluding(2));
+
+    assert!(!source.reads.contains(&2), "the skipped element is never read");
+    assert_eq!(count_nodes(&tree.root), MAX_NODES, "the budget counts what Recon read");
+    assert_eq!(source.reads[1], 3, "the children after it keep their order");
+    let root = element_of(&tree.root);
+    assert!(root.menu_bar_excluded);
+    assert!(root.children_omitted, "the budget ran out before the children did");
+    assert!(tree.truncated);
+    assert!(tree.narrowed);
+}
+
+#[test]
+fn a_timeout_inside_a_requested_depth_truncates_a_narrowed_tree() {
+    let mut source = RecordedSource::default()
+        .with(1, "AXApplication", &[2, 3])
+        .with(2, "AXWindow", &[4])
+        .failing(3, ReadFailure::Timeout)
+        .with(4, "AXGroup", &[5])
+        .with(5, "AXButton", &[]);
+
+    let tree = read_tree(&mut source, 1, to_depth(2));
+
+    assert_eq!(source.reads, vec![1, 2, 4, 3]);
+    let root = element_of(&tree.root);
+    assert_eq!(root.children[1], Node::Failed(ReadFailure::Timeout));
+    assert!(element_of(&element_of(&root.children[0]).children[0]).depth_limited);
+    assert!(tree.truncated);
+    assert!(tree.narrowed);
+}
+
+#[test]
+fn the_nominated_root_child_is_skipped_without_being_read() {
+    let mut source = RecordedSource::default()
+        .with(1, "AXApplication", &[2, 3])
+        .with(2, "AXMenuBar", &[4])
+        .with(3, "AXWindow", &[])
+        .with(4, "AXMenu", &[]);
+
+    let tree = read_tree(&mut source, 1, excluding(2));
+
+    assert_eq!(source.reads, vec![1, 3], "nothing below the nominated element is read");
+    assert_eq!(count_nodes(&tree.root), 2, "the skipped element costs nothing and leaves nothing");
+    let root = element_of(&tree.root);
+    assert_eq!(
+        roles(&tree.root),
+        vec![Some("AXApplication".to_owned()), Some("AXWindow".to_owned())]
+    );
+    assert!(root.menu_bar_excluded);
+    assert!(!root.children_omitted, "an element the caller excluded is not an omitted child");
+    assert!(tree.narrowed);
+    assert!(!tree.truncated);
+}
+
+#[test]
+fn a_nomination_that_matches_no_child_leaves_the_result_unnarrowed() {
+    let mut source = RecordedSource::default()
+        .with(1, "AXApplication", &[2, 3])
+        .with(2, "AXMenuBar", &[])
+        .with(3, "AXWindow", &[]);
+
+    let tree = read_tree(&mut source, 1, excluding(99));
+
+    assert_eq!(source.reads, vec![1, 2, 3]);
+    assert!(!element_of(&tree.root).menu_bar_excluded);
+    assert!(!tree.narrowed, "an element that was never there was not excluded");
+    assert!(!tree.truncated);
+}
+
+#[test]
+fn an_element_equal_to_the_nomination_is_still_read_below_the_root() {
+    let mut source = RecordedSource::default()
+        .with(1, "AXApplication", &[2])
+        .with(2, "AXWindow", &[3])
+        .with(3, "AXMenuBar", &[]);
+
+    let tree = read_tree(&mut source, 1, excluding(3));
+
+    assert_eq!(source.reads, vec![1, 2, 3], "only the root's own children are compared");
+    assert_eq!(
+        roles(&tree.root),
+        vec![
+            Some("AXApplication".to_owned()),
+            Some("AXWindow".to_owned()),
+            Some("AXMenuBar".to_owned()),
+        ]
+    );
+    assert!(!element_of(&tree.root).menu_bar_excluded);
+    assert!(!tree.narrowed);
+}
+
+#[test]
+fn nothing_is_excluded_when_the_root_children_are_never_listed() {
+    let mut source = RecordedSource::default()
+        .with(1, "AXApplication", &[2, 3])
+        .with(2, "AXMenuBar", &[])
+        .with(3, "AXWindow", &[]);
+
+    let tree =
+        read_tree(&mut source, 1, TreeOptions { depth: Some(0), excluded_root_child: Some(2) });
+
+    assert_eq!(source.reads, vec![1]);
+    let root = element_of(&tree.root);
+    assert!(root.depth_limited);
+    assert!(!root.menu_bar_excluded, "a child that was never listed was not skipped");
+    assert!(tree.narrowed);
+}
+
+#[test]
+fn an_excluded_menu_and_depth_limited_descendants_mark_the_same_result() {
+    let mut source = RecordedSource::default()
+        .with(1, "AXApplication", &[2, 3])
+        .with(2, "AXMenuBar", &[])
+        .with(3, "AXWindow", &[4])
+        .with(4, "AXButton", &[]);
+
+    let tree =
+        read_tree(&mut source, 1, TreeOptions { depth: Some(1), excluded_root_child: Some(2) });
+
+    assert_eq!(source.reads, vec![1, 3]);
+    let root = element_of(&tree.root);
+    assert!(root.menu_bar_excluded);
+    assert!(!root.depth_limited, "the root's own children were listed");
+    assert!(element_of(&root.children[0]).depth_limited);
+    assert!(tree.narrowed);
+    assert!(!tree.truncated);
 }
 
 struct GeneratedTree {
@@ -350,9 +698,14 @@ impl GeneratedTree {
     }
 
     fn expected_nodes(&self) -> usize {
+        self.expected_nodes_within(self.depth_limit)
+    }
+
+    /// The nodes of this tree down to `depth`, which is the whole tree when it is deeper.
+    fn expected_nodes_within(&self, depth: usize) -> usize {
         let mut total = 0usize;
         let mut level = 1usize;
-        for _ in 0..=self.depth_limit {
+        for _ in 0..=self.depth_limit.min(depth) {
             total += level;
             level *= self.branching;
         }
@@ -363,17 +716,27 @@ impl GeneratedTree {
 impl ElementSource for GeneratedTree {
     type Element = u64;
 
-    fn read(&mut self, element: &u64) -> Result<ElementAttributes<u64>, ReadFailure> {
+    fn read(
+        &mut self,
+        element: &u64,
+        expand_children: bool,
+    ) -> Result<ElementAttributes<u64>, ReadFailure> {
         let depth = self.depth_of[element];
-        let mut children = Vec::new();
-        if depth < self.depth_limit {
-            for _ in 0..self.branching {
-                let child = self.next_element;
-                self.next_element += 1;
-                self.depth_of.insert(child, depth + 1);
-                children.push(child);
+        let has_children = depth < self.depth_limit;
+        let children = if !expand_children {
+            ElementChildren::Unread { present: has_children }
+        } else {
+            let mut elements = Vec::new();
+            if has_children {
+                for _ in 0..self.branching {
+                    let child = self.next_element;
+                    self.next_element += 1;
+                    self.depth_of.insert(child, depth + 1);
+                    elements.push(child);
+                }
             }
-        }
+            ElementChildren::Read { elements, unreadable: false }
+        };
         Ok(ElementAttributes {
             role: Some("AXGroup".to_owned()),
             children,
@@ -386,6 +749,10 @@ fn is_truncated_consistently(tree: &Tree) -> bool {
     tree.truncated == omits_children(&tree.root)
 }
 
+fn is_narrowed_consistently(tree: &Tree) -> bool {
+    tree.narrowed == leaves_out_what_was_asked_for(&tree.root)
+}
+
 proptest! {
     #[test]
     fn a_tree_that_fits_is_reported_whole(branching in 1usize..5, depth_limit in 0usize..6) {
@@ -393,12 +760,14 @@ proptest! {
         let expected = source.expected_nodes();
         prop_assume!(expected <= MAX_NODES);
 
-        let tree = read_tree(&mut source, 0);
+        let tree = read_tree(&mut source, 0, TreeOptions::default());
 
         prop_assert_eq!(count_nodes(&tree.root), expected);
         prop_assert_eq!(deepest(&tree.root), depth_limit + 1);
         prop_assert!(!tree.truncated);
+        prop_assert!(!tree.narrowed);
         prop_assert!(is_truncated_consistently(&tree));
+        prop_assert!(is_narrowed_consistently(&tree));
     }
 }
 
@@ -410,12 +779,73 @@ proptest! {
     fn a_tree_that_does_not_fit_stops_at_the_limit(branching in 2usize..5) {
         let mut source = GeneratedTree::new(branching, 1_000);
 
-        let tree = read_tree(&mut source, 0);
+        let tree = read_tree(&mut source, 0, TreeOptions::default());
 
         prop_assert_eq!(count_nodes(&tree.root), MAX_NODES);
         prop_assert!(deepest(&tree.root) <= MAX_DEPTH + 1);
         prop_assert!(tree.truncated);
+        prop_assert!(!tree.narrowed);
         prop_assert!(is_truncated_consistently(&tree));
+        prop_assert!(is_narrowed_consistently(&tree));
+    }
+}
+
+proptest! {
+    #[test]
+    fn a_requested_depth_bounds_the_walk_and_narrows_only_when_it_cuts(
+        branching in 1usize..4,
+        depth_limit in 0usize..5,
+        requested in 0usize..6,
+    ) {
+        let mut source = GeneratedTree::new(branching, depth_limit);
+        let expected = source.expected_nodes_within(requested);
+        prop_assume!(expected <= MAX_NODES);
+
+        let tree = read_tree(
+            &mut source,
+            0,
+            TreeOptions { depth: Some(requested), excluded_root_child: None },
+        );
+
+        prop_assert_eq!(count_nodes(&tree.root), expected);
+        prop_assert_eq!(deepest(&tree.root), depth_limit.min(requested) + 1);
+        prop_assert_eq!(tree.narrowed, requested < depth_limit);
+        prop_assert!(!tree.truncated);
+        prop_assert!(is_truncated_consistently(&tree));
+        prop_assert!(is_narrowed_consistently(&tree));
+    }
+}
+
+proptest! {
+    #[test]
+    fn the_nominated_child_is_skipped_wherever_it_sits_among_the_root_children(
+        children in 1usize..8,
+        position in 0usize..8,
+    ) {
+        prop_assume!(position < children);
+        let listed: Vec<u32> = (2..2 + children as u32).collect();
+        let mut source = RecordedSource::default().with(1, "AXApplication", &listed);
+        for child in &listed {
+            source = source.with(*child, &format!("AXChild{child}"), &[]);
+        }
+        let nominated = listed[position];
+        let kept: Vec<u32> = listed.iter().copied().filter(|child| *child != nominated).collect();
+
+        let tree = read_tree(&mut source, 1, excluding(nominated));
+
+        let mut expected_reads = vec![1];
+        expected_reads.extend(kept.iter().copied());
+        prop_assert_eq!(&source.reads, &expected_reads);
+        let expected_roles: Vec<Option<String>> = std::iter::once(Some("AXApplication".to_owned()))
+            .chain(kept.iter().map(|child| Some(format!("AXChild{child}"))))
+            .collect();
+        prop_assert_eq!(roles(&tree.root), expected_roles);
+        let root = element_of(&tree.root);
+        prop_assert!(root.menu_bar_excluded);
+        prop_assert!(!root.children_omitted);
+        prop_assert!(tree.narrowed);
+        prop_assert!(!tree.truncated);
+        prop_assert!(is_narrowed_consistently(&tree));
     }
 }
 
@@ -436,7 +866,7 @@ proptest! {
             }),
         );
 
-        let tree = read_tree(&mut source, 1);
+        let tree = read_tree(&mut source, 1, whole_tree());
         let node = element_of(&tree.root);
         let Some(AttributeValue::Text(reported)) = node.value.clone() else {
             return Err(TestCaseError::fail("a text value stays a text value"));

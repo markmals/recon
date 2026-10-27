@@ -14,6 +14,9 @@ mod signing;
 mod window_element;
 mod window_server;
 
+#[cfg(test)]
+mod menu_bar_tests;
+
 use std::env;
 use std::path::{Path, PathBuf};
 
@@ -31,7 +34,7 @@ use crate::ui::response::{
     CapturedImage, CapturedWindow, ObservedApplication, ScreenshotResponse, TreeResponse,
     WindowsResponse,
 };
-use crate::ui::tree::read_tree;
+use crate::ui::tree::{TreeOptions, read_tree};
 use crate::ui::window::{Window, WindowId, select_window};
 
 /// Runs one `recon ui` command and returns its result as JSON.
@@ -44,7 +47,9 @@ pub fn observe(request: &UiRequest) -> Result<String, Failure> {
         .map_err(responsibility::ResponsibilityError::into_failure)?;
     match request {
         UiRequest::Windows { selection } => windows(selection),
-        UiRequest::Tree { selection, window } => tree(selection, *window),
+        UiRequest::Tree { selection, window, depth, no_menu_bar } => {
+            tree(selection, *window, *depth, *no_menu_bar)
+        }
         UiRequest::Screenshot { selection, window, out } => screenshot(selection, *window, out),
     }
 }
@@ -57,7 +62,12 @@ fn windows(selection: &Selection) -> Result<String, Failure> {
     })
 }
 
-fn tree(selection: &Selection, window: Option<WindowId>) -> Result<String, Failure> {
+fn tree(
+    selection: &Selection,
+    window: Option<WindowId>,
+    depth: Option<usize>,
+    no_menu_bar: bool,
+) -> Result<String, Failure> {
     with_instance(selection, |application, pid| {
         if let Some(id) = window {
             select_window(window_server::windows_owned_by(pid)?, id, pid)?;
@@ -66,16 +76,26 @@ fn tree(selection: &Selection, window: Option<WindowId>) -> Result<String, Failu
 
         accessibility::bound_messaging();
         let application_element = accessibility::application_element(pid)?;
+        let excluded_root_child = if no_menu_bar && depth != Some(0) {
+            accessibility::menu_bar(&application_element, pid)?
+        } else {
+            None
+        };
         let root = match window {
             Some(id) => window_element::window_element(&application_element, pid, id)?,
             None => application_element,
         };
 
-        let tree = read_tree(&mut Accessibility::new(), Element::new(root));
+        let tree = read_tree(
+            &mut Accessibility::new(),
+            Element::new(root),
+            TreeOptions { depth, excluded_root_child },
+        );
         encode(&TreeResponse {
             application: observed(application, pid),
             window_id: window,
             truncated: tree.truncated,
+            narrowed: tree.narrowed,
             root: tree.root,
         })
     })
