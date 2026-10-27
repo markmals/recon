@@ -35,6 +35,8 @@ vp run check
 
 The tooling tests build `recon` once in `target/tools` and use the executable path reported by Cargo, including when `CARGO_BUILD_TARGET` or `build.target` is configured. Their build does not replace the executable used by the Rust tests.
 
+The indexed-discovery and foreground-preservation integration tests use a 20-second deadline because they read the live macOS application catalogue.
+
 ### IntelliSense
 
 The repository's `.intellisense.jsonc` configures Rust, TypeScript/JavaScript, Vue, Swift, CSS, JSON/JSONC, YAML, TOML, Markdown, and shell language servers, including the extensionless Git hooks. Agents use the [using-intellisense skill](.agents/skills/using-intellisense/SKILL.md) for semantic queries and refactor previews.

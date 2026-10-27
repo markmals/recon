@@ -123,6 +123,7 @@ test.skipIf(process.platform !== "darwin")(
         expect(inspection.status, inspection.stderr).toBe(0);
         expect(JSON.parse(inspection.stdout).application.path).toBe(calculator.path);
     },
+    20_000,
 );
 
 test.skipIf(process.platform !== "darwin")(
