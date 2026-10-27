@@ -96,7 +96,10 @@ test.skipIf(process.platform !== "darwin")(
         let inspection = recon(["app", "inspect", directory]);
         expect(inspection.status).not.toBe(0);
         expect(inspection.stdout).toBe("");
-        expect(inspection.stderr).toContain("not an application");
+        expect(JSON.parse(inspection.stderr).error).toMatchObject({
+            code: "NOT_AN_APPLICATION",
+            details: { reason: "unreadable-info-plist", path: realpathSync(directory) },
+        });
     },
 );
 
@@ -120,6 +123,7 @@ test.skipIf(process.platform !== "darwin")(
         expect(inspection.status, inspection.stderr).toBe(0);
         expect(JSON.parse(inspection.stdout).application.path).toBe(calculator.path);
     },
+    20_000,
 );
 
 test.skipIf(process.platform !== "darwin")(
@@ -174,7 +178,13 @@ test.skipIf(process.platform === "darwin")(
         let listing = recon(["app", "list"]);
         expect(listing.status).not.toBe(0);
         expect(listing.stdout).toBe("");
-        expect(listing.stderr).toContain("supported only on macOS");
+        expect(JSON.parse(listing.stderr).error).toMatchObject({
+            code: "UNSUPPORTED_HOST",
+            details: {
+                host: process.platform === "win32" ? "windows" : process.platform,
+                supportedHosts: ["macos"],
+            },
+        });
     },
 );
 

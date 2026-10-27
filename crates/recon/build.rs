@@ -4,13 +4,21 @@
 
 use std::env;
 use std::fs;
+use std::io;
 use std::path::PathBuf;
+
+#[path = "build/revision.rs"]
+mod revision;
 
 const BUNDLE_IDENTIFIER: &str = "me.malstrom.recon";
 const BUNDLE_NAME: &str = "recon";
 
 fn main() {
     println!("cargo::rerun-if-changed=build.rs");
+    println!("cargo::rerun-if-changed=build/revision.rs");
+    let package =
+        PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").expect("cargo sets CARGO_MANIFEST_DIR"));
+    revision::directives(&package, &mut io::stdout().lock()).expect("write the build revision");
     if env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("macos") {
         return;
     }

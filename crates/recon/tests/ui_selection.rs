@@ -2,8 +2,14 @@ use std::path::Path;
 
 use proptest::prelude::*;
 use recon::application::Pid;
+use recon::error::{ErrorCode, Failure};
 use recon::ui::instance::select_instance;
 use recon::ui::window::{Bounds, Window, WindowId, select_window, title_from, windows_of};
+use serde_json::{Value, json};
+
+mod support;
+
+use support::validate_failure;
 
 const BUNDLE: &str = "/Applications/Logic Pro.app";
 
@@ -19,6 +25,11 @@ fn window(id: u32, owner_pid: u32) -> Window {
     }
 }
 
+fn details(failure: &Failure) -> Value {
+    validate_failure(&failure.report(), &["ui", "windows"]);
+    failure.details.clone().expect("the data needed to recover")
+}
+
 #[test]
 fn the_only_running_instance_is_selected_without_a_pid() {
     assert_eq!(select_instance(Path::new(BUNDLE), &[Pid(412)], None).unwrap(), Pid(412));
@@ -26,20 +37,22 @@ fn the_only_running_instance_is_selected_without_a_pid() {
 
 #[test]
 fn a_bundle_that_is_not_running_is_never_launched() {
-    let error = select_instance(Path::new(BUNDLE), &[], None).unwrap_err();
-    assert_eq!(error, format!("{BUNDLE} is not running; recon ui does not launch applications"));
+    for requested in [None, Some(Pid(412))] {
+        let failure = select_instance(Path::new(BUNDLE), &[], requested).unwrap_err();
 
-    let error = select_instance(Path::new(BUNDLE), &[], Some(Pid(412))).unwrap_err();
-    assert_eq!(error, format!("{BUNDLE} is not running; recon ui does not launch applications"));
+        assert_eq!(failure.code, ErrorCode::NotRunning);
+        assert!(!failure.retryable);
+        assert_eq!(details(&failure), json!({ "application": BUNDLE }));
+    }
 }
 
 #[test]
-fn several_instances_list_their_pids_and_name_the_pid_flag() {
-    let error = select_instance(Path::new(BUNDLE), &[Pid(410), Pid(902)], None).unwrap_err();
-    assert!(error.contains(BUNDLE), "{error}");
-    assert!(error.contains("410"), "{error}");
-    assert!(error.contains("902"), "{error}");
-    assert!(error.contains("--pid"), "{error}");
+fn several_instances_are_an_ambiguous_instance_naming_every_process() {
+    let failure = select_instance(Path::new(BUNDLE), &[Pid(410), Pid(902)], None).unwrap_err();
+
+    assert_eq!(failure.code, ErrorCode::AmbiguousInstance);
+    assert!(!failure.retryable);
+    assert_eq!(details(&failure), json!({ "application": BUNDLE, "pids": [410, 902] }));
 }
 
 #[test]
@@ -52,9 +65,22 @@ fn a_requested_pid_selects_that_instance() {
 #[test]
 fn a_requested_pid_must_be_an_instance_of_the_resolved_bundle() {
     let running = [Pid(410), Pid(902)];
-    let error = select_instance(Path::new(BUNDLE), &running, Some(Pid(411))).unwrap_err();
-    assert!(error.contains("411"), "{error}");
-    assert!(error.contains(BUNDLE), "{error}");
+
+    let failure = select_instance(Path::new(BUNDLE), &running, Some(Pid(411))).unwrap_err();
+
+    assert_eq!(failure.code, ErrorCode::NotFound);
+    assert_eq!(
+        details(&failure),
+        json!({
+            "kind": "instance",
+            "selector": null,
+            "path": BUNDLE,
+            "pid": 411,
+            "windowId": null,
+            "runningPids": [410, 902],
+            "detail": null,
+        })
+    );
 }
 
 #[test]
@@ -69,10 +95,24 @@ fn a_window_must_belong_to_the_selected_instance() {
     let windows = vec![window(3, 42), window(5, 90)];
     assert_eq!(select_window(windows.clone(), WindowId(3), Pid(42)).unwrap().id, WindowId(3));
 
-    let error = select_window(windows.clone(), WindowId(5), Pid(42)).unwrap_err();
-    assert_eq!(error, "window 5 is not a window of process 42");
-    let error = select_window(windows, WindowId(77), Pid(42)).unwrap_err();
-    assert_eq!(error, "window 77 is not a window of process 42");
+    for unowned in [WindowId(5), WindowId(77)] {
+        let failure = select_window(windows.clone(), unowned, Pid(42)).unwrap_err();
+
+        assert_eq!(failure.code, ErrorCode::NotFound);
+        assert!(!failure.retryable);
+        assert_eq!(
+            details(&failure),
+            json!({
+                "kind": "window",
+                "selector": null,
+                "path": null,
+                "pid": 42,
+                "windowId": unowned.0,
+                "runningPids": null,
+                "detail": null,
+            })
+        );
+    }
 }
 
 #[test]
@@ -89,11 +129,14 @@ proptest! {
         pids in prop::collection::hash_set(1u32..100_000, 2..12)
     ) {
         let pids = pids.into_iter().map(Pid).collect::<Vec<_>>();
-        let error = select_instance(Path::new(BUNDLE), &pids, None).unwrap_err();
+        let failure = select_instance(Path::new(BUNDLE), &pids, None).unwrap_err();
+        prop_assert_eq!(failure.code, ErrorCode::AmbiguousInstance);
+        let reported = details(&failure);
+        let reported = reported["pids"].as_array().expect("the running process ids");
+        prop_assert_eq!(reported.len(), pids.len());
         for pid in &pids {
-            prop_assert!(error.contains(&pid.to_string()), "{error} omits {pid}");
+            prop_assert!(reported.contains(&json!(pid.0)), "{} omits {pid}", details(&failure));
         }
-        prop_assert!(error.contains("--pid"), "{error}");
     }
 
     #[test]
@@ -108,7 +151,10 @@ proptest! {
                 prop_assert_eq!(selected, requested);
                 prop_assert!(pids.contains(&requested));
             }
-            Err(_) => prop_assert!(!pids.contains(&requested)),
+            Err(failure) => {
+                validate_failure(&failure.report(), &["ui", "windows"]);
+                prop_assert!(!pids.contains(&requested));
+            }
         }
     }
 }

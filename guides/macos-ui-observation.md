@@ -1,7 +1,7 @@
 ---
 id: guide.macos-ui-observation
 title: Observe macOS Application UI
-describes: [proposal.0002]
+describes: [proposal.0002, proposal.0003]
 ---
 
 # Observe macOS Application UI
@@ -12,11 +12,13 @@ Recon can report the windows of a running macOS application, read that applicati
 
 Observation requires two macOS privacy permissions, and they belong to the `recon` executable rather than to the terminal, editor, or agent harness that ran it. A command therefore behaves the same under every launcher.
 
+Every failure is one JSON error object printed on a single line to standard error: a stable `code`, a human `message`, a `retryable` flag, the resolved `command`, and `details` carrying the values you need to recover. Branch on `code` rather than on the sentence. Run `recon --help` to learn the commands, `recon schema ui tree` for one command's arguments, output schema, and error codes, and `recon context` to see which permissions and private interfaces this installation holds without observing any application. The [CLI contract guide](cli-contract.md) explains orientation, `recon schema`, `recon context`, and how to read an error object.
+
 ## How to use it
 
 ### Sign `recon` and grant it permission
 
-`ui` commands work on macOS only. On any other host they report `UI observation is supported only on macOS` and exit with a nonzero status.
+`ui` commands work on macOS only. On any other host they fail with `UNSUPPORTED_HOST`, whose `details` name the host you are on and the hosts the command supports, and exit with a nonzero status.
 
 Put `recon` at the path where you intend to keep it before granting anything, because macOS records a permission grant against an executable at a location. Then sign it with your own Developer ID Application identity and Recon's identifier:
 
@@ -30,20 +32,15 @@ Grant the permissions once. Run a `ui` command, let macOS show its prompt, then 
 
 Which permission a command needs depends on what it reads. `recon ui windows` needs Screen Recording, because macOS withholds other processes' window titles without it, and it reads no accessibility data at all. `recon ui tree` needs Accessibility. `recon ui screenshot` needs Screen Recording to capture pixels, and it needs Accessibility as well whenever you omit `--window`, because the default window is the one the application reports as its main window through Accessibility.
 
-When a needed permission is missing, Recon asks macOS to request it. macOS may show its prompt, and will stay silent if you denied the permission earlier. Recon then exits with a nonzero status and writes an error naming each missing permission, the absolute path of the running executable, and the System Settings pane that grants it:
+When a needed permission is missing, Recon asks macOS to request it. macOS may show its prompt, and will stay silent if you denied the permission earlier. Recon then exits with a nonzero status and fails with `PERMISSION_DENIED`. Its `message` names the missing permissions and the executable; `details` carries the same facts as data. `details.permissions` holds one entry per missing permission, each with a `permission` of `screen-recording` or `accessibility` and the `settingsPane` that grants it. `details.executablePath` is the absolute path of the running executable, which is what macOS records a grant against. `details.adHocSigned` says whether this build is ad-hoc signed.
 
-```text
-recon: missing permission for /usr/local/bin/recon:
-  Screen Recording: System Settings → Privacy & Security → Screen & System Audio Recording
-```
-
-If both permissions are missing, the header is plural and an `Accessibility` line joins it. If the executable is ad-hoc signed, a final line says so, warns that macOS forgets the grant when the executable is rebuilt, and points at a Developer ID Application identity as the fix.
+If both permissions are missing, both appear in `details.permissions`. When `adHocSigned` is `true`, macOS forgets the grant whenever the executable is rebuilt, and signing it with a Developer ID Application identity keeps the grant across rebuilds.
 
 Ad-hoc signing is what `cargo build` and CI produce on Apple silicon, and the designated requirement of an ad-hoc signature is the code hash itself. Such a build works after you grant it, then loses the grant the moment it is rebuilt or replaced, because the new binary hashes differently. Developer ID signing with the identifier above is the way out.
 
 Since macOS 15, macOS periodically asks you to reconfirm screen-recording permission. Expect that to interrupt long unattended runs.
 
-Every `ui` command first makes sure `recon` is responsible for its own privacy requests. If it is not, `recon` re-executes itself once with the same arguments, environment, and standard streams, and exits with the child's status; you see nothing but the result. Stopping `recon` with SIGHUP, SIGINT, SIGQUIT, or SIGTERM stops the re-executed child too, and a child ended by a signal ends `recon` with the same signal. A signal your launcher ignores, as `nohup` ignores SIGHUP, stays ignored by both. If that re-execution is impossible, the command fails instead of quietly running under the launcher's permissions. The `app` commands need no permission and never re-execute.
+Every `ui` command first makes sure `recon` is responsible for its own privacy requests. If it is not, `recon` re-executes itself once with the same arguments, environment, and standard input. The parent drains both child output streams concurrently and withholds them until a successful wait, then forwards their bytes unchanged and exits with the child's status. A genuine wait failure discards child output and produces only one `IDENTITY_UNAVAILABLE` error with `details.stage: "wait"`, exit 1, and empty standard output. Stopping `recon` with SIGHUP, SIGINT, SIGQUIT, or SIGTERM stops the re-executed child too, and a child ended by a signal ends `recon` with the same signal. A signal your launcher ignores, as `nohup` ignores SIGHUP, stays ignored by both. Other identity failures also report `IDENTITY_UNAVAILABLE` with the failed stage, rather than quietly using the launcher's permissions. The `app` commands need no permission and never re-execute.
 
 Working on Recon itself, build and sign a local copy in one step:
 
@@ -57,13 +54,13 @@ Once `target/signed/recon` holds both permissions, `vp run test:ui` with the sam
 
 ### Choose an instance and a window
 
-Every `ui` command takes the same target as `recon app inspect`: an exact displayed name, an exact bundle identifier, or an absolute `.app` path, resolved under the rules in the [macOS application investigation guide](macos-application-investigation.md), including its not-found and ambiguity errors.
+Every `ui` command takes the same target as `recon app inspect`: an exact displayed name, an exact bundle identifier, or an absolute `.app` path, resolved under the rules in the [macOS application investigation guide](macos-application-investigation.md), including its `NOT_FOUND` and `AMBIGUOUS_TARGET` errors.
 
-Recon then selects one running process of that bundle. A bundle with exactly one running process gives Recon no choice to make. If it has none, the command fails with `<path> is not running; recon ui does not launch applications`. If it has several, Recon refuses to guess and lists them: `<path> has several running instances; choose one with --pid: 410, 902`. Naming a process that is not an instance of the resolved bundle fails too, with `process 411 is not a running instance of <path>`.
+Recon then selects one running process of that bundle. A bundle with exactly one running process gives Recon no choice to make. If it has none, the command fails with `NOT_RUNNING`, and `details.application` holds the bundle path. If it has several, Recon refuses to guess and fails with `AMBIGUOUS_INSTANCE`, whose `details.pids` lists every running process so that you can pass one of them as `--pid`. Naming a process that is not an instance of the resolved bundle fails with `NOT_FOUND` and `details.kind: "instance"`, carrying the `pid` you passed and the `runningPids` that would have been accepted.
 
 The windows of that instance are exactly the ones the window server reports as owned by its process ID. Windows that another process owns are not included, even when they look like part of the app. A save or open panel is the usual case: it belongs to a system service's process, so it appears in neither the window list nor the tree of the app that triggered it.
 
-`--window <id>` selects one window by window ID, which you normally read from `recon ui windows`. The window must exist and be owned by the selected instance; otherwise the command fails with `window <id> is not a window of process <pid>`. Flags may come before or after the target, and passing a flag the command does not take, such as `--window` to `windows`, is a usage error.
+`--window <id>` selects one window by window ID, which you normally read from `recon ui windows`. The window must exist and be owned by the selected instance; otherwise the command fails with `NOT_FOUND` and `details.kind: "window"`, carrying the `windowId` you passed and the `pid` whose windows Recon looked at. Flags may come before or after the target, and passing a flag the command does not take, such as `--window` to `windows`, is a usage error that names the offending flag and exits 2.
 
 ### `recon ui windows <target> [--pid <pid>]`
 
@@ -77,7 +74,7 @@ Read `onScreen: false` carefully. It does not distinguish a window on another Sp
 
 Without `--window`, the root of the tree is the application element, and its children are whatever the application reports, typically its menu bar and its windows on the current Space. Windows on other Spaces are usually missing from that list, and Recon does not go looking for them here.
 
-With `--window`, the root is that window's accessibility element. Recon looks for the element in the application's `AXWindows`, then in its `AXMainWindow`, then by constructing elements from private remote tokens for element numbers 0 through 99,999 and matching their window IDs. A window that none of those reaches fails with `window <id> has no accessibility element reachable by Recon`. An application that does not answer one of those requests within two seconds stops the search, and the command fails with `process <pid> did not answer an accessibility request within 2 seconds`.
+With `--window`, the root is that window's accessibility element. Recon looks for the element in the application's `AXWindows`, then in its `AXMainWindow`, then by constructing elements from private remote tokens for element numbers 0 through 99,999 and matching their window IDs. A window that none of those reaches fails with `NOT_FOUND` and `details.kind: "window-element"`. When the private remote-token interface is absent from this macOS version, the same situation is `INTERFACE_UNAVAILABLE` instead, naming the `interface` and the `symbol` Recon looked for, because nothing you pass can recover it. An application that does not answer one of those requests within two seconds stops the search, and the command fails with `TIMEOUT`, which is retryable and carries the `pid` and `timeoutSeconds`.
 
 The object around the tree is `application` with `path` and `pid`, `windowId` holding the window ID you asked for or `null` when you did not, `truncated`, and `root`.
 
@@ -94,11 +91,11 @@ Any node whose children were not all read carries `"childrenOmitted": true`, inc
 
 ### `recon ui screenshot <target> [--pid <pid>] [--window <id>] --out <file>`
 
-`--out` is required, and Recon never overwrites. A missing parent directory fails with `cannot write <path>: <parent> is not an existing directory`, and a path that already exists fails with `cannot write <path>: the file already exists; recon never overwrites`. The file is written as PNG whatever extension you give it.
+`--out` is required, and Recon never overwrites. A path that already exists fails with `ALREADY_EXISTS` and `details.path`. A missing parent directory fails with `IO_FAILED`, `details.operation: "resolve-output"`, and `details.reason: "parent-not-a-directory"`. The file is written as PNG whatever extension you give it.
 
-Without `--window`, Recon captures the window the application reports as its main window through Accessibility. An application that reports no main window, which happens for instance when its only window is minimized, makes the command fail with a suggestion to list the windows with `recon ui windows` and pick one with `--window`. An application that does not answer within two seconds makes it fail with `process <pid> did not answer an accessibility request within 2 seconds`.
+Without `--window`, Recon captures the window the application reports as its main window through Accessibility. An application that reports no main window, which happens for instance when its only window is minimized, makes the command fail with `NOT_FOUND` and `details.kind: "main-window"`; list the windows with `recon ui windows` and pick one with `--window`. An application that does not answer within two seconds makes it fail with `TIMEOUT`.
 
-Capture uses a private SkyLight hardware capture of exactly one window, at that window's backing pixel resolution, with no fallback mechanism. Two failures are reported plainly, and neither writes a file. If the private symbols are missing, the command fails with `window capture is unavailable on this macOS version (SkyLight capture API not found)`. If macOS returns no image, the command fails with `macOS returned no image for window <id>`. If writing the PNG itself fails, Recon removes the partial file, and if macOS refuses even that, the error names the file left behind.
+Capture uses a private SkyLight hardware capture of exactly one window, at that window's backing pixel resolution, with no fallback mechanism. A capture failure writes no file. If the private symbols are missing, the command fails with `INTERFACE_UNAVAILABLE`, naming `window-server-connection` or `skylight-capture` and the symbol behind it. If macOS returns no image, no pixels, a pixel format Recon cannot read, or an image too large to report, or if the capture cannot be encoded as PNG, the command fails with `CAPTURE_FAILED`, whose `details.stage` is `capture`, `pixels`, or `encode` and whose `details.windowId` is the window you asked for; that code is retryable. If writing the PNG itself fails, the command fails with `IO_FAILED` and `details.operation: "write"`, Recon removes the partial file, and if macOS refuses even that, `details.partialFile` names the file left behind.
 
 On success the object holds `application` with `path` and `pid`; `window` with the `id`, `title`, `bounds`, and `onScreen` of the window as it was at the moment of capture; `image` with the absolute `path` written, the `width` and `height` in pixels, and `uniform`; and `method`, always `"skylight-hardware-capture"`. Pixel dimensions are the window's backing resolution, so on a Retina display they are larger than the point dimensions in `bounds`. `uniform` is `true` when every pixel has the same RGBA value, as in an entirely transparent or entirely black capture; Recon records that fact instead of calling it an error.
 
@@ -142,9 +139,9 @@ The result reports the absolute path of the PNG, its pixel width and height, and
 - Accessibility elements have no durable identity. A node is identified only by its position inside one tree result, and `identifier` is filled in only when the application's developer assigned one.
 - A window on another Space is usually absent from an application-level tree. It stays reachable through `--window`, and its screenshot works, but an accessibility window whose private element number exceeds 99,999 cannot be reached at all.
 - An app often owns windows that no person perceives as windows, such as untitled menu-bar-sized ones, and may own invisible windows with alpha 0. `recon ui windows` lists them because the window server reports them.
-- Capturing a minimized window can fail repeatedly once its content has changed, with `macOS returned no image for window <id>` and no file written.
+- Capturing a minimized window can fail repeatedly once its content has changed, with `CAPTURE_FAILED` at stage `capture` and no file written.
 - SkyLight capture and the private accessibility interfaces behind `--window` have been verified only on macOS 27.0.1 on Apple silicon. A macOS update can remove them; Recon then reports the capability as unavailable rather than crashing or returning misleading data.
 - Reading a closed menu can make an application run its own menu-update code. Recon does not open menus, and no visible change was observed from reading them.
-- Every failure, including a missing permission, an ambiguous instance, an unowned window, and an existing `--out` path, produces a diagnostic on standard error, a nonzero exit status, and no success JSON.
+- Every failure, including a missing permission, an ambiguous instance, an unowned window, and an existing `--out` path, prints one JSON error object to standard error, exits with a nonzero status, and prints no success JSON.
 - Grants are tied to the executable at its path. Rebuilding an ad-hoc binary, moving a signed one, or running a second copy from another directory all mean granting again in System Settings.
 - Adoption is reversible: revoke the two grants in System Settings and delete the executable.

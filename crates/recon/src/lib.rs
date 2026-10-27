@@ -6,6 +6,10 @@
 //! `macos` observes it on a Mac.
 
 pub mod application;
+pub mod cli;
+pub mod context;
+pub mod error;
+pub mod output;
 pub mod request;
 pub mod ui;
 

@@ -1,7 +1,7 @@
 ---
 id: decision.0001
 title: Recon Owns Its macOS Privacy Identity
-status: accepted
+status: superseded
 established-by: proposal.0002
 supersedes: []
 ---
@@ -65,6 +65,7 @@ The identifier follows the owner's existing reverse-DNS convention, because any 
 
 ## Revision history
 
-| Date       | Change                  | Proposal      |
-| ---------- | ----------------------- | ------------- |
-| 2026-10-15 | Accepted this decision. | proposal.0002 |
+| Date       | Change                                                         | Proposal      |
+| ---------- | -------------------------------------------------------------- | ------------- |
+| 2026-10-15 | Accepted this decision.                                        | proposal.0002 |
+| 2026-10-26 | Superseded by decision.0002; original decision text preserved. | proposal.0003 |

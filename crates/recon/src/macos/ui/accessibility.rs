@@ -11,11 +11,14 @@ use objc2_core_foundation::{CFArray, CFRetained, CFString, CFType};
 
 use super::attributes::{self, Attribute, Children};
 use crate::application::Pid;
+use crate::error::Failure;
 use crate::ui::tree::{ElementAttributes, ElementSource, ReadFailure};
 use crate::ui::window::Bounds;
 
-/// Bounds every accessibility request, so an unresponsive application cannot hang Recon.
-pub(super) const MESSAGING_TIMEOUT: c_float = 2.0;
+/// Bounds every accessibility request, so an unresponsive application cannot hang Recon. The
+/// whole seconds are what a `TIMEOUT` failure reports; the float is what macOS takes.
+pub(super) const MESSAGING_TIMEOUT_SECONDS: u32 = 2;
+pub(super) const MESSAGING_TIMEOUT: c_float = MESSAGING_TIMEOUT_SECONDS as c_float;
 
 /// An accessibility element. Elements have no durable identity, but macOS can still tell whether
 /// two of them refer to the same object, which is what a tree read needs to spot repetition.
@@ -135,8 +138,9 @@ pub(super) fn bound_messaging() {
 }
 
 /// The top-level element of a running application.
-pub(super) fn application_element(pid: Pid) -> Result<CFRetained<AXUIElement>, String> {
-    let pid = pid_t::try_from(pid.0).map_err(|_| format!("{pid} is not a process id"))?;
+pub(super) fn application_element(pid: Pid) -> Result<CFRetained<AXUIElement>, Failure> {
+    let pid = pid_t::try_from(pid.0)
+        .map_err(|_| Failure::internal(format!("{pid} is not a process id")))?;
     // SAFETY: creating an application element does not message the application.
     Ok(unsafe { AXUIElement::new_application(pid) })
 }
