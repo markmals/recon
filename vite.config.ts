@@ -93,6 +93,14 @@ export default defineConfig({
                 command: "node tools/build-inject-fixture.ts",
                 cache: false,
             },
+            "helper:build": {
+                command: "node tools/build-helper.ts",
+                cache: false,
+            },
+            "loader:build": {
+                command: "node tools/build-loader.ts",
+                cache: false,
+            },
             "recon:sign": {
                 command: "node tools/sign-recon.ts",
                 cache: false,
@@ -103,8 +111,8 @@ export default defineConfig({
                 cache: false,
             },
             "test:inject": {
-                command: "cargo test -p recon --test inject_binding -- --ignored --test-threads=1",
-                dependsOn: ["fixture:inject"],
+                command: "node tools/test-inject.ts",
+                dependsOn: ["fixture:inject", "loader:build"],
                 cache: false,
             },
             // Reads live git and GitHub state, so a replayed result would be stale.

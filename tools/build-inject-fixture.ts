@@ -50,6 +50,22 @@ function buildInjectFixture(): void {
 
     writeFileSync(entitlements, ENTITLEMENTS);
 
+    execFileSync(
+        "clang",
+        [
+            "-dynamiclib",
+            "-arch",
+            "arm64",
+            "-arch",
+            "arm64e",
+            "-O2",
+            path.resolve("crates/recon/tests/fixtures/inject-fixture/helper.c"),
+            "-o",
+            path.join(outDir, "inject-helper.dylib"),
+        ],
+        { stdio: "inherit" },
+    );
+
     // Ad-hoc is enough: cooperation comes from get-task-allow, not from a stable identity.
     execFileSync("codesign", ["--force", "--sign", "-", "--entitlements", entitlements, binary], {
         stdio: "inherit",
