@@ -28,8 +28,8 @@ fn control_focus(root: &Value) -> [bool; 3] {
 #[ignore = "needs signed recon with Accessibility granted and the built fixture; run vp run test:ui"]
 fn proposal_0004_menu_exclusion_keeps_windows_and_status_items_without_changing_focus_or_pointer() {
     let fixture = Fixture::launch();
-    let full = run_ui(&["tree", fixture.target()]);
-    let narrowed = run_ui(&["tree", fixture.target(), "--no-menu-bar"]);
+    let full = run_ui(&["ax", "tree", fixture.target()]);
+    let narrowed = run_ui(&["ax", "tree", fixture.target(), "--no-menu-bar"]);
     assert_eq!(control_focus(&full["root"]), control_focus(&narrowed["root"]));
 
     assert_eq!(full["narrowed"], false);
@@ -63,7 +63,7 @@ fn proposal_0004_menu_exclusion_keeps_windows_and_status_items_without_changing_
 fn proposal_0004_root_zero_and_depth_one_preserve_distinct_omission_markers() {
     let fixture = Fixture::launch();
     for suffix in [vec!["--depth", "0"], vec!["--no-menu-bar", "--depth", "0"]] {
-        let mut arguments = vec!["tree", fixture.target()];
+        let mut arguments = vec!["ax", "tree", fixture.target()];
         arguments.extend(suffix);
         let tree = run_ui(&arguments);
         assert_eq!(tree["root"]["role"], "AXApplication");
@@ -75,7 +75,7 @@ fn proposal_0004_root_zero_and_depth_one_preserve_distinct_omission_markers() {
         assert_eq!(tree["truncated"], false);
     }
     for exclude in [false, true] {
-        let mut arguments = vec!["tree", fixture.target(), "--depth", "1"];
+        let mut arguments = vec!["ax", "tree", fixture.target(), "--depth", "1"];
         if exclude {
             arguments.push("--no-menu-bar");
         }
@@ -91,7 +91,7 @@ fn proposal_0004_root_zero_and_depth_one_preserve_distinct_omission_markers() {
         assert!(children(&tree["root"]).iter().any(|node| node["depthLimited"] == true));
     }
     let window = main_window_id(&fixture).to_string();
-    let tree = run_ui(&["tree", fixture.target(), "--window", &window, "--depth", "0"]);
+    let tree = run_ui(&["ax", "tree", fixture.target(), "--window", &window, "--depth", "0"]);
     assert_eq!(tree["root"]["role"], "AXWindow");
     assert_eq!(tree["root"]["title"], MAIN_WINDOW_TITLE);
     assert!(

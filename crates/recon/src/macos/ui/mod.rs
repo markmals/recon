@@ -47,7 +47,7 @@ pub fn observe(request: &UiRequest) -> Result<String, Failure> {
         .map_err(responsibility::ResponsibilityError::into_failure)?;
     match request {
         UiRequest::Windows { selection } => windows(selection),
-        UiRequest::Tree { selection, window, depth, no_menu_bar } => {
+        UiRequest::AxTree { selection, window, depth, no_menu_bar } => {
             tree(selection, *window, *depth, *no_menu_bar)
         }
         UiRequest::Screenshot { selection, window, out } => screenshot(selection, *window, out),

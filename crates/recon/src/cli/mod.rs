@@ -33,7 +33,8 @@ pub fn parse(arguments: &[String]) -> Result<Request, Failure> {
         .skip(usize::from(arguments.first().is_some_and(|word| word == "help")))
         .map(String::as_str)
         .filter(|word| !HELP_FLAGS.contains(word));
-    let path = resolved_path([words.next(), words.next()], &registry);
+    let lead: Vec<&str> = words.by_ref().take(3).collect();
+    let path = resolved_path(&lead, &registry);
     if help_requested {
         return Ok(Request::Help(help::render(&registry, path)));
     }
@@ -44,74 +45,88 @@ pub fn parse(arguments: &[String]) -> Result<Request, Failure> {
     let matches = registry::parser(&registry)
         .try_get_matches_from(std::iter::once("recon").chain(arguments.iter().map(String::as_str)))
         .map_err(|error| parse_error::convert(error, arguments, entry, path, &registry))?;
-    let (group, group_matches) = matches.subcommand().expect("nonempty validated command");
-    if group == "context" {
-        return Ok(Request::Context);
+    let mut resolved: Vec<&str> = Vec::new();
+    let mut leaf = &matches;
+    while let Some((name, sub)) = leaf.subcommand() {
+        resolved.push(name);
+        leaf = sub;
     }
-    if group == "schema" {
-        return Ok(Request::Schema(
-            group_matches
-                .get_many::<String>("command")
+    match resolved.as_slice() {
+        ["context"] => Ok(Request::Context),
+        ["schema"] => Ok(Request::Schema(
+            leaf.get_many::<String>("command")
                 .map(|words| words.cloned().collect())
                 .unwrap_or_default(),
-        ));
+        )),
+        ["app", operation] => Ok(Request::App(match *operation {
+            "list" => AppRequest::List { running: leaf.get_flag("running") },
+            "inspect" => AppRequest::Inspect { target: ui_target(leaf) },
+            "launch" => AppRequest::Launch { target: ui_target(leaf) },
+            _ => unreachable!("registry app operation"),
+        })),
+        operation if operation.first() == Some(&"ui") => {
+            let selection = Selection {
+                target: ui_target(leaf),
+                pid: leaf.get_one::<Decimal<1>>("pid").map(|number| Pid(number.0)),
+            };
+            let window = || leaf.get_one::<Decimal<0>>("window").map(|number| WindowId(number.0));
+            Ok(Request::Ui(match operation {
+                ["ui", "windows"] => UiRequest::Windows { selection },
+                ["ui", "ax", "tree"] => UiRequest::AxTree {
+                    selection,
+                    window: window(),
+                    depth: leaf
+                        .get_one::<Decimal<0, { crate::ui::tree::MAX_DEPTH as u32 }>>("depth")
+                        .map(|number| number.0 as usize),
+                    no_menu_bar: leaf.get_flag("no-menu-bar"),
+                },
+                ["ui", "screenshot"] => UiRequest::Screenshot {
+                    selection,
+                    window: window(),
+                    out: PathBuf::from(
+                        &leaf.get_one::<OutputPath>("out").expect("required output").0,
+                    ),
+                },
+                _ => unreachable!("registry ui operation"),
+            }))
+        }
+        _ => unreachable!("registry command"),
     }
-    let (operation, matches) = group_matches.subcommand().expect("validated operation");
-    let target = || matches.get_one::<String>("target").expect("required target").clone();
-    if group == "app" {
-        return Ok(Request::App(match operation {
-            "list" => AppRequest::List { running: matches.get_flag("running") },
-            "inspect" => AppRequest::Inspect { target: target() },
-            "launch" => AppRequest::Launch { target: target() },
-            _ => unreachable!("registry operation"),
-        }));
-    }
-    let selection = Selection {
-        target: target(),
-        pid: matches.get_one::<Decimal<1>>("pid").map(|number| Pid(number.0)),
-    };
-    let window = || matches.get_one::<Decimal<0>>("window").map(|number| WindowId(number.0));
-    Ok(Request::Ui(match operation {
-        "windows" => UiRequest::Windows { selection },
-        "tree" => UiRequest::Tree {
-            selection,
-            window: window(),
-            depth: matches
-                .get_one::<Decimal<0, { crate::ui::tree::MAX_DEPTH as u32 }>>("depth")
-                .map(|number| number.0 as usize),
-            no_menu_bar: matches.get_flag("no-menu-bar"),
-        },
-        "screenshot" => UiRequest::Screenshot {
-            selection,
-            window: window(),
-            out: PathBuf::from(&matches.get_one::<OutputPath>("out").expect("required output").0),
-        },
-        _ => unreachable!("registry operation"),
-    }))
+}
+
+fn ui_target(matches: &clap::ArgMatches) -> String {
+    matches.get_one::<String>("target").expect("required target").clone()
 }
 
 pub fn resolved_command(arguments: &[String]) -> Option<&'static [&'static str]> {
     let registry = registry::registry();
-    let path = resolved_path(
-        [arguments.first().map(String::as_str), arguments.get(1).map(String::as_str)],
-        &registry,
-    );
+    let lead: Vec<&str> = arguments.iter().take(3).map(String::as_str).collect();
+    let path = resolved_path(&lead, &registry);
     registry.iter().find(|entry| entry.path == path).map(|entry| entry.path)
 }
 
-fn resolved_path(
-    words: [Option<&str>; 2],
-    registry: &[registry::CommandSpec],
-) -> &'static [&'static str] {
+/// Resolve the leading words to the deepest command path they name: a full command when they
+/// reach a leaf, otherwise the deepest group prefix so help and errors can describe it.
+fn resolved_path(words: &[&str], registry: &[registry::CommandSpec]) -> &'static [&'static str] {
     if let Some(entry) = registry.iter().find(|entry| {
-        words.iter().take(entry.path.len()).copied().flatten().eq(entry.path.iter().copied())
+        entry.path.len() <= words.len()
+            && entry.path.iter().zip(words).all(|(expected, actual)| expected == actual)
     }) {
         return entry.path;
     }
-    registry
-        .iter()
-        .find(|entry| entry.path.len() > 1 && entry.path.first().copied() == words[0])
-        .map_or(&[], |entry| &entry.path[..1])
+    let mut deepest: &'static [&'static str] = &[];
+    for entry in registry {
+        let shared = entry
+            .path
+            .iter()
+            .zip(words)
+            .take_while(|(expected, actual)| expected == actual)
+            .count();
+        if shared > deepest.len() && shared < entry.path.len() {
+            deepest = &entry.path[..shared];
+        }
+    }
+    deepest
 }
 
 pub fn version() -> String {

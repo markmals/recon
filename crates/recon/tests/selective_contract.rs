@@ -11,10 +11,10 @@ fn proposal_0004_invalid_options_use_the_shared_compact_error_contract() {
     for (arguments, argument) in [
         (vec!["app", "list", "--running=yes"], "--running"),
         (vec!["app", "list", "--running", "--running"], "--running"),
-        (vec!["ui", "tree", "Notes", "--depth", "65"], "--depth"),
-        (vec!["ui", "tree", "Notes", "--depth", "１"], "--depth"),
-        (vec!["ui", "tree", "Notes", "--depth"], "--depth"),
-        (vec!["ui", "tree", "Notes", "--no-menu-bar", "--window", "0"], "--no-menu-bar"),
+        (vec!["ui", "ax", "tree", "Notes", "--depth", "65"], "--depth"),
+        (vec!["ui", "ax", "tree", "Notes", "--depth", "１"], "--depth"),
+        (vec!["ui", "ax", "tree", "Notes", "--depth"], "--depth"),
+        (vec!["ui", "ax", "tree", "Notes", "--no-menu-bar", "--window", "0"], "--no-menu-bar"),
         (vec!["ui", "windows", "Notes", "--no-menu-bar"], "--no-menu-bar"),
     ] {
         let output = invoke(&arguments);
@@ -36,7 +36,7 @@ fn proposal_0004_invalid_options_use_the_shared_compact_error_contract() {
 #[test]
 fn proposal_0004_menu_window_conflict_names_both_incompatible_options_in_either_order() {
     for options in [["--no-menu-bar", "--window", "0"], ["--window", "0", "--no-menu-bar"]] {
-        let mut arguments = vec!["ui", "tree", "Notes"];
+        let mut arguments = vec!["ui", "ax", "tree", "Notes"];
         arguments.extend(options);
         let output = invoke(&arguments);
         assert_eq!(output.status.code(), Some(2));
@@ -52,7 +52,10 @@ fn proposal_0004_menu_window_conflict_names_both_incompatible_options_in_either_
 fn proposal_0004_schema_advertises_only_the_registered_narrowing_options() {
     for (path, options) in [
         (vec!["schema", "app", "list"], vec![("--running", "boolean")]),
-        (vec!["schema", "ui", "tree"], vec![("--depth", "integer"), ("--no-menu-bar", "boolean")]),
+        (
+            vec!["schema", "ui", "ax", "tree"],
+            vec![("--depth", "integer"), ("--no-menu-bar", "boolean")],
+        ),
     ] {
         let output = invoke(&path);
         assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
@@ -80,7 +83,7 @@ fn proposal_0004_schema_advertises_only_the_registered_narrowing_options() {
 #[test]
 fn proposal_0004_tree_schema_requires_the_complete_envelope_and_sole_sparse_node_shape() {
     let specification: Value =
-        serde_json::from_slice(&invoke(&["schema", "ui", "tree"]).stdout).unwrap();
+        serde_json::from_slice(&invoke(&["schema", "ui", "ax", "tree"]).stdout).unwrap();
     let validator = jsonschema::draft202012::new(&specification["command"]["output"]).unwrap();
     let envelope = |root: Value| {
         json!({

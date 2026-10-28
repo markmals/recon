@@ -27,7 +27,7 @@ pub struct WindowsResponse<'a> {
     pub windows: Vec<Window>,
 }
 
-/// What `recon ui tree` prints. `window_id` is the `--window` the command was given, if any.
+/// What `recon ui ax tree` prints. `window_id` is the `--window` the command was given, if any.
 /// `truncated` reports what Recon could not finish reading and `narrowed` what the caller's
 /// options told it to leave out; both are always present, so a stored result answers "is this
 /// the whole tree?" on its own.

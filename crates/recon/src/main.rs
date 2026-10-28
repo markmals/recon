@@ -99,7 +99,7 @@ fn command_path(request: &Request) -> &'static [&'static str] {
         Request::App(AppRequest::Inspect { .. }) => &["app", "inspect"],
         Request::App(AppRequest::Launch { .. }) => &["app", "launch"],
         Request::Ui(UiRequest::Windows { .. }) => &["ui", "windows"],
-        Request::Ui(UiRequest::Tree { .. }) => &["ui", "tree"],
+        Request::Ui(UiRequest::AxTree { .. }) => &["ui", "ax", "tree"],
         Request::Ui(UiRequest::Screenshot { .. }) => &["ui", "screenshot"],
         Request::Schema(_) => &["schema"],
         Request::Context => &["context"],

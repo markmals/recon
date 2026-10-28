@@ -44,18 +44,25 @@ pub fn base(name: &'static str) -> Command {
 pub fn parser(registry: &[CommandSpec]) -> Command {
     let mut root = base("recon").subcommand_required(true);
     for specification in registry {
-        let group = specification.path[0];
-        if specification.path.len() == 1 {
-            root = root.subcommand(specification.parser());
-        } else if root.find_subcommand(group).is_some() {
-            root = root.mut_subcommand(group, |command| command.subcommand(specification.parser()));
-        } else {
-            root = root.subcommand(
-                base(group).subcommand_required(true).subcommand(specification.parser()),
-            );
-        }
+        let ancestors = &specification.path[..specification.path.len() - 1];
+        root = insert_leaf(root, ancestors, specification.parser());
     }
     root
+}
+
+/// Attach `leaf` under the chain of group names in `ancestors`, creating any intermediate group
+/// that does not exist yet. A group requires one of its operations, so `recon ui` and `recon ui
+/// ax` both report a missing operation rather than running.
+fn insert_leaf(parent: Command, ancestors: &[&'static str], leaf: Command) -> Command {
+    match ancestors.split_first() {
+        None => parent.subcommand(leaf),
+        Some((group, rest)) if parent.find_subcommand(group).is_some() => {
+            parent.mut_subcommand(group, |command| insert_leaf(command, rest, leaf))
+        }
+        Some((group, rest)) => {
+            parent.subcommand(insert_leaf(base(group).subcommand_required(true), rest, leaf))
+        }
+    }
 }
 
 fn target() -> Arg {
@@ -131,7 +138,7 @@ pub fn registry() -> Vec<CommandSpec> {
             output_schema::<WindowsResponse<'static>>,
         ),
         specification(
-            &["ui", "tree"],
+            &["ui", "ax", "tree"],
             "Read an application's accessibility tree",
             "Read the application or selected window's accessibility tree without activating it, with explicit truncation and failed-node markers.",
             vec![
@@ -217,7 +224,7 @@ pub fn registry() -> Vec<CommandSpec> {
                 command.effects = &["activates-application"];
                 command.errors.push(LaunchFailed);
             }
-            ["ui", "tree"] => {
+            ["ui", "ax", "tree"] => {
                 command.permissions = &[("accessibility", None)];
                 command.errors.extend([Timeout, InterfaceUnavailable]);
             }

@@ -46,23 +46,25 @@ fn windows_takes_a_target_and_an_optional_pid() {
 
 #[test]
 fn tree_takes_pid_and_window_flags_in_any_order() {
-    let expected = UiRequest::Tree {
+    let expected = UiRequest::AxTree {
         selection: Selection { target: "/Applications/Notes.app".to_owned(), pid: Some(Pid(7)) },
         window: Some(WindowId(53510)),
         depth: None,
         no_menu_bar: false,
     };
     assert_eq!(
-        parse(&["tree", "/Applications/Notes.app", "--pid", "7", "--window", "53510"]).unwrap(),
+        parse(&["ax", "tree", "/Applications/Notes.app", "--pid", "7", "--window", "53510"])
+            .unwrap(),
         expected
     );
     assert_eq!(
-        parse(&["tree", "/Applications/Notes.app", "--window", "53510", "--pid", "7"]).unwrap(),
+        parse(&["ax", "tree", "/Applications/Notes.app", "--window", "53510", "--pid", "7"])
+            .unwrap(),
         expected
     );
     assert_eq!(
-        parse(&["tree", "Notes"]).unwrap(),
-        UiRequest::Tree {
+        parse(&["ax", "tree", "Notes"]).unwrap(),
+        UiRequest::AxTree {
             selection: Selection { target: "Notes".to_owned(), pid: None },
             window: None,
             depth: None,
@@ -73,15 +75,15 @@ fn tree_takes_pid_and_window_flags_in_any_order() {
 
 #[test]
 fn flags_may_come_before_the_target() {
-    let safari = UiRequest::Tree {
+    let safari = UiRequest::AxTree {
         selection: Selection { target: "Safari".to_owned(), pid: Some(Pid(7)) },
         window: Some(WindowId(9)),
         depth: None,
         no_menu_bar: false,
     };
-    assert_eq!(parse(&["tree", "--pid", "7", "--window", "9", "Safari"]).unwrap(), safari);
-    assert_eq!(parse(&["tree", "--window", "9", "Safari", "--pid", "7"]).unwrap(), safari);
-    assert_eq!(parse(&["tree", "Safari", "--pid", "7", "--window", "9"]).unwrap(), safari);
+    assert_eq!(parse(&["ax", "tree", "--pid", "7", "--window", "9", "Safari"]).unwrap(), safari);
+    assert_eq!(parse(&["ax", "tree", "--window", "9", "Safari", "--pid", "7"]).unwrap(), safari);
+    assert_eq!(parse(&["ax", "tree", "Safari", "--pid", "7", "--window", "9"]).unwrap(), safari);
     assert_eq!(
         parse(&["screenshot", "--out", "a.png", "Finder"]).unwrap(),
         UiRequest::Screenshot {
@@ -119,7 +121,7 @@ fn screenshot_requires_an_output_file_and_accepts_a_window() {
 fn a_command_and_a_target_are_both_required() {
     rejects(&[]);
     rejects(&["windows"]);
-    rejects(&["tree"]);
+    rejects(&["ax", "tree"]);
     rejects(&["screenshot", "--out", "shot.png"]);
     rejects(&["windows", "--pid", "412"]);
 }
@@ -136,25 +138,25 @@ fn an_unknown_command_is_rejected() {
 fn a_flag_that_does_not_apply_to_the_command_is_rejected() {
     rejects(&["windows", "Notes", "--window", "9"]);
     rejects(&["windows", "Notes", "--out", "shot.png"]);
-    rejects(&["tree", "Notes", "--out", "shot.png"]);
+    rejects(&["ax", "tree", "Notes", "--out", "shot.png"]);
     rejects(&["windows", "Notes", "--verbose"]);
-    rejects(&["tree", "Notes", "--window-id", "9"]);
+    rejects(&["ax", "tree", "Notes", "--window-id", "9"]);
 }
 
 #[test]
 fn a_repeated_flag_is_rejected() {
     rejects(&["windows", "Notes", "--pid", "1", "--pid", "1"]);
-    rejects(&["tree", "Notes", "--window", "9", "--window", "10"]);
+    rejects(&["ax", "tree", "Notes", "--window", "9", "--window", "10"]);
     rejects(&["screenshot", "Notes", "--out", "a.png", "--out", "b.png"]);
 }
 
 #[test]
 fn a_flag_without_a_value_is_rejected() {
     rejects(&["windows", "Notes", "--pid"]);
-    rejects(&["tree", "Notes", "--window"]);
+    rejects(&["ax", "tree", "Notes", "--window"]);
     rejects(&["screenshot", "Notes", "--out"]);
     rejects(&["screenshot", "Notes", "--out", "--pid", "3"]);
-    rejects(&["tree", "Notes", "--pid", "--window", "9"]);
+    rejects(&["ax", "tree", "Notes", "--pid", "--window", "9"]);
 }
 
 #[test]
@@ -178,22 +180,22 @@ fn a_pid_must_be_a_positive_integer() {
 #[test]
 fn a_window_id_must_be_a_u32() {
     assert_eq!(
-        parse(&["tree", "Notes", "--window", "0"]).unwrap(),
-        UiRequest::Tree {
+        parse(&["ax", "tree", "Notes", "--window", "0"]).unwrap(),
+        UiRequest::AxTree {
             selection: Selection { target: "Notes".to_owned(), pid: None },
             window: Some(WindowId(0)),
             depth: None,
             no_menu_bar: false,
         }
     );
-    rejects(&["tree", "Notes", "--window", "-3"]);
-    rejects(&["tree", "Notes", "--window", "4294967296"]);
-    rejects(&["tree", "Notes", "--window", "0x9"]);
+    rejects(&["ax", "tree", "Notes", "--window", "-3"]);
+    rejects(&["ax", "tree", "Notes", "--window", "4294967296"]);
+    rejects(&["ax", "tree", "Notes", "--window", "0x9"]);
 }
 
 #[test]
 fn extra_positional_arguments_are_rejected() {
     rejects(&["windows", "Notes", "Mail"]);
-    rejects(&["tree", "Notes", "--pid", "3", "Mail"]);
+    rejects(&["ax", "tree", "Notes", "--pid", "3", "Mail"]);
     rejects(&["screenshot", "Notes", "--out", "a.png", "b.png"]);
 }

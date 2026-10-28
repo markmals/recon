@@ -106,9 +106,11 @@ pub(crate) fn run_recon(arguments: &[&str]) -> Output {
 }
 
 fn validate_contract(arguments: &[&str], output: &Output) {
+    let owned: Vec<String> = arguments.iter().map(|word| (*word).to_owned()).collect();
+    let command = recon::cli::resolved_command(&owned).expect("a resolved command path");
     let specification = Command::new(signed_recon())
         .arg("schema")
-        .args(&arguments[..2])
+        .args(command)
         .output()
         .expect("read command schema");
     assert!(specification.status.success(), "{specification:?}");

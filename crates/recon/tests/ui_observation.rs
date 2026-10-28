@@ -55,7 +55,7 @@ fn windows_reports_both_fixture_windows_with_their_window_server_facts() {
 fn the_application_tree_exposes_the_fixture_menu_without_activating_the_fixture() {
     let fixture = Fixture::launch();
 
-    let tree = run_ui(&["tree", fixture.target()]);
+    let tree = run_ui(&["ax", "tree", fixture.target()]);
 
     assert_eq!(tree["windowId"], Value::Null);
     assert_eq!(tree["root"]["role"], "AXApplication");
@@ -77,7 +77,7 @@ fn the_window_tree_exposes_the_controls_of_the_main_window() {
     let fixture = Fixture::launch();
     let main_window = main_window_id(&fixture);
 
-    let tree = run_ui(&["tree", fixture.target(), "--window", &main_window.to_string()]);
+    let tree = run_ui(&["ax", "tree", fixture.target(), "--window", &main_window.to_string()]);
 
     assert_eq!(tree["windowId"].as_u64(), Some(main_window));
     let elements = nodes(&tree["root"]);
@@ -105,7 +105,7 @@ fn a_window_without_an_accessibility_element_is_reported_unreachable() {
         .unwrap_or_else(|| panic!("AppKit gave the fixture no untitled window: {observation}"));
     let id = untitled["id"].as_u64().expect("a window id").to_string();
 
-    let output = run_recon(&["ui", "tree", fixture.target(), "--window", &id]);
+    let output = run_recon(&["ui", "ax", "tree", fixture.target(), "--window", &id]);
 
     assert!(!output.status.success());
     assert!(output.stdout.is_empty());
