@@ -1,6 +1,7 @@
 //! Recon on macOS: finding applications through Spotlight and the running workspace, and
 //! observing them through Accessibility and the window server.
 
+pub mod inject;
 mod investigation;
 mod metadata;
 mod ui;
