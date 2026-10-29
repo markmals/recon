@@ -51,13 +51,20 @@ use crate::ui::window::{Window, WindowId, select_window};
 ///
 /// Recon becomes responsible for its own privacy requests first, then resolves the application,
 /// the instance, the output file, and the window, so that a mistaken argument is reported before
-/// macOS is ever asked for a permission.
+/// macOS is ever asked for a permission. Host preparation has no privacy request and bypasses
+/// re-execution so the operator can see its interactive confirmation before supplying input.
 pub fn observe(request: &UiRequest) -> Result<String, Failure> {
-    responsibility::take_responsibility()
-        .map_err(responsibility::ResponsibilityError::into_failure)?;
+    if needs_privacy_identity(request) {
+        responsibility::take_responsibility()
+            .map_err(responsibility::ResponsibilityError::into_failure)?;
+    }
     let scope = scope_of(request)?;
     let selected_pid = scope.target;
     focus::guarded(scope, || dispatch(request, selected_pid))
+}
+
+fn needs_privacy_identity(request: &UiRequest) -> bool {
+    !matches!(request, UiRequest::Session(SessionRequest::PrepareHost { .. }))
 }
 
 /// What the no-focus guard watches while this request runs: the stage a disturbance is reported
@@ -472,4 +479,18 @@ fn current_directory() -> Result<PathBuf, Failure> {
             }),
         )
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ui::request::HostPreparation;
+
+    #[test]
+    fn host_preparation_does_not_use_privacy_reexecution() {
+        for action in [HostPreparation::Apply, HostPreparation::Status, HostPreparation::Revert] {
+            let request = UiRequest::Session(SessionRequest::PrepareHost { action });
+            assert!(!needs_privacy_identity(&request), "{action:?} must remain interactive");
+        }
+    }
 }
