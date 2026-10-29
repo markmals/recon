@@ -1,5 +1,5 @@
-# This workflow previews Recon's rendered project record, not the future CLI; an
-# installable executable does not exist yet.
+# This workflow previews Recon's rendered project record. The macos-preview CI job supplies the
+# installable executable archive.
 #
 # GitHub Pages serves this site publicly. A private repository needs a private
 # documentation preview instead; GitHub Pages cannot serve privately outside Enterprise.
