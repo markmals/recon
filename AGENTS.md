@@ -154,7 +154,7 @@ Individual consent applies to that proposed change, including its revisions. If 
 
 ### 1. Preparation
 
-After establishing direct human consent or applicable mandate authority, create a branch, push it to `origin`, and open a **draft** pull request before writing the proposal. The PR is the durable workspace for the proposal, implementation, review discussion, and status reports. It remains draft while it contains only the proposal; after a coherent implementation is verified and pushed, mark it ready even though Phase 3 reviews and the readiness report may still be pending. Ready does not grant acceptance or merge authority.
+After establishing direct human consent or applicable mandate authority, create a branch, push it to `origin`, and open a **draft** pull request before writing the proposal. The PR is the durable workspace for the proposal, implementation, review discussion, and status reports. It stays draft while it contains only the proposal. Once the complete implementation passes the applicable checks and is pushed, mark the PR ready for maintainer review; the remaining agent reviews and readiness report continue on that PR.
 
 ### 2. Grounding and Proposal
 
@@ -273,7 +273,7 @@ Strictly ordered, and it ends with review. Each artifact is an independent repre
 
 Ask what a reader or a future maintainer would actually need, not what the list contains.
 
-Once a coherent implementation has passed the applicable checks and reached the pushed feature branch, mark the pull request ready. Do not wait for the cross-artifact review, adversarial review, preview, or readiness report to open the implementation for human inspection. The proposal remains `awaiting-implementation` until the later `active-review` readiness transition; a ready PR alone proves neither acceptance nor completed validation.
+Once the complete implementation has passed the applicable checks and reached the pushed feature branch, mark the pull request ready for maintainer review. Continue the cross-artifact review, adversarial review, preview, and readiness report on the open PR. The proposal remains `awaiting-implementation` until the later `active-review` handoff.
 
 Passing the quality gates is necessary, never sufficient. Then, still within this phase:
 

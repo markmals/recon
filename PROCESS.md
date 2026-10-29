@@ -134,7 +134,7 @@ The agent creates the branch, pushes it to the project's `origin` remote, and cr
 
 The pull request becomes the durable workspace for the feature. It collects the proposal, implementation, review discussion, agent status reports, and other artifacts associated with the change.
 
-The pull request stays draft while it contains only the proposal. Once a coherent implementation has passed its applicable checks and reached the pushed feature branch, mark the pull request ready. Ready means there is code to inspect, not that agent review, preview, acceptance, or delivery is complete. Keep implementation and review findings on the same ready pull request.
+The pull request stays draft while it contains only the proposal. Once the complete implementation has passed its applicable checks and reached the pushed feature branch, mark the pull request ready for maintainer review. Keep agent reviews, the preview, and the readiness report on that PR while the maintainer can inspect and comment on the implementation.
 
 ## Proposal Development
 
@@ -249,7 +249,7 @@ Produce the preview selected in the proposal after review findings are resolved.
 
 ### Readiness Report
 
-After the cross-artifact and adversarial reviews and preview, the agent posts a readiness report describing implemented behavior, verification, any declined findings, and how to exercise the preview. `reviewing-an-implementation` owns this handoff. Move the proposal to `active-review` with that report; the pull request should already be ready from the first verified implementation. If it remains draft, verify that implementation is in its pushed revision and correct the PR state before posting the report. An applicable mandate can delegate the next decision to the strategist without a wait for the human.
+After the cross-artifact and adversarial reviews and preview, the agent posts a readiness report describing implemented behavior, verification, any declined findings, and how to exercise the preview. `reviewing-an-implementation` owns this handoff. Move the proposal to `active-review` with that report; the pull request should already be ready from the complete, verified implementation. If it remains draft, verify that implementation is in its pushed revision and correct the PR state before posting the report. An applicable mandate can delegate the next decision to the strategist without a wait for the human.
 
 ## Acceptance Review
 

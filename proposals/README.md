@@ -7,7 +7,7 @@ Name each file `<NNNN>-<slug>.md`, using the next four-digit number and a kebab-
 | Status | Meaning | Decided by | Phase |
 | --- | --- | --- | --- |
 | `draft` | Being written and iterated on in the draft pull request. May carry `[NEEDS CLARIFICATION:`. | agent | 2 |
-| `awaiting-implementation` | The approval owner settled the proposal. Implementation is underway or not yet started; the feature pull request becomes ready once verified code is pushed. | approval owner | 3 |
+| `awaiting-implementation` | The approval owner settled the proposal. Implementation is underway or not yet started; the feature pull request becomes ready once the complete implementation is verified and pushed. | approval owner | 3 |
 | `active-review` | The readiness report is posted after Phase 3 reviews and preview; the pull request was made ready earlier. | agent | 4 |
 | `returned-for-revisions` | The acceptance review asked for changes. Back to implementation, or to the proposal if the design changed. | approval owner | 4 → 3 or 2 |
 | `accepted` | The approval owner accepted the work. Vision update, merge and required delivery are underway. | approval owner | 5 |

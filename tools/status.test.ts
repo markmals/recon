@@ -79,10 +79,11 @@ test("derives implementation for an awaiting proposal", () => {
     });
 });
 
-test("draft feature PR becomes ready after a verified implementation is pushed", () => {
+test("guides a draft PR to ready only after complete implementation is pushed", () => {
     let status = deriveStatus(facts({ proposal: proposal("awaiting-implementation") }));
 
     expect(status.next).toMatch(/implementation.*push.*mark.*ready/i);
+    expect(status.next).toMatch(/complete implementation/i);
     expect(status.next).toMatch(/readiness report/i);
 });
 
