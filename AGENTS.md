@@ -136,7 +136,7 @@ Human instructions override delegated authority immediately. Recheck the mandate
 ```text
 human consent or active mandate → branch → draft PR
        → grounding → baseline study → proposal
-       → tests → guides → code → validation
+       → tests → guides → code → validation → ready PR
        → excellence pass → inline reviews → cross-artifact review → adversarial review
        → preview → readiness report
        → approval-owner review → revision → vision update → implemented record in feature PR → authorized merge/delivery → cleanup
@@ -154,7 +154,7 @@ Individual consent applies to that proposed change, including its revisions. If 
 
 ### 1. Preparation
 
-After establishing direct human consent or applicable mandate authority, create a branch, push it to `origin`, and open a **draft** pull request before writing the proposal. The PR is the durable workspace for the proposal, implementation, review discussion, and status reports. It stays a draft until the agent believes the work is ready.
+After establishing direct human consent or applicable mandate authority, create a branch, push it to `origin`, and open a **draft** pull request before writing the proposal. The PR is the durable workspace for the proposal, implementation, review discussion, and status reports. It remains draft while it contains only the proposal; after a coherent implementation is verified and pushed, mark it ready even though Phase 3 reviews and the readiness report may still be pending. Ready does not grant acceptance or merge authority.
 
 ### 2. Grounding and Proposal
 
@@ -272,6 +272,8 @@ Strictly ordered, and it ends with review. Each artifact is an independent repre
 **Which of these a change needs is a judgement.** The order is not — when you write two of them, write them in this order. But a change with no user-visible surface needs no guide, and inventing one produces documentation nobody reads describing behavior nobody sees. A change with nothing meaningfully testable needs no test, though say so out loud rather than skipping quietly, because "hard to test" and "not worth testing" are different claims and only one of them is a reason.
 
 Ask what a reader or a future maintainer would actually need, not what the list contains.
+
+Once a coherent implementation has passed the applicable checks and reached the pushed feature branch, mark the pull request ready. Do not wait for the cross-artifact review, adversarial review, preview, or readiness report to open the implementation for human inspection. The proposal remains `awaiting-implementation` until the later `active-review` readiness transition; a ready PR alone proves neither acceptance nor completed validation.
 
 Passing the quality gates is necessary, never sufficient. Then, still within this phase:
 

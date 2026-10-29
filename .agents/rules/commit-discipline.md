@@ -80,7 +80,7 @@ Prefer many small, focused commits to one large commit. Commit at each natural g
 
 ## Push policy
 
-Pushing an authorized feature branch to `origin` creates and updates the draft pull request that serves as the durable workspace. Direct human consent or an active, applicable human-approved build mandate must authorize that workspace. Push early and push often within that authority.
+Pushing an authorized feature branch to `origin` creates and updates the pull request that serves as the durable workspace. It starts draft for proposal development and becomes ready after a verified implementation is pushed. Direct human consent or an active, applicable human-approved build mandate must authorize that workspace. Push early and push often within that authority.
 
 Pushing directly to the default branch is prohibited. Work reaches the default branch only by merging its pull request.
 

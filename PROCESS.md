@@ -134,7 +134,7 @@ The agent creates the branch, pushes it to the project's `origin` remote, and cr
 
 The pull request becomes the durable workspace for the feature. It collects the proposal, implementation, review discussion, agent status reports, and other artifacts associated with the change.
 
-The pull request remains a draft while the feature is being specified and implemented.
+The pull request stays draft while it contains only the proposal. Once a coherent implementation has passed its applicable checks and reached the pushed feature branch, mark the pull request ready. Ready means there is code to inspect, not that agent review, preview, acceptance, or delivery is complete. Keep implementation and review findings on the same ready pull request.
 
 ## Proposal Development
 
@@ -249,7 +249,7 @@ Produce the preview selected in the proposal after review findings are resolved.
 
 ### Readiness Report
 
-After the cross-artifact and adversarial reviews and preview, the agent posts a readiness report describing implemented behavior, verification, any declined findings, and how to exercise the preview. `reviewing-an-implementation` owns this handoff. Moving the proposal to `active-review`, posting the report, and marking the pull request ready form one transition into acceptance review. An applicable mandate can delegate the next decision to the strategist without a wait for the human.
+After the cross-artifact and adversarial reviews and preview, the agent posts a readiness report describing implemented behavior, verification, any declined findings, and how to exercise the preview. `reviewing-an-implementation` owns this handoff. Move the proposal to `active-review` with that report; the pull request should already be ready from the first verified implementation. If it remains draft, verify that implementation is in its pushed revision and correct the PR state before posting the report. An applicable mandate can delegate the next decision to the strategist without a wait for the human.
 
 ## Acceptance Review
 
@@ -368,13 +368,13 @@ The agent may consult me before making substantial changes to the vision.
 
 After acceptance and the vision update, set the proposal to `implemented` in the feature pull request before merging it. This status records that the approved implementation is complete; the pull request's merge state and any required release are separate facts. Keep the approval and remaining delivery obligations visible in the proposal or pull request. Verify the updated pull-request revision before integration. Do not create a follow-up pull request solely to change this status.
 
-Confirm that the status record is in the pull request revision, not only the local checkout, before marking a draft pull request ready or merging. For an already merged pull request, inspect its merged revision before deciding that a local `accepted` status means the record is missing. If the record is absent, report the inconsistency to the approval owner rather than treating the merged pull request as editable or opening a status-only pull request.
+Confirm that the status record is in the pull request revision, not only the local checkout, before merging. For an already merged pull request, inspect its merged revision before deciding that a local `accepted` status means the record is missing. If the record is absent, report the inconsistency to the approval owner rather than treating the merged pull request as editable or opening a status-only pull request.
 
 ### Merge
 
 The agent merges the pull request into the authorized target branch after direct human approval or under an active mandate's explicit merge grant. One integration owner serializes merges and verifies the latest integration candidate. Direct pushes to the default branch remain prohibited.
 
-If an accepted pull request remains draft, mark it ready and verify the updated revision before merging.
+If an accepted pull request is still draft, treat that as an anomalous state: verify its pushed implementation, mark it ready, and verify the updated revision before merging.
 
 The merge should preserve enough information for future humans or agents to recover:
 
@@ -415,7 +415,7 @@ At the project level:
 
 For each feature:
 
-**human consent or active mandate → branch → draft pull request → grounding and ontology review when needed → baseline study → approved proposal → tests → guides → code → validation → excellence pass → inline reviews → cross-artifact review → adversarial review → preview → ready pull request → acceptance review → revision or acceptance → vision update → implemented record in the feature pull request → authorized merge and delivery → dependent updates → authorized cleanup**
+**human consent or active mandate → branch → draft pull request → grounding and ontology review when needed → baseline study → approved proposal → tests → guides → code → validation → ready pull request → excellence pass → inline reviews → cross-artifact review → adversarial review → preview → readiness report and active-review proposal → acceptance review → revision or acceptance → vision update → implemented record in the feature pull request → authorized merge and delivery → dependent updates → authorized cleanup**
 
 The central invariant of the process is that no single artifact defines the feature by itself.
 

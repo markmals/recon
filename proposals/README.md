@@ -7,14 +7,16 @@ Name each file `<NNNN>-<slug>.md`, using the next four-digit number and a kebab-
 | Status | Meaning | Decided by | Phase |
 | --- | --- | --- | --- |
 | `draft` | Being written and iterated on in the draft pull request. May carry `[NEEDS CLARIFICATION:`. | agent | 2 |
-| `awaiting-implementation` | The approval owner settled the proposal. Implementation is underway or not yet started. | approval owner | 3 |
-| `active-review` | First full pass at tests, guides and code exists; report posted and pull request marked ready. | agent | 4 |
+| `awaiting-implementation` | The approval owner settled the proposal. Implementation is underway or not yet started; the feature pull request becomes ready once verified code is pushed. | approval owner | 3 |
+| `active-review` | The readiness report is posted after Phase 3 reviews and preview; the pull request was made ready earlier. | agent | 4 |
 | `returned-for-revisions` | The acceptance review asked for changes. Back to implementation, or to the proposal if the design changed. | approval owner | 4 → 3 or 2 |
 | `accepted` | The approval owner accepted the work. Vision update, merge and required delivery are underway. | approval owner | 5 |
 | `implemented` | The approved implementation and final records are committed in the feature pull request before merge. Merge and any required release remain separate delivery events. | agent | 5 |
 | `rejected` | The approval owner declined the change. Kept as record. | approval owner | terminal |
 | `withdrawn` | The author pulled it. Kept as record. | either | terminal |
 | `superseded` | A later proposal replaced it. | either | terminal |
+
+Pull-request readiness and proposal status track different facts. A ready feature PR exposes implemented code for inspection while its proposal may still be `awaiting-implementation`; the `active-review` status records the later readiness-report handoff to acceptance review.
 
 **Decided by** names the approval owner: the human, or the strategist for decisions delegated by [an active build mandate](https://github.com/markmals/recon/blob/main/AGENTS.md#bounded-build-mandates). Proposal approval requires settled intent and recorded authority. Acceptance of implementation additionally requires the readiness report, fresh checks, independent reviews, and an exercised preview. An implementer's completion claim alone cannot authorize acceptance.
 

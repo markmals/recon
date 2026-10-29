@@ -79,6 +79,30 @@ test("derives implementation for an awaiting proposal", () => {
     });
 });
 
+test("draft feature PR becomes ready after a verified implementation is pushed", () => {
+    let status = deriveStatus(facts({ proposal: proposal("awaiting-implementation") }));
+
+    expect(status.next).toMatch(/implementation.*push.*mark.*ready/i);
+    expect(status.next).toMatch(/readiness report/i);
+});
+
+test("ready feature PR stays in implementation until final review evidence is ready", () => {
+    let status = assertPhase(
+        facts({
+            proposal: proposal("awaiting-implementation"),
+            pullRequest: { ...openPullRequest, isDraft: false },
+        }),
+        {
+            phase: "3",
+            actor: "agent",
+            skill: ".agents/skills/implementing-a-proposal/",
+        },
+    );
+
+    expect(status.next).toMatch(/readiness report/i);
+    expect(status.next).not.toMatch(/mark.*pull request ready/i);
+});
+
 test("derives acceptance review for an active-review proposal", () => {
     assertPhase(facts({ proposal: proposal("active-review") }), {
         phase: "4",
