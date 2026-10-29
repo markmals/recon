@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, rmSync } from "node:fs";
+import { copyFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 function buildFixture(): void {
@@ -23,8 +23,18 @@ function buildFixture(): void {
         { stdio: "inherit" },
     );
     copyFileSync(path.join(source, "Info.plist"), path.join(bundle, "Contents", "Info.plist"));
-    // Ad-hoc, because the fixture is observed rather than an observer: it needs no privacy grant.
-    execFileSync("codesign", ["--force", "--sign", "-", bundle], { stdio: "inherit" });
+    let entitlements = path.join("target/fixtures", "ReconFixture.entitlements.plist");
+    writeFileSync(
+        entitlements,
+        `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict><key>com.apple.security.get-task-allow</key><true/></dict></plist>
+`,
+    );
+    // The fixture explicitly cooperates with Recon's standard-profile loader.
+    execFileSync("codesign", ["--force", "--sign", "-", "--entitlements", entitlements, bundle], {
+        stdio: "inherit",
+    });
 
     console.log(`Built ${path.relative(process.cwd(), bundle)}`);
 }

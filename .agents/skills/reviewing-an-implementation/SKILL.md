@@ -23,7 +23,7 @@ Proceed in this order:
 1. Cross-artifact review.
 2. Dispatch `adversarial-review`; consume its report.
 3. Produce the preview.
-4. Post the readiness report and make the pull request ready together.
+4. Post the readiness report and move the proposal to `active-review`; the implementation PR should already be ready.
 
 Begin after applicable validation has fresh evidence under `.agents/rules/verification.md` and the strategist's excellence pass and ordered inline reviews have no open findings. A substantive fix re-enters those gates before cross-artifact review.
 
@@ -115,7 +115,7 @@ Build from the pull-request revision. Give repository-accessible humans a stable
 
 Previews are private by default. Do not publish one publicly unless the project deliberately opts in. A prerelease package published to a public registry is public forever; use a prerelease tag and state that public status in the readiness report. A mandate that delegates merging delegates nothing about publication: making a preview public needs the human's explicit authority for that act. Teardown belongs to Phase 5 cleanup through `completing-a-feature`.
 
-## 4. Report readiness and mark ready
+## 4. Report readiness
 
 Compose the pull-request comment from `.agents/templates/READINESS_REPORT.md`. Fill every template section and add the cross-artifact inventory verdict, divergences, and resolutions.
 
@@ -133,26 +133,15 @@ Compose the pull-request comment from `.agents/templates/READINESS_REPORT.md`. F
 
 Declined adversarial findings keep the independent review useful. Do not quietly omit a narrow, uncomfortable, or disputed finding.
 
-### Post as a service account
+### Post as the agent
 
-Configure a bot token or GitHub App installation token in the environment. Confirm the authenticated identity before posting.
+Use `gh-agent pr comment <pr-number> --body-file readiness-report.md` for the agent's report, so it appears under the Hive GitHub Agent app rather than the human's account. If `gh-agent` fails, report that failure rather than posting the same words with `gh`.
 
-```sh
-GH_TOKEN="$SERVICE_ACCOUNT_TOKEN" gh pr comment <pr-number> --body-file readiness-report.md
-GH_TOKEN="$SERVICE_ACCOUNT_TOKEN" gh pr ready <pr-number>
-```
+### Make the Phase 4 proposal transition
 
-Without a service account, post from the available authenticated identity and say in the report: `Posted from <identity>; no service account is configured.` Do not imply bot authorship.
+The feature pull request should already be ready because the complete, verified implementation was pushed during Phase 3. If it is unexpectedly draft, verify that its pushed revision contains the complete implementation and mark it ready with `gh pr ready <pr-number>` before the handoff.
 
-### Make the coupled transition into Phase 4
-
-At the end of Phase 3, these three actions form one transition and MUST NOT be separated:
-
-1. Move the proposal to `status: active-review`.
-2. Post the readiness report.
-3. Flip the pull request from draft to ready with `gh pr ready <pr-number>`.
-
-Do not leave the proposal, report, and pull-request state disagreeing. Ready means the work is reviewable, not correct or accepted. `active-review` remains the readiness transition; under delegated acceptance it does not have to wait for the human to read it.
+At the end of Phase 3, move the proposal to `status: active-review` and post the readiness report on that PR. These are the acceptance-review transition; do not claim the report was posted if the bot comment failed. Under a mandate, `active-review` does not require waiting for the human to read the report. PR readiness and proposal status are separate facts: the PR may be ready while the proposal is still `awaiting-implementation`.
 
 Acceptance in Phase 4 is the human's. Where a mandate delegates it, the strategist — never an implementer accepting its own claim — may set `accepted` once the independent reviews of the latest relevant revision are clean, fresh checks and smoke of the integration candidate pass, and no real defect, unmet mandated outcome, or disputed material finding remains open. Record the authority relied on and the evidence. Phase 4 then starts Phase 5 completion.
 
@@ -164,7 +153,7 @@ Acceptance in Phase 4 is the human's. Where a mandate delegates it, the strategi
 - You skipped independent adversarial review or dropped a declined finding.
 - The preview is fabricated, public by accident, detached from the pull request, or a bare URL.
 - The report claims a validation gate was not run.
-- You marked the pull request ready without the proposal status and report.
+- You left a verified, pushed implementation in a draft PR merely because its readiness report is pending.
 - You set `accepted` on your own implementation claim, on stale or failing evidence, or with a disputed finding unresolved.
 - You read a merge grant as permission to publish a preview, package, or release.
 - You stretched a mandate's boundaries instead of stopping the slice, recording the question, and waiting for the human.

@@ -32,6 +32,8 @@ pub(super) struct Constraints {
     pub(super) maximum: u32,
 }
 
+/// The ranges Recon publishes. A native traversal's depth bound is the same number as the
+/// accessibility tree's, so both spellings resolve to one parser type here.
 pub(super) fn constraints(parser: &ValueParser) -> Option<Constraints> {
     if parser.type_id() == TypeId::of::<Decimal<0>>() {
         Some(Decimal::<0>::constraints())
@@ -40,6 +42,10 @@ pub(super) fn constraints(parser: &ValueParser) -> Option<Constraints> {
     } else if parser.type_id() == TypeId::of::<Decimal<0, { crate::ui::tree::MAX_DEPTH as u32 }>>()
     {
         Some(Decimal::<0, { crate::ui::tree::MAX_DEPTH as u32 }>::constraints())
+    } else if parser.type_id()
+        == TypeId::of::<Decimal<1, { crate::ui::request::MAX_NATIVE_LIMIT as u32 }>>()
+    {
+        Some(Decimal::<1, { crate::ui::request::MAX_NATIVE_LIMIT as u32 }>::constraints())
     } else {
         None
     }

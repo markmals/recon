@@ -41,7 +41,7 @@ fn a_missing_permission_carries_the_executable_and_the_settings_pane() {
 fn accessibility_carries_its_own_settings_pane() {
     let failure = permission_denied(&[Permission::Accessibility], Path::new(EXECUTABLE), false);
 
-    validate_failure(&failure.report(), &["ui", "tree"]);
+    validate_failure(&failure.report(), &["ui", "ax", "tree"]);
     assert_eq!(
         failure.details.expect("details")["permissions"],
         json!([{"permission": "accessibility", "settingsPane": ACCESSIBILITY_PANE}])
@@ -72,7 +72,7 @@ fn both_missing_permissions_are_listed_in_order() {
 #[test]
 fn an_ad_hoc_signature_is_reported_as_a_field() {
     let failure = permission_denied(&[Permission::Accessibility], Path::new(EXECUTABLE), true);
-    validate_failure(&failure.report(), &["ui", "tree"]);
+    validate_failure(&failure.report(), &["ui", "ax", "tree"]);
 
     assert_eq!(failure.details.expect("details")["adHocSigned"], json!(true));
 }

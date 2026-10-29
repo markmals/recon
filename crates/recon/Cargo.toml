@@ -20,9 +20,11 @@ schemars = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [target.'cfg(target_os = "macos")'.dependencies]
 block2 = "0.6"
-libc = "0.2"
 objc2-app-kit = { version = "0.3", features = [
     "NSRunningApplication",
     "NSWorkspace",
@@ -48,6 +50,9 @@ objc2-core-foundation = { version = "0.3", features = [
 ], default-features = false }
 objc2-core-graphics = { version = "0.3", features = [
     "CGDataProvider",
+    "CGEvent",
+    "CGEventSource",
+    "CGEventTypes",
     "CGGeometry",
     "CGImage",
     "CGWindow",
@@ -97,5 +102,8 @@ objc2-core-foundation = { version = "0.3", features = [
 ], default-features = false }
 objc2-core-graphics = { version = "0.3", features = [
     "CGDirectDisplay",
+    "CGEvent",
+    "CGEventSource",
+    "CGEventTypes",
     "CGWindow",
 ], default-features = false }

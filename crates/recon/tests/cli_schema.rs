@@ -63,14 +63,14 @@ fn proposal0003_tree_schema_tracks_handwritten_serialization_and_omission() {
             depth_limited: false,
             menu_bar_excluded: false,
         }));
-        let response = TreeResponse {
-            application: ObservedApplication { path: Path::new("/Example.app"), pid: Pid(42) },
-            window_id: None,
+        let response = TreeResponse::new(
+            ObservedApplication { path: Path::new("/Example.app"), pid: Pid(42) },
+            None,
             truncated,
-            narrowed: false,
+            false,
             root,
-        };
-        validate(&["ui", "tree"], &serde_json::to_value(response).unwrap());
+        );
+        validate(&["ui", "ax", "tree"], &serde_json::to_value(response).unwrap());
     }
 }
 
@@ -81,7 +81,7 @@ fn proposal0003_real_usage_errors_validate_and_are_declared() {
     let scratch = tempfile::tempdir().unwrap();
     let missing = scratch.path().join("Missing.app");
     for arguments in [
-        vec!["ui", "tree", missing.to_str().unwrap(), "--window", "abc"],
+        vec!["ui", "ax", "tree", missing.to_str().unwrap(), "--window", "abc"],
         vec!["app", "list", "--json"],
         vec!["schema", "bogus"],
         vec!["context", "extra"],

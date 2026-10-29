@@ -73,8 +73,7 @@ fn fields(value: &Value) -> Vec<&str> {
 
 #[test]
 fn a_window_without_a_title_reports_null() {
-    let encoded =
-        encoded(&WindowsResponse { application: application(), windows: vec![window(None)] });
+    let encoded = encoded(&WindowsResponse::new(application(), vec![window(None)]));
     assert!(encoded["windows"][0].get("title").is_some());
     assert_eq!(encoded["windows"][0]["title"], Value::Null);
 }
@@ -185,19 +184,19 @@ fn non_finite_frame_components_omit_only_the_atomic_frame() {
     let schema = output_schema::<TreeResponse<'static>>();
     let validator = jsonschema::draft202012::new(&schema).unwrap();
     let observe = |[x, y, width, height]: [f64; 4]| {
-        encoded(&TreeResponse {
-            application: application(),
-            window_id: Some(WindowId(53510)),
-            truncated: false,
-            narrowed: false,
-            root: Node::Element(Box::new(ElementNode {
+        encoded(&TreeResponse::new(
+            application(),
+            Some(WindowId(53510)),
+            false,
+            false,
+            Node::Element(Box::new(ElementNode {
                 title: Some("Frame holder".to_owned()),
                 value: Some(AttributeValue::Boolean(false)),
                 actions: vec!["AXRaise".to_owned()],
                 frame: Some(Bounds { x, y, width, height }),
                 ..with_role("AXWindow")
             })),
-        })
+        ))
     };
     let mut expected = observe([1.0, 2.0, 3.0, 4.0]);
     expected["root"].as_object_mut().unwrap().remove("frame");
@@ -255,13 +254,13 @@ fn a_failed_node_names_its_failure() {
 
 #[test]
 fn the_tree_response_names_the_observation_it_describes() {
-    let response = TreeResponse {
-        application: application(),
-        window_id: Some(WindowId(53510)),
-        truncated: true,
-        narrowed: false,
-        root: Node::Failed(ReadFailure::Timeout),
-    };
+    let response = TreeResponse::new(
+        application(),
+        Some(WindowId(53510)),
+        true,
+        false,
+        Node::Failed(ReadFailure::Timeout),
+    );
 
     let encoded = encoded(&response);
 
@@ -274,13 +273,13 @@ fn the_tree_response_names_the_observation_it_describes() {
 #[test]
 fn the_tree_envelope_keeps_every_field_whatever_the_result() {
     for (truncated, narrowed) in [(false, false), (true, false), (false, true), (true, true)] {
-        let response = TreeResponse {
-            application: application(),
-            window_id: None,
+        let response = TreeResponse::new(
+            application(),
+            None,
             truncated,
             narrowed,
-            root: Node::Element(Box::new(node())),
-        };
+            Node::Element(Box::new(node())),
+        );
 
         let encoded = encoded(&response);
 

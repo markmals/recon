@@ -62,17 +62,17 @@ With `recon` on your path, learn the tree command without inspecting an applicat
 
 ```sh
 recon --help
-recon ui tree --help
+recon ui ax tree --help
 recon --version
 recon schema
-recon schema ui tree
+recon schema ui ax tree
 recon context
 ```
 
 Each succeeds on standard output. The first three print text; the remaining commands print one JSON object each. To inspect a usage error without consulting macOS:
 
 ```sh
-recon ui tree Calculator --window abc
+recon ui ax tree Calculator --window abc
 ```
 
 This exits 2, leaves standard output empty, and emits an `INVALID_ARGUMENT` object whose details identify `--window`, value `abc`, and the decimal window-ID requirement.

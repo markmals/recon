@@ -9,7 +9,7 @@ use std::io::{self, Write};
 use recon::macos::{investigate, observe};
 use recon::request::AppRequest;
 use recon::request::{Request, parse_arguments};
-use recon::ui::request::UiRequest;
+use recon::ui::request::{SessionRequest, UiRequest, ViewRequest};
 
 fn main() {
     if let Err(error) = run() {
@@ -99,8 +99,23 @@ fn command_path(request: &Request) -> &'static [&'static str] {
         Request::App(AppRequest::Inspect { .. }) => &["app", "inspect"],
         Request::App(AppRequest::Launch { .. }) => &["app", "launch"],
         Request::Ui(UiRequest::Windows { .. }) => &["ui", "windows"],
-        Request::Ui(UiRequest::Tree { .. }) => &["ui", "tree"],
+        Request::Ui(UiRequest::AxTree { .. }) => &["ui", "ax", "tree"],
         Request::Ui(UiRequest::Screenshot { .. }) => &["ui", "screenshot"],
+        Request::Ui(UiRequest::Session(SessionRequest::Preflight { .. })) => {
+            &["ui", "session", "preflight"]
+        }
+        Request::Ui(UiRequest::Session(SessionRequest::PrepareHost { .. })) => {
+            &["ui", "session", "prepare-host"]
+        }
+        Request::Ui(UiRequest::Session(SessionRequest::Open { .. })) => &["ui", "session", "open"],
+        Request::Ui(UiRequest::Session(SessionRequest::Close { .. })) => {
+            &["ui", "session", "close"]
+        }
+        Request::Ui(UiRequest::View(ViewRequest::Tree { .. })) => &["ui", "view", "tree"],
+        Request::Ui(UiRequest::View(ViewRequest::Node { .. })) => &["ui", "view", "node"],
+        Request::Ui(UiRequest::View(ViewRequest::Find { .. })) => &["ui", "view", "find"],
+        Request::Ui(UiRequest::View(ViewRequest::Fonts { .. })) => &["ui", "view", "fonts"],
+        Request::Ui(UiRequest::Correlate { .. }) => &["ui", "correlate"],
         Request::Schema(_) => &["schema"],
         Request::Context => &["context"],
         Request::Help(_) | Request::Version(_) => &[],

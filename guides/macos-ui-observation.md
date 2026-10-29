@@ -8,11 +8,13 @@ describes: [proposal.0002, proposal.0003, proposal.0004]
 
 ## What it does
 
-Recon can report the windows of a running macOS application, read that application's accessibility tree, and save one window's current pixels to a PNG file. The commands are `recon ui windows`, `recon ui tree`, and `recon ui screenshot`. Each one observes an application that is already running and leaves it exactly where it was: it never activates the app, changes the key window or keyboard focus, moves the pointer, clicks, types, opens a menu, performs an accessibility action, or writes an accessibility attribute. None of them launches anything; `recon ui` against a stopped app is an error, and opening an app remains the job of `recon app launch`. When part of a result cannot be read, Recon says so through an error, a truncation marker, or a failed node rather than returning a result that looks complete.
+Recon can report the windows of a running macOS application, read that application's accessibility tree, and save one window's current pixels to a PNG file. The commands are `recon ui windows`, `recon ui ax tree`, and `recon ui screenshot`. Each one observes an application that is already running and leaves it exactly where it was: it never activates the app, changes the key window or keyboard focus, moves the pointer, clicks, types, opens a menu, performs an accessibility action, or writes an accessibility attribute. None of them launches anything; `recon ui` against a stopped app is an error, and opening an app remains the job of `recon app launch`. When part of a result cannot be read, Recon says so through an error, a truncation marker, or a failed node rather than returning a result that looks complete.
 
 Observation requires two macOS privacy permissions, and they belong to the `recon` executable rather than to the terminal, editor, or agent harness that ran it. A command therefore behaves the same under every launcher.
 
-Every failure is one JSON error object printed on a single line to standard error: a stable `code`, a human `message`, a `retryable` flag, the resolved `command`, and `details` carrying the values you need to recover. Branch on `code` rather than on the sentence. Run `recon --help` to learn the commands, `recon schema ui tree` for one command's arguments, output schema, and error codes, and `recon context` to see which permissions and private interfaces this installation holds without observing any application. The [CLI contract guide](cli-contract.md) explains orientation, `recon schema`, `recon context`, and how to read an error object.
+Every failure is one JSON error object printed on a single line to standard error: a stable `code`, a human `message`, a `retryable` flag, the resolved `command`, and `details` carrying the values you need to recover. Branch on `code` rather than on the sentence. Run `recon --help` to learn the commands, `recon schema ui ax tree` for one command's arguments, output schema, and error codes, and `recon context` to see which permissions and private interfaces this installation holds without observing any application. The [CLI contract guide](cli-contract.md) explains orientation, `recon schema`, `recon context`, and how to read an error object.
+
+`recon ui ax tree` reads the accessibility representation an application exposes. It does not enumerate actual `NSView`, `NSCell`, or `CALayer` objects, recover SwiftUI's view graph, or inspect DOM nodes and CSS rules. Those are separate future capabilities in the [vision](../VISION.md); an accessibility role is not a runtime class name.
 
 ## How to use it
 
@@ -30,7 +32,7 @@ That signature gives the executable a designated requirement naming the identifi
 
 Grant the permissions once. Run a `ui` command, let macOS show its prompt, then open System Settings and enable `recon` in Privacy & Security → Screen & System Audio Recording and in Privacy & Security → Accessibility. Both lists show the executable as "recon", from the Info.plist embedded in it.
 
-Which permission a command needs depends on what it reads. `recon ui windows` needs Screen Recording, because macOS withholds other processes' window titles without it, and it reads no accessibility data at all. `recon ui tree` needs Accessibility. `recon ui screenshot` needs Screen Recording to capture pixels, and it needs Accessibility as well whenever you omit `--window`, because the default window is the one the application reports as its main window through Accessibility.
+Which permission a command needs depends on what it reads. `recon ui windows` needs Screen Recording, because macOS withholds other processes' window titles without it, and it reads no accessibility data at all. `recon ui ax tree` needs Accessibility. `recon ui screenshot` needs Screen Recording to capture pixels, and it needs Accessibility as well whenever you omit `--window`, because the default window is the one the application reports as its main window through Accessibility.
 
 When a needed permission is missing, Recon asks macOS to request it. macOS may show its prompt, and will stay silent if you denied the permission earlier. Recon then exits with a nonzero status and fails with `PERMISSION_DENIED`. Its `message` names the missing permissions and the executable; `details` carries the same facts as data. `details.permissions` holds one entry per missing permission, each with a `permission` of `screen-recording` or `accessibility` and the `settingsPane` that grants it. `details.executablePath` is the absolute path of the running executable, which is what macOS records a grant against. `details.adHocSigned` says whether this build is ad-hoc signed.
 
@@ -70,7 +72,7 @@ Each entry has an `id`, the window ID used by `--window`; a `title`, which is `n
 
 Read `onScreen: false` carefully. It does not distinguish a window on another Space from a minimized window, a window belonging to a hidden app, or a window that has simply been ordered out.
 
-### `recon ui tree <target> [--pid <pid>] [--window <id>] [--depth <n>] [--no-menu-bar]`
+### `recon ui ax tree <target> [--pid <pid>] [--window <id>] [--depth <n>] [--no-menu-bar]`
 
 Without `--window`, the root of the tree is the application element, and its children are whatever the application reports, typically its menu bar and its windows on the current Space. Windows on other Spaces are usually missing from that list, and Recon does not go looking for them here.
 
@@ -113,7 +115,7 @@ The node budget of 25,000 and the two-second messaging timeout still apply withi
 
 #### `--no-menu-bar`
 
-`--no-menu-bar` takes no value and leaves the application's own menu bar unread. It is accepted only by `ui tree`, and only without `--window`: a window tree contains no menu bar, so combining them is a usage error rather than a flag that quietly does nothing.
+`--no-menu-bar` takes no value and leaves the application's own menu bar unread. It is accepted only by `ui ax tree`, and only without `--window`: a window tree contains no menu bar, so combining them is a usage error rather than a flag that quietly does nothing.
 
 Before traversal Recon reads the application element's `AXMenuBar` attribute, which costs one accessibility request. When that attribute answers with an accessibility element, Recon skips the root's child that is the same element: nothing below it is requested, it is not counted against the node budget, nothing stands in its place among the root's children, the root node carries `"menuBarExcluded": true`, and the result is `narrowed`. Only the root's direct children are compared, so an element equal to the menu bar deeper in the tree is read normally.
 
@@ -154,7 +156,7 @@ The result names the bundle path and the process ID, then the windows the window
 Read that window's accessibility tree:
 
 ```sh
-recon ui tree /System/Applications/Calculator.app --window <id>
+recon ui ax tree /System/Applications/Calculator.app --window <id>
 ```
 
 `windowId` echoes `<id>`, and `root` is the window element, with the buttons and display of the calculator below it as nodes carrying roles, titles, frames, and the action names each element advertises. Recon reads those names; it presses nothing. Drop `--window` to get the application element instead, with Calculator's menu bar and its windows on the current Space.

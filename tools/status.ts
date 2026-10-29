@@ -131,7 +131,15 @@ const STEPS = {
         "3",
         "Implementation",
         "The proposal is approved for implementation.",
-        "Write failing tests, then guides, then code and gates. Complete cross-artifact and adversarial reviews, post the readiness report, and mark the pull request ready.",
+        "Write failing tests, then guides, code, and applicable checks. When the complete implementation is pushed, mark the pull request ready for maintainer review. Continue independent reviews, preview, and the later readiness report.",
+        "agent",
+        SKILLS.implementation,
+    ),
+    awaitingImplementationReady: step(
+        "3",
+        "Implementation",
+        "The proposal is approved for implementation; its pull request is already ready for human inspection.",
+        "Complete independent reviews, preview, and the readiness report before moving the proposal to active-review. Address any review revisions with fresh checks.",
         "agent",
         SKILLS.implementation,
     ),
@@ -520,6 +528,8 @@ export function deriveStatus(facts: Facts): DerivedStatus {
     if (!facts.pullRequest) return result(facts, STEPS.noPullRequest);
     if (!facts.proposal) return result(facts, STEPS.noProposal);
     let { status } = facts.proposal;
+    if (status === "awaiting-implementation" && !facts.pullRequest.isDraft)
+        return result(facts, STEPS.awaitingImplementationReady);
     if (status === "implemented") {
         let completionStep =
             facts.pullRequest.state === "MERGED"

@@ -12,7 +12,7 @@ Phase 3 preserves proposal intent in independent tests, guides, and code.
 ## Preconditions
 
 - The proposal has `status: awaiting-implementation`, or the approval owner returned it for implementation with `status: returned-for-revisions`; neither has an unresolved clarification marker.
-- Phase 1 — preparation — created the branch, pushed it to `origin`, and opened a draft pull request.
+- Phase 1 — preparation — created the branch, pushed it to `origin`, and opened a draft pull request for the proposal. It stays draft until the complete implementation has passed applicable checks and reached the pushed branch.
 - Read the proposal's **Detailed design**, relevant vision, policies, decisions, affected tests, guides, and project conventions.
 - Tests derive from **Detailed design**. Acceptance criteria are an occasional supplement, never the primary source.
 - Raise a conflict or ambiguity. Do not silently choose behavior or expand scope. Under a bounded build mandate ([`AGENTS.md`](../../../AGENTS.md#bounded-build-mandates)) the strategist settles conflicts that stay inside the mandate's boundaries and records them in the proposal; anything past those boundaries, or any doubt about which authority applies, stops the affected slice and goes to the human.
@@ -162,6 +162,8 @@ If an unknown failure appears, stop implementation and use [`.agents/skills/syst
 
 Run `vp run check`, then the applicable project-specific gates listed by `vp run`. Follow [`.agents/rules/verification.md`](../../rules/verification.md) for completion evidence.
 
+After the complete implementation passes the applicable checks and is pushed, mark the feature pull request ready for maintainer review. Human review can begin while the excellence pass, inline reviews, cross-artifact and adversarial reviews, preview, and readiness report remain in progress. Keep the proposal at `awaiting-implementation` until the later Phase 3 handoff. If push or PR state changes lack authority, report the blocker without claiming the implementation is reviewable in the PR.
+
 The strategist uses `excellence-pass` on the working implementation before inline reviews. Substantive implementation improvements return to the implementer; rerun validation and the pass. A finding that changes product intent goes back to the proposal before code changes — to the human, or to the strategist where a mandate delegates that decision and the revision stays inside its boundaries.
 
 Perform the inline reviews sequentially. A finding returns the affected behavior to tests, guides, or code; rerun its gates and repeat the review that found it. Self-review can catch clear mistakes but never substitutes for either review.
@@ -177,7 +179,7 @@ The proposal-compliance reviewer returns approval or concrete gaps. The code-qua
 
 After both inline reviews are clean, set no proposal status.
 
-1. Hand off to [`.agents/skills/reviewing-an-implementation/SKILL.md`](../reviewing-an-implementation/SKILL.md). It owns every remaining Phase 3 review stage, dispatches `adversarial-review`, produces the preview, and performs the final coupled transition.
+1. Hand off to [`.agents/skills/reviewing-an-implementation/SKILL.md`](../reviewing-an-implementation/SKILL.md). It owns every remaining Phase 3 review stage, dispatches `adversarial-review`, produces the preview, and posts the final readiness report with the `active-review` proposal transition. The pull request should already be ready.
 
 The adversarial reviewer is fresh-context, report-only, and uses a model distinct from the implementer where possible. It never edits implementation. Declined findings remain visible for human review.
 

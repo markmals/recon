@@ -56,7 +56,7 @@ fn proposal0003_orientation_is_successful_and_help_overrides_bad_arguments() {
         "app inspect",
         "app launch",
         "ui windows",
-        "ui tree",
+        "ui ax tree",
         "ui screenshot",
         "schema",
         "context",
@@ -65,11 +65,11 @@ fn proposal0003_orientation_is_successful_and_help_overrides_bad_arguments() {
     }
     assert!(!top.contains('\u{1b}'));
     assert!(top.contains("recon schema <command>"));
-    let tree = success(&["ui", "tree", "--help"]);
+    let tree = success(&["ui", "ax", "tree", "--help"]);
     for arguments in [
-        vec!["help", "ui", "tree"],
-        vec!["ui", "tree", "--window", "abc", "--help"],
-        vec!["ui", "tree", "--pid", "--help"],
+        vec!["help", "ui", "ax", "tree"],
+        vec!["ui", "ax", "tree", "--window", "abc", "--help"],
+        vec!["ui", "ax", "tree", "--pid", "--help"],
     ] {
         assert_eq!(success(&arguments), tree);
     }
@@ -84,8 +84,8 @@ fn proposal0003_orientation_is_successful_and_help_overrides_bad_arguments() {
 
 #[test]
 fn proposal0003_usage_errors_carry_recovery_data() {
-    let error = invalid(&["ui", "tree", "Calculator", "--window", "abc"]);
-    assert_eq!(error["command"], json!(["ui", "tree"]));
+    let error = invalid(&["ui", "ax", "tree", "Calculator", "--window", "abc"]);
+    assert_eq!(error["command"], json!(["ui", "ax", "tree"]));
     assert_eq!(error["details"]["argument"], "--window");
     assert_eq!(error["details"]["value"], "abc");
     assert!(error["details"]["accepted"].is_null());
@@ -93,17 +93,17 @@ fn proposal0003_usage_errors_carry_recovery_data() {
     assert_eq!(error["details"]["argument"], "--out");
     assert!(error["details"]["value"].is_null());
     let error = invalid(&["ui", "windows", "Calculator", "--bogus"]);
-    assert_eq!(error["details"]["accepted"], json!(["--pid"]));
+    assert_eq!(error["details"]["accepted"], json!(["--pid", "--session"]));
     assert_eq!(invalid(&["app", "list", "--json"])["details"]["accepted"], json!(["--running"]));
     assert_eq!(invalid(&["app"])["details"]["accepted"], json!(["list", "inspect", "launch"]));
     assert_eq!(invalid(&["app", "inspect", "Safari", "Mail"])["details"]["value"], "Mail");
-    let error = invalid(&["ui", "tree", "Calculator", "--pid", "1", "--pid", "2"]);
+    let error = invalid(&["ui", "ax", "tree", "Calculator", "--pid", "1", "--pid", "2"]);
     assert_eq!(error["details"]["argument"], "--pid");
     assert_eq!(error["details"]["value"], "2");
     for arguments in [
-        vec!["ui", "tree", "Notes", "--pid", "0"],
-        vec!["ui", "tree", "Notes", "--pid", "--window", "9"],
-        vec!["ui", "tree", "Notes", "--window"],
+        vec!["ui", "ax", "tree", "Notes", "--pid", "0"],
+        vec!["ui", "ax", "tree", "Notes", "--pid", "--window", "9"],
+        vec!["ui", "ax", "tree", "Notes", "--window"],
         vec!["context", "extra"],
         vec!["schema", "ui", "absent"],
     ] {
@@ -128,8 +128,17 @@ fn proposal0003_registry_is_discoverable_and_constraints_are_enforced() {
             ["app", "inspect"],
             ["app", "launch"],
             ["ui", "windows"],
-            ["ui", "tree"],
+            ["ui", "ax", "tree"],
             ["ui", "screenshot"],
+            ["ui", "session", "preflight"],
+            ["ui", "session", "prepare-host"],
+            ["ui", "session", "open"],
+            ["ui", "session", "close"],
+            ["ui", "view", "tree"],
+            ["ui", "view", "node"],
+            ["ui", "view", "find"],
+            ["ui", "view", "fonts"],
+            ["ui", "correlate"],
             ["schema"],
             ["context"]
         ])
@@ -158,7 +167,7 @@ fn proposal0003_registry_is_discoverable_and_constraints_are_enforced() {
         success(&help);
     }
     assert_eq!(covered.len(), codes.len());
-    let tree: Value = serde_json::from_slice(&success(&["schema", "ui", "tree"])).unwrap();
+    let tree: Value = serde_json::from_slice(&success(&["schema", "ui", "ax", "tree"])).unwrap();
     let pid = tree["command"]["options"]
         .as_array()
         .unwrap()
@@ -175,7 +184,7 @@ proptest! {
     #![proptest_config(ProptestConfig { cases:32, failure_persistence:None, ..ProptestConfig::default() })]
     #[test]
     fn proposal0003_non_decimal_pid_strings_never_reach_the_host(value in "[^\\x00]{0,24}".prop_filter("not a positive plain u32 or help request", |text| !matches!(text.as_str(), "-h" | "--help") && (text.is_empty() || !text.bytes().all(|byte| byte.is_ascii_digit()) || text.parse::<u32>().ok().is_none_or(|number| number == 0)))) {
-        invalid(&["ui", "tree", "Notes", "--pid", &value]);
+        invalid(&["ui", "ax", "tree", "Notes", "--pid", &value]);
     }
     #[test]
     fn proposal0003_hyphen_prefixed_output_values_are_usage_errors(tail in "[a-z0-9]{0,24}") {
@@ -232,6 +241,7 @@ fn proposal0003_help_precedes_even_non_utf8_argument_validation() {
     let output = Command::new(env!("CARGO_BIN_EXE_recon"))
         .args([
             OsString::from("ui"),
+            OsString::from("ax"),
             OsString::from("tree"),
             OsString::from_vec(vec![0xff]),
             OsString::from("--help"),
@@ -240,7 +250,7 @@ fn proposal0003_help_precedes_even_non_utf8_argument_validation() {
         .unwrap();
     assert_eq!(output.status.code(), Some(0));
     assert!(output.stderr.is_empty());
-    assert_eq!(output.stdout, success(&["ui", "tree", "--help"]));
+    assert_eq!(output.stdout, success(&["ui", "ax", "tree", "--help"]));
 }
 
 #[test]
@@ -253,21 +263,21 @@ fn proposal0003_help_word_inside_an_invalid_path_is_the_offending_operation() {
 
 #[test]
 fn proposal0003_unknown_options_are_not_matched_by_value_name_text() {
-    let error = invalid(&["ui", "tree", "Calculator", "--PID", "1"]);
+    let error = invalid(&["ui", "ax", "tree", "Calculator", "--PID", "1"]);
     assert_eq!(error["details"]["argument"], "--PID");
     assert_eq!(
         error["details"]["accepted"],
-        json!(["--pid", "--window", "--depth", "--no-menu-bar"])
+        json!(["--pid", "--window", "--depth", "--no-menu-bar", "--session"])
     );
 }
 
 #[test]
 fn proposal0003_option_shaped_extra_positionals_keep_their_actual_role() {
     for (arguments, value) in [
-        (vec!["ui", "tree", "Calculator", "--", "--window"], "--window"),
-        (vec!["ui", "tree", "--window", "1", "Calculator", "--", "--window"], "--window"),
-        (vec!["ui", "tree", "--window=9", "Notes", "--", "--window=9"], "--window=9"),
-        (vec!["ui", "tree", "--window=9", "Notes", "--", "--window"], "--window"),
+        (vec!["ui", "ax", "tree", "Calculator", "--", "--window"], "--window"),
+        (vec!["ui", "ax", "tree", "--window", "1", "Calculator", "--", "--window"], "--window"),
+        (vec!["ui", "ax", "tree", "--window=9", "Notes", "--", "--window=9"], "--window=9"),
+        (vec!["ui", "ax", "tree", "--window=9", "Notes", "--", "--window"], "--window"),
     ] {
         let error = invalid(&arguments);
         assert!(error["details"]["argument"].is_null());
@@ -290,7 +300,7 @@ fn proposal0003_missing_option_values_differ_from_explicit_empty_values() {
     let error = invalid_request(&["ui", "screenshot", "Calculator", "--out"]);
     assert_eq!(error["details"]["argument"], "--out");
     assert!(error["details"]["value"].is_null());
-    let error = invalid_request(&["ui", "tree", "Calculator", "--pid", ""]);
+    let error = invalid_request(&["ui", "ax", "tree", "Calculator", "--pid", ""]);
     assert_eq!(error["details"]["value"], "");
 }
 
@@ -360,7 +370,7 @@ fn proposal0003_version_recovery_explains_that_it_takes_no_other_arguments() {
 
 #[test]
 fn proposal0003_unknown_attached_option_before_separator_remains_the_offending_option() {
-    let error = invalid_request(&["ui", "tree", "Notes", "--bogus=1", "--", "--bogus"]);
+    let error = invalid_request(&["ui", "ax", "tree", "Notes", "--bogus=1", "--", "--bogus"]);
     assert_eq!(error["details"]["argument"], "--bogus");
     assert!(error["details"]["value"].is_null());
 }

@@ -4,6 +4,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use super::decimal;
+use super::native;
 use super::output_path;
 use super::registry::{CommandSpec, registry};
 use crate::error::{ErrorCode, ErrorReport, Failure};
@@ -77,6 +78,17 @@ struct Description {
     hosts: Vec<String>,
     output: Value,
     errors: Vec<ErrorCode>,
+    /// Combinations the parser enforces that a per-option constraint cannot express, because they
+    /// depend on the value another option was given.
+    usage: Vec<UsageRuleDescription>,
+}
+
+#[derive(Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct UsageRuleDescription {
+    subject: String,
+    relation: String,
+    objects: Vec<String>,
 }
 
 #[derive(Serialize, JsonSchema)]
@@ -171,11 +183,21 @@ fn description(entry: &CommandSpec) -> Description {
             "string"
         }
         .to_owned();
+        let numeric_default = numeric.is_some();
         let mut constraints = numeric
             .map(|constraints| {
                 serde_json::to_value(constraints).expect("numeric constraints serialize")
             })
-            .or_else(|| output_path::constraints(argument.get_value_parser()));
+            .or_else(|| output_path::constraints(argument.get_value_parser()))
+            .or_else(|| native::constraints(argument.get_value_parser()));
+        let accepted: Vec<String> = argument
+            .get_possible_values()
+            .iter()
+            .map(|value| value.get_name().to_owned())
+            .collect();
+        if !accepted.is_empty() {
+            constraints.get_or_insert_with(|| json!({}))["enum"] = json!(accepted);
+        }
         let conflicts = parser.get_arg_conflicts_with(argument);
         if !conflicts.is_empty() {
             constraints.get_or_insert_with(|| json!({}))["conflictsWith"] = json!(
@@ -198,16 +220,13 @@ fn description(entry: &CommandSpec) -> Description {
             });
         } else {
             let default = argument.get_default_values().first().map(|value| {
+                let text = value.to_string_lossy().into_owned();
                 if boolean {
-                    Value::Bool(
-                        value
-                            .to_str()
-                            .expect("boolean default text")
-                            .parse()
-                            .expect("clap boolean default"),
-                    )
+                    Value::Bool(text.parse().expect("clap boolean default"))
+                } else if numeric_default {
+                    Value::Number(text.parse().expect("clap numeric default"))
                 } else {
-                    Value::String(value.to_string_lossy().into_owned())
+                    Value::String(text)
                 }
             });
             options.push(OptionDescription {
@@ -240,6 +259,15 @@ fn description(entry: &CommandSpec) -> Description {
         hosts: strings(entry.hosts),
         output: (entry.output)(),
         errors: entry.errors.clone(),
+        usage: entry
+            .usage
+            .iter()
+            .map(|rule| UsageRuleDescription {
+                subject: rule.subject.to_owned(),
+                relation: rule.relation.as_str().to_owned(),
+                objects: strings(rule.objects),
+            })
+            .collect(),
     }
 }
 

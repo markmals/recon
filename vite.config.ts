@@ -89,6 +89,18 @@ export default defineConfig({
                 command: "node tools/build-fixture.ts",
                 cache: false,
             },
+            "fixture:inject": {
+                command: "node tools/build-inject-fixture.ts",
+                cache: false,
+            },
+            "helper:build": {
+                command: "node tools/build-helper.ts",
+                cache: false,
+            },
+            "loader:build": {
+                command: "node tools/build-loader.ts",
+                cache: false,
+            },
             "recon:sign": {
                 command: "node tools/sign-recon.ts",
                 cache: false,
@@ -96,6 +108,30 @@ export default defineConfig({
             "test:ui": {
                 command: "cargo test -p recon --test ui_observation -- --ignored --test-threads=1",
                 dependsOn: ["fixture:build", "recon:sign"],
+                cache: false,
+            },
+            // The no-focus evidence: a continuous out-of-process watch over a live run. It
+            // activates nothing itself, so run it hands-off.
+            "test:focus": {
+                command:
+                    "cargo test -p recon --test ui_focus reading_ -- --ignored --test-threads=1",
+                dependsOn: ["fixture:build", "recon:sign"],
+                cache: false,
+            },
+            "test:inject": {
+                command: "node tools/test-inject.ts",
+                dependsOn: ["fixture:inject", "loader:build"],
+                cache: false,
+            },
+            "test:helper": {
+                command: "node tools/test-helper.ts",
+                dependsOn: ["helper:build"],
+                cache: false,
+            },
+            "test:inspection": {
+                command:
+                    "cargo test -p recon --test inspection_live --test inspection_appkit -- --ignored --test-threads=1",
+                dependsOn: ["fixture:build", "fixture:inject", "helper:build", "loader:build"],
                 cache: false,
             },
             // Reads live git and GitHub state, so a replayed result would be stale.

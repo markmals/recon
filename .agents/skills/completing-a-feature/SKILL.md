@@ -65,13 +65,13 @@ Consult the human before a substantial rewrite. Do not turn a narrow completion 
 
 After acceptance and the vision update, set the proposal to `implemented` in the same feature pull request that contains the implementation. This status says the accepted implementation is complete. It does not assert that the pull request has merged or that a required release has happened. Record the acceptance authority and any outstanding delivery in the proposal or PR, then commit and verify the updated integration candidate before merging. Do not create a follow-up PR only to move the status.
 
-Confirm the record is present in the pull request revision before marking a draft PR ready or merging; a local file or unpushed commit is not proof. For an already merged pull request, inspect its merged revision before concluding a local `accepted` status means the record is missing. If absent, ask the approval owner how to reconcile it and keep any required delivery visible. Do not try to amend a merged pull request or open a status-only PR.
+Confirm the implemented record is present in the pull request revision before merging; a local file or unpushed commit is not proof. For an already merged pull request, inspect its merged revision before concluding a local `accepted` status means the record is missing. If absent, ask the approval owner how to reconcile it and keep any required delivery visible. Do not try to amend a merged pull request or open a status-only PR.
 
 ## 5. Merge
 
 Merge only after acceptance is recorded, and only into the stated merge target through the pull request. Never push directly to the default branch. The human accepts the work; where a bounded build mandate explicitly delegates acceptance and merge ([`AGENTS.md`](../../../AGENTS.md#bounded-build-mandates)), the strategist may accept and merge after clean independent reviews of the latest relevant revision and fresh passing checks and smoke of the integration candidate. Fix unresolved defects and unmet outcomes within scope, then repeat verification and review. Disputed material findings and changes beyond the mandate require the human; all of these block autonomous merge while unresolved.
 
-If the accepted pull request is still draft, mark it ready and verify the updated revision before merging. Draft status never authorizes skipping readiness or review.
+An accepted PR still in draft is an anomalous state. Verify its pushed implementation, mark it ready, and verify the updated revision before merging. Draft status never authorizes skipping readiness or review.
 
 Preserve the record of what was proposed, what was implemented, why decisions were made, what review found, and how the final state differs from earlier revisions.
 
