@@ -2,7 +2,7 @@
 id: proposal.0005
 title: Native macOS Inspection
 authors: [Mark Malstrom]
-status: awaiting-implementation
+status: implemented
 pull-request: https://github.com/markmals/recon/pull/54
 issues: ["#51", "#44"]
 supersedes: []
@@ -26,6 +26,8 @@ Inspect a macOS application's windows, views, cells, and layers through Recon's 
 - Implementation authorization clarified: In the current PR #54 recovery conversation, Mark confirmed that he had already explicitly authorized implementation after the outstanding feasibility probes resolve the design questions. Complete those probes, record their results and the settled design, and move to `awaiting-implementation` without requesting another approval. Mark also explicitly rejected Frida integration; use a Recon-owned loader and helper, not Frida or frida-core.
 - Limits: Consent covers proposal development, its branch/draft PR, the research probes, preparing this authorized research host, the `prepare-host` command design, and implementation after the probes settled the outstanding questions. It does not authorize merge, release, spending, signing or entitlement changes to other applications, or any security change to a machine other than this authorized research host. No build mandate is being exercised.
 - Host-preparation authorization: In continued PR #54 conversation Mark directed preparing this research host beyond SIP — applying the AMFI-off research boot-args `amfi_get_out_of_my_way=0x1 -arm64e_preview_abi` (plus `tss_should_crash=0`) — and directed that Recon expose host preparation as an explicit, opt-in `prepare-host` command that sets the boot-args it can and prints the operator steps to disable SIP, which Recon cannot perform itself. He chose an injection-only research profile with no read-only inspection path. This expands the earlier, narrower consent and is specific to this research host and the product design; it does not extend to other machines, merge, release, or signing/entitlement changes to other applications.
+- Acceptance: On 2026-10-29, Mark accepted the implementation in PR #54 and instructed the agent to merge it into `main`. He deferred only the future Objective-C-helper-to-Rust conversion to #74, retaining the C loader and assembly bootstrap. This grants no release, branch-deletion, or other cleanup authority.
+- Delivery: Merge-only. No release is authorized or required.
 
 ## Motivation
 
