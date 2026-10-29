@@ -231,9 +231,22 @@ pub fn open(
         // The helper acknowledged a new session but the host could not record the means to revoke
         // it. Rather than leave an orphaned active session the host can neither reuse nor close,
         // revoke it on the helper before surfacing the failure. A newly established session is
-        // revoked; a reused one keeps the still-recorded prior session untouched.
-        if reusable.is_none() {
-            let _ = revoke(&record);
+        // revoked; a reused one keeps the still-recorded prior session untouched. If the revoke
+        // itself fails, the session may remain active until the target exits, so say so explicitly
+        // rather than discard that outcome.
+        if reusable.is_none()
+            && let Err(revoke_error) = revoke(&record)
+        {
+            return Err(InspectionError::new(
+                error.code(),
+                error.stage(),
+                format!(
+                    "{}; the new session {} could not be recorded or revoked ({revoke_error}) and \
+                     may remain active in the target until it exits",
+                    error.message(),
+                    record.session_id
+                ),
+            ));
         }
         return Err(error);
     }

@@ -364,15 +364,20 @@ pub(crate) fn prepare_host<R: CommandRunner>(runner: &mut R) -> Result<HostPrepa
         }
     };
 
-    let result =
-        runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", &format!("boot-args={boot_args}")])?;
-    if !result.success {
-        // The boot-args were not changed, so a record this invocation wrote is now stale and would
-        // make a later revert remove an argument Recon never set. Roll it back.
+    // Capture the boot-args write without `?`: whether it failed to start or returned non-success,
+    // a record this invocation wrote is now stale and must be rolled back before returning, so a
+    // later revert can never remove an argument Recon did not actually set.
+    let set = runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", &format!("boot-args={boot_args}")]);
+    let set_error = match &set {
+        Ok(result) if result.success => None,
+        Ok(result) => Some(format!("cannot set research boot-args: {}", result.stderr.trim())),
+        Err(error) => Some(format!("cannot set research boot-args: {error}")),
+    };
+    if let Some(error) = set_error {
         if wrote_record {
             let _ = runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", "-d", RECON_ADDED_VARIABLE]);
         }
-        return Err(format!("cannot set research boot-args: {}", result.stderr.trim()));
+        return Err(error);
     }
     Ok(HostPreparation { boot_args, operator_steps: OPERATOR_STEPS.into() })
 }

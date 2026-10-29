@@ -610,6 +610,35 @@ fn a_session_the_host_cannot_record_is_revoked_rather_than_orphaned() {
 }
 
 #[test]
+fn a_session_that_cannot_be_recorded_or_revoked_surfaces_the_orphan() {
+    let fixture = Fixture::new();
+    let incarnation = fixture.incarnation;
+    // The helper acknowledges the open but drops the close connection, so revocation fails too.
+    let _helper = Helper::start(
+        &fixture.endpoint,
+        always(move |request| {
+            if request.get("op").and_then(Value::as_str) == Some("close") {
+                Reply::Hangup
+            } else {
+                Reply::Json(open_reply(incarnation, SESSION_A, CAPABILITY_A, false))
+            }
+        }),
+    );
+
+    let sessions = fixture.store.root().join("sessions");
+    fs::set_permissions(&sessions, fs::Permissions::from_mode(0o500))
+        .expect("seal the sessions dir");
+
+    let failure = open(&fixture.store, &fixture.open_request(AcquisitionMode::Attach))
+        .expect_err("a session that cannot be recorded is not established");
+
+    fs::set_permissions(&sessions, fs::Permissions::from_mode(0o700)).expect("restore the dir");
+    // The caller is told the session may still be active, naming it, rather than losing it silently.
+    assert!(failure.message().contains(SESSION_A), "{failure}");
+    assert!(failure.message().contains("may remain active"), "{failure}");
+}
+
+#[test]
 fn a_handshake_answering_for_another_process_cannot_establish_a_session() {
     let fixture = Fixture::new();
     let incarnation = fixture.incarnation;

@@ -379,6 +379,29 @@ fn proposal0005_prepare_aborts_without_weakening_the_host_when_it_cannot_record_
 }
 
 #[test]
+fn proposal0005_prepare_rolls_back_its_record_when_the_boot_args_write_fails() {
+    let mut runner = FakeRunner {
+        responses: vec![
+            ok("boot-args\tkeepsyms=1\n"),
+            absent(),
+            ok(""),
+            Ok(CommandResult { success: false, stdout: String::new(), stderr: "denied".into() }),
+            ok(""),
+        ],
+        ..Default::default()
+    };
+    assert!(prepare_host(&mut runner).is_err());
+    // The delta record this run wrote must be deleted, so a later revert cannot remove an argument
+    // Recon did not actually set.
+    assert!(
+        runner.invocations.iter().any(|(program, args)| program == "/usr/bin/sudo"
+            && args == &["/usr/sbin/nvram", "-d", "recon-added-boot-args"]),
+        "the stale record must be rolled back: {:?}",
+        runner.invocations
+    );
+}
+
+#[test]
 fn proposal0005_revert_without_a_record_leaves_operator_boot_args_untouched() {
     // No Recon record exists, so revert must not remove the operator's research-looking argument.
     let mut runner = FakeRunner {

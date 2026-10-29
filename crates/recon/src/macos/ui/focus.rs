@@ -127,21 +127,33 @@ impl Guard {
         let stop = Arc::new(AtomicBool::new(false));
         let watching = Arc::clone(&stop);
         let target = scope.target;
-        let (baseline_tx, baseline_rx) = std::sync::mpsc::channel();
+        let (baseline_tx, baseline_rx) = std::sync::mpsc::channel::<Option<Dimension>>();
         let watcher = thread::Builder::new()
             .name("recon-no-focus".to_owned())
             .spawn(move || watch(&probe, &watching, target, &baseline_tx))
             .map_err(|error| {
                 Failure::internal(format!("the no-focus guard could not start watching: {error}"))
             })?;
-        // Return only once the watcher has recorded its baseline, so the operation cannot begin
-        // inside an unwatched gap and have its first disturbance read as the baseline state.
-        if baseline_rx.recv().is_err() {
-            stop.store(true, Ordering::Release);
-            let _ = watcher.join();
-            return Err(Failure::internal(
-                "the no-focus guard could not record a baseline before the operation",
-            ));
+        // Return only once the watcher has recorded a readable baseline. A baseline that could not
+        // read one of the contract's dimensions fails closed before the operation runs, rather than
+        // letting an effect happen in an unwatched gap and reporting it only afterward.
+        match baseline_rx.recv() {
+            Ok(None) => {}
+            Ok(Some(dimension)) => {
+                stop.store(true, Ordering::Release);
+                let _ = watcher.join();
+                return Err(dimension.unwatchable(format!(
+                    "Recon could not read {dimension} before the operation, so it cannot report \
+                     that the user's foreground work was left alone"
+                )));
+            }
+            Err(_) => {
+                stop.store(true, Ordering::Release);
+                let _ = watcher.join();
+                return Err(Failure::internal(
+                    "the no-focus guard could not record a baseline before the operation",
+                ));
+            }
         }
         Ok(Self { scope, stop, watcher })
     }
@@ -600,7 +612,7 @@ fn watch(
     probe: &Probe,
     stop: &Arc<AtomicBool>,
     target: Option<Pid>,
-    baseline: &std::sync::mpsc::Sender<()>,
+    baseline: &std::sync::mpsc::Sender<Option<Dimension>>,
 ) -> Trace {
     let keys = Keys::of_the_window_server();
     let clock = Instant::now();
@@ -610,8 +622,8 @@ fn watch(
 
     probe.look(&keys, clock.elapsed(), None, &mut previous);
     trace.record(&previous);
-    // The baseline is recorded; release the operation to run inside the watch.
-    let _ = baseline.send(());
+    // Release the operation only with a readable baseline; an unreadable one fails the start.
+    let _ = baseline.send(previous.unreadable());
     while !stop.load(Ordering::Acquire) && Arc::strong_count(stop) > 1 {
         thread::sleep(INTERVAL);
         probe.look(&keys, clock.elapsed(), Some(&previous), &mut current);
