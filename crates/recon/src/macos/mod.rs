@@ -2,10 +2,11 @@
 //! observing them through Accessibility and the window server.
 
 pub mod inject;
+pub mod inspection_access;
 mod investigation;
 mod metadata;
 mod ui;
-mod workspace;
+pub(super) mod workspace;
 
 use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
