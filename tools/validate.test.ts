@@ -324,6 +324,18 @@ test("rule 3 accepts dated user authority for a decision without a proposal", ()
     expect(validateArtifacts(records)).toStrictEqual([]);
 });
 
+test("rule 3 rejects an impossible calendar date for direct user authority", () => {
+    let records = validArtifacts();
+    records[3].frontmatter["established-by"] = "user.2026-02-30";
+
+    expect(validateArtifacts(records)).toStrictEqual([
+        {
+            path: "decisions/0001-records.md",
+            message: 'reference "user.2026-02-30" in established-by does not resolve',
+        },
+    ]);
+});
+
 function policySupersession(status: string): Artifact[] {
     return [
         artifact("proposals/0001-records.md", {

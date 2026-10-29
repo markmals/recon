@@ -105,6 +105,18 @@ function expectedId(file: string, type: RecordType): string | null {
     return match ? `${type}.${match[1]}` : null;
 }
 
+function isDirectUserAuthority(value: string): boolean {
+    let match = /^user\.(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) return false;
+
+    let year = Number(match[1]);
+    let month = Number(match[2]);
+    let day = Number(match[3]);
+    let leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    let monthLengths = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    return month >= 1 && month <= 12 && day >= 1 && day <= (monthLengths[month - 1] ?? 0);
+}
+
 function referencesFor(artifact: Artifact, type: ArtifactType): { field: string; id: string }[] {
     let { frontmatter } = artifact;
     let fields =
@@ -117,7 +129,7 @@ function referencesFor(artifact: Artifact, type: ArtifactType): { field: string;
     return fields.flatMap(field => {
         let value = frontmatter[field];
         if (field === "established-by") {
-            if (typeof value !== "string" || /^user\.\d{4}-\d{2}-\d{2}$/.test(value)) return [];
+            if (typeof value !== "string" || isDirectUserAuthority(value)) return [];
             return [{ field, id: value }];
         }
         return Array.isArray(value) ? value.map(id => ({ field, id })) : [];
