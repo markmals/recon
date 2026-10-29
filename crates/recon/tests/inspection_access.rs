@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use inspection_access::{
     AccessMode, AccessProfile, CommandResult, CommandRunner, Eligibility, Fact, HelperFacts,
     HostFacts, TargetFacts, TargetSelection, add_research_boot_args, collect_preflight, evaluate,
-    prepare_host, remove_research_boot_args, revert_host,
+    prepare_host, revert_host,
 };
 use proptest::prelude::*;
 
@@ -214,7 +214,7 @@ fn proposal0005_unsupported_architecture_and_version_are_blocked() {
 }
 
 #[test]
-fn proposal0005_boot_args_add_remove_preserves_unrelated_arguments() {
+fn proposal0005_boot_args_add_is_idempotent_and_preserves_unrelated_arguments() {
     let before = "keepsyms=1 debug=0x14";
     let applied = add_research_boot_args(before);
     assert_eq!(
@@ -222,20 +222,25 @@ fn proposal0005_boot_args_add_remove_preserves_unrelated_arguments() {
         "keepsyms=1 debug=0x14 amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0"
     );
     assert_eq!(add_research_boot_args(&applied), applied);
-    assert_eq!(remove_research_boot_args(&applied), before);
+    // Adding does not duplicate a research token the operator already set.
     assert_eq!(
-        remove_research_boot_args(
-            "amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0"
-        ),
-        ""
+        add_research_boot_args("amfi_get_out_of_my_way=0x1"),
+        "amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0"
     );
 }
 
 proptest! {
     #[test]
-    fn proposal0005_boot_arg_revert_preserves_every_unrelated_token(tokens in proptest::collection::vec("[a-z][a-z0-9_]{0,12}=[a-z0-9]{1,8}", 0..24)) {
+    fn proposal0005_boot_arg_add_leaves_unrelated_tokens_in_place(tokens in proptest::collection::vec("[a-z][a-z0-9_]{0,12}=[a-z0-9]{1,8}", 0..24)) {
         let original = tokens.join(" ");
-        prop_assert_eq!(remove_research_boot_args(&add_research_boot_args(&original)), original);
+        let applied = add_research_boot_args(&original);
+        // Every original token survives, and every research token is present exactly once.
+        for token in &tokens {
+            prop_assert!(applied.split_whitespace().any(|arg| arg == token), "{applied}");
+        }
+        for research in ["amfi_get_out_of_my_way=0x1", "-arm64e_preview_abi", "tss_should_crash=0"] {
+            prop_assert_eq!(applied.split_whitespace().filter(|arg| *arg == research).count(), 1);
+        }
     }
 }
 
@@ -279,6 +284,14 @@ fn ok(stdout: &str) -> Result<CommandResult, String> {
     Ok(CommandResult { success: true, stdout: stdout.into(), stderr: String::new() })
 }
 
+fn absent() -> Result<CommandResult, String> {
+    Ok(CommandResult {
+        success: false,
+        stdout: String::new(),
+        stderr: "nvram: data was not found".into(),
+    })
+}
+
 #[test]
 fn proposal0005_preflight_collects_unknowns_without_sudo_or_host_effects() {
     let mut runner = FakeRunner::default();
@@ -304,7 +317,7 @@ fn proposal0005_preflight_collects_unknowns_without_sudo_or_host_effects() {
 #[test]
 fn proposal0005_prepare_host_is_the_only_command_that_can_invoke_sudo_nvram() {
     let mut runner = FakeRunner {
-        responses: vec![ok("boot-args\tkeepsyms=1\n"), ok(""), ok("")],
+        responses: vec![ok("boot-args\tkeepsyms=1\n"), absent(), ok(""), ok("")],
         ..Default::default()
     };
     let plan = prepare_host(&mut runner).unwrap();
@@ -312,11 +325,15 @@ fn proposal0005_prepare_host_is_the_only_command_that_can_invoke_sudo_nvram() {
         plan.boot_args,
         "keepsyms=1 amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0"
     );
-    assert_eq!(runner.invocations[0].0, "/usr/sbin/nvram");
-    assert_eq!(runner.invocations[1], ("/usr/bin/sudo".into(), vec!["/usr/sbin/nvram".into(), "boot-args=keepsyms=1 amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0".into()]));
-    // The delta Recon introduced is recorded so revert can be precise. The operator-set keepsyms is
-    // not part of it.
+    assert_eq!(runner.invocations[0], ("/usr/sbin/nvram".into(), vec!["boot-args".into()]));
+    assert_eq!(
+        runner.invocations[1],
+        ("/usr/sbin/nvram".into(), vec!["recon-added-boot-args".into()])
+    );
+    // The delta Recon introduced is recorded before boot-args change, so revert is precise. The
+    // operator-set keepsyms is not part of it.
     assert_eq!(runner.invocations[2], ("/usr/bin/sudo".into(), vec!["/usr/sbin/nvram".into(), "recon-added-boot-args=amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0".into()]));
+    assert_eq!(runner.invocations[3], ("/usr/bin/sudo".into(), vec!["/usr/sbin/nvram".into(), "boot-args=keepsyms=1 amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0".into()]));
     assert!(plan.operator_steps.contains("csrutil disable"));
     assert!(plan.operator_steps.contains("Recovery"));
     assert!(plan.operator_steps.contains("reboot"));
@@ -337,6 +354,46 @@ fn proposal0005_prepare_host_is_the_only_command_that_can_invoke_sudo_nvram() {
     assert_eq!(reverted.boot_args, "keepsyms=1");
     assert_eq!(runner.invocations[2].1, vec!["/usr/sbin/nvram", "boot-args=keepsyms=1"]);
     assert_eq!(runner.invocations[3].1, vec!["/usr/sbin/nvram", "-d", "recon-added-boot-args"]);
+}
+
+#[test]
+fn proposal0005_prepare_aborts_without_weakening_the_host_when_it_cannot_record_its_delta() {
+    // The record write fails; prepare must not go on to change boot-args, so a later revert can
+    // never fall back to removing an argument Recon did not set.
+    let mut runner = FakeRunner {
+        responses: vec![
+            ok("boot-args\tamfi_get_out_of_my_way=0x1\n"),
+            absent(),
+            Ok(CommandResult { success: false, stdout: String::new(), stderr: "denied".into() }),
+        ],
+        ..Default::default()
+    };
+    assert!(prepare_host(&mut runner).is_err());
+    assert!(
+        runner
+            .invocations
+            .iter()
+            .all(|(_, args)| !args.iter().any(|arg| arg.starts_with("boot-args="))),
+        "boot-args must not be changed when the delta could not be recorded"
+    );
+}
+
+#[test]
+fn proposal0005_revert_without_a_record_leaves_operator_boot_args_untouched() {
+    // No Recon record exists, so revert must not remove the operator's research-looking argument.
+    let mut runner = FakeRunner {
+        responses: vec![
+            ok("boot-args\tamfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0\n"),
+            absent(),
+        ],
+        ..Default::default()
+    };
+    let reverted = revert_host(&mut runner).unwrap();
+    assert_eq!(
+        reverted.boot_args,
+        "amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0"
+    );
+    assert!(runner.invocations.iter().all(|(program, _)| program != "/usr/bin/sudo"));
 }
 
 #[test]
@@ -369,21 +426,7 @@ fn proposal0005_unexpected_nvram_output_cannot_authorize_boot_arg_write() {
 
 #[test]
 fn proposal0005_revert_with_no_recon_boot_args_does_not_request_authorization() {
-    let mut runner = FakeRunner {
-        responses: vec![
-            Ok(CommandResult {
-                success: false,
-                stdout: String::new(),
-                stderr: "nvram: data was not found".into(),
-            }),
-            Ok(CommandResult {
-                success: false,
-                stdout: String::new(),
-                stderr: "nvram: data was not found".into(),
-            }),
-        ],
-        ..Default::default()
-    };
+    let mut runner = FakeRunner { responses: vec![absent(), absent()], ..Default::default() };
     assert_eq!(revert_host(&mut runner).unwrap().boot_args, "");
     assert!(runner.invocations.iter().all(|(program, _)| program != "/usr/bin/sudo"));
 }

@@ -261,13 +261,6 @@ pub(crate) fn add_research_boot_args(args: &str) -> String {
     tokens.join(" ")
 }
 
-pub(crate) fn remove_research_boot_args(args: &str) -> String {
-    args.split_whitespace()
-        .filter(|arg| !RESEARCH_BOOT_ARGS.contains(arg))
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
 fn read_configured_boot_args<R: CommandRunner>(runner: &mut R) -> Result<String, String> {
     let output = runner.run("/usr/sbin/nvram", &["boot-args"])?;
     if output.success {
@@ -319,79 +312,82 @@ pub(crate) fn prepare_host_status<R: CommandRunner>(runner: &mut R) -> HostPrepa
 /// `amfi_get_out_of_my_way=0x1`, for instance) in place.
 const RECON_ADDED_VARIABLE: &str = "recon-added-boot-args";
 
-fn read_recon_added<R: CommandRunner>(runner: &mut R) -> Vec<String> {
-    let Ok(output) = runner.run("/usr/sbin/nvram", &[RECON_ADDED_VARIABLE]) else {
-        return Vec::new();
-    };
+/// The exact research tokens this host's `prepare-host` added, or `None` when no record exists.
+///
+/// A present-but-empty record (prepare-host ran when every research token was already set) is
+/// `Some(vec![])` and means revert removes nothing; an absent record is `None` and means revert
+/// must not touch the operator's configuration at all, because Recon has no evidence it set it.
+fn read_recon_added<R: CommandRunner>(runner: &mut R) -> Option<Vec<String>> {
+    let output = runner.run("/usr/sbin/nvram", &[RECON_ADDED_VARIABLE]).ok()?;
     if !output.success {
-        return Vec::new();
+        return None;
     }
-    output
-        .stdout
-        .trim()
-        .strip_prefix(RECON_ADDED_VARIABLE)
-        .map(|rest| rest.split_whitespace().map(str::to_owned).collect())
-        .unwrap_or_default()
+    let rest = output.stdout.trim().strip_prefix(RECON_ADDED_VARIABLE)?;
+    Some(rest.split_whitespace().map(str::to_owned).collect())
 }
 
 pub(crate) fn prepare_host<R: CommandRunner>(runner: &mut R) -> Result<HostPreparation, String> {
     let prior = read_configured_boot_args(runner)?;
     let boot_args = add_research_boot_args(&prior);
-    // What this invocation actually introduces, so revert can undo exactly this and nothing the
-    // operator set independently.
-    let prior_tokens: Vec<&str> = prior.split_whitespace().collect();
-    let added: Vec<&str> =
-        RESEARCH_BOOT_ARGS.iter().copied().filter(|arg| !prior_tokens.contains(arg)).collect();
+
+    // Record what this host's first prepare-host introduced, before changing boot-args, so revert is
+    // always precise. A pre-existing record is kept untouched: re-running prepare-host must not
+    // relabel an operator argument as one Recon added. If recording fails, abort before weakening
+    // the host, so revert can never fall back to removing an argument Recon did not set.
+    if read_recon_added(runner).is_none() {
+        let prior_tokens: Vec<&str> = prior.split_whitespace().collect();
+        let added: Vec<&str> =
+            RESEARCH_BOOT_ARGS.iter().copied().filter(|arg| !prior_tokens.contains(arg)).collect();
+        let record = format!("{RECON_ADDED_VARIABLE}={}", added.join(" "));
+        let recorded = runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", &record])?;
+        if !recorded.success {
+            return Err(format!(
+                "cannot record the research boot-arg delta, so preparation was not applied: {}",
+                recorded.stderr.trim()
+            ));
+        }
+    }
 
     let result =
         runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", &format!("boot-args={boot_args}")])?;
     if !result.success {
         return Err(format!("cannot set research boot-args: {}", result.stderr.trim()));
     }
-    // Record the delta so a later revert in another process can be precise. A failure to record is
-    // not fatal: revert falls back to removing the full research set.
-    let record = format!("{RECON_ADDED_VARIABLE}={}", added.join(" "));
-    let _ = runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", &record]);
     Ok(HostPreparation { boot_args, operator_steps: OPERATOR_STEPS.into() })
 }
 
 pub(crate) fn revert_host<R: CommandRunner>(runner: &mut R) -> Result<HostPreparation, String> {
     let current = read_configured_boot_args(runner)?;
-    let recorded = read_recon_added(runner);
-    // Remove only what Recon added. Without a record, fall back to the full research set rather than
-    // leaving the host weakened.
-    let (boot_args, removed_any) = if recorded.is_empty() {
-        let boot_args = remove_research_boot_args(&current);
-        let removed = current.split_whitespace().any(|arg| RESEARCH_BOOT_ARGS.contains(&arg));
-        (boot_args, removed)
-    } else {
-        let to_remove: Vec<&str> = recorded.iter().map(String::as_str).collect();
-        let boot_args = current
-            .split_whitespace()
-            .filter(|arg| !to_remove.contains(arg))
-            .collect::<Vec<_>>()
-            .join(" ");
-        let removed = current.split_whitespace().any(|arg| to_remove.contains(&arg));
-        (boot_args, removed)
+    // Without a record of what Recon added, do nothing: removing arguments Recon cannot prove it set
+    // would clobber the operator's configuration. Recon never guesses here.
+    let Some(recorded) = read_recon_added(runner) else {
+        return Ok(HostPreparation {
+            boot_args: current,
+            operator_steps: "No Recon research boot-arg record was found, so nothing was reverted.                              Remove any research boot-args manually if they are no longer wanted."
+                .into(),
+        });
     };
 
-    if !removed_any {
-        return Ok(HostPreparation {
-            boot_args,
-            operator_steps:
-                "No Recon research boot-args were present; no boot-arg change or reboot is needed."
-                    .into(),
-        });
+    let to_remove: Vec<&str> = recorded.iter().map(String::as_str).collect();
+    let boot_args = current
+        .split_whitespace()
+        .filter(|arg| !to_remove.contains(arg))
+        .collect::<Vec<_>>()
+        .join(" ");
+    let removed_any = current.split_whitespace().any(|arg| to_remove.contains(&arg));
+
+    if removed_any {
+        let result = if boot_args.is_empty() {
+            runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", "-d", "boot-args"])?
+        } else {
+            runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", &format!("boot-args={boot_args}")])?
+        };
+        if !result.success {
+            return Err(format!("cannot revert research boot-args: {}", result.stderr.trim()));
+        }
     }
-    let result = if boot_args.is_empty() {
-        runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", "-d", "boot-args"])?
-    } else {
-        runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", &format!("boot-args={boot_args}")])?
-    };
-    if !result.success {
-        return Err(format!("cannot revert research boot-args: {}", result.stderr.trim()));
-    }
-    // Clear the delta record; best-effort, since the host is reverted either way.
+    // Clear the delta record whether or not a boot-arg change was needed, so the host returns to an
+    // unrecorded state. Best-effort: the boot-args are already reverted.
     let _ = runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", "-d", RECON_ADDED_VARIABLE]);
     Ok(HostPreparation { boot_args, operator_steps: "Reboot to apply the reverted boot-args. To re-enable SIP: shut down, enter macOS Recovery by holding the power button until startup options appear; choose Options > Continue; open Utilities > Terminal; run `csrutil enable`; reboot.".into() })
 }

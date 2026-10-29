@@ -158,7 +158,13 @@ static NSDictionary *handleRead(NSDictionary *request, uint64_t requestStart) {
     __block atomic_bool started = ATOMIC_VAR_INIT(false);
     dispatch_async(dispatch_get_main_queue(), ^{
         @autoreleasepool {
-            if (nowNs() < work.deadline) {
+            // A read that was queued but has not begun must not start once its session is closed:
+            // close revokes access, and a not-yet-started read has no in-flight target execution to
+            // protect. A read already executing is unaffected (this check is before it starts).
+            [stateLock lock];
+            BOOL stillActive = [activeSession isEqual:session];
+            [stateLock unlock];
+            if (stillActive && nowNs() < work.deadline) {
                 atomic_store(&started, true);
                 @try { answer = ReconInspect(work); }
                 @catch (NSException *exception) {
