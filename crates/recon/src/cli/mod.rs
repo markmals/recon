@@ -1,19 +1,26 @@
 mod decimal;
 mod help;
+mod native;
 mod output_path;
 mod parse_error;
 pub mod registry;
 pub mod schema;
 
 use decimal::Decimal;
+use native::FilterText;
 use output_path::OutputPath;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 
 use crate::application::Pid;
 use crate::error::Failure;
+use crate::inspection::SessionId;
 use crate::request::{AppRequest, Request};
-use crate::ui::request::{Selection, UiRequest};
+use crate::ui::request::{
+    AccessMode, AccessProfile, FieldSet, Filters, HostPreparation, MAX_NATIVE_DEPTH,
+    MAX_NATIVE_LIMIT, NativeScope, NodeHandle, Selection, SessionRequest, TraversalKind, UiRequest,
+    ViewRequest,
+};
 use crate::ui::window::WindowId;
 
 const HELP_FLAGS: [&str; 2] = ["--help", "-h"];
@@ -65,33 +72,220 @@ pub fn parse(arguments: &[String]) -> Result<Request, Failure> {
             _ => unreachable!("registry app operation"),
         })),
         operation if operation.first() == Some(&"ui") => {
-            let selection = Selection {
-                target: ui_target(leaf),
-                pid: leaf.get_one::<Decimal<1>>("pid").map(|number| Pid(number.0)),
-            };
-            let window = || leaf.get_one::<Decimal<0>>("window").map(|number| WindowId(number.0));
-            Ok(Request::Ui(match operation {
-                ["ui", "windows"] => UiRequest::Windows { selection },
-                ["ui", "ax", "tree"] => UiRequest::AxTree {
-                    selection,
-                    window: window(),
-                    depth: leaf
-                        .get_one::<Decimal<0, { crate::ui::tree::MAX_DEPTH as u32 }>>("depth")
-                        .map(|number| number.0 as usize),
-                    no_menu_bar: leaf.get_flag("no-menu-bar"),
-                },
-                ["ui", "screenshot"] => UiRequest::Screenshot {
-                    selection,
-                    window: window(),
-                    out: PathBuf::from(
-                        &leaf.get_one::<OutputPath>("out").expect("required output").0,
-                    ),
-                },
-                _ => unreachable!("registry ui operation"),
-            }))
+            Ok(Request::Ui(ui_request(operation, path, leaf)?))
         }
         _ => unreachable!("registry command"),
     }
+}
+
+/// Build one `recon ui` request, enforcing the option combinations the registry publishes and
+/// clap cannot express because they depend on a supplied value.
+fn ui_request(
+    operation: &[&str],
+    path: &'static [&'static str],
+    matches: &clap::ArgMatches,
+) -> Result<UiRequest, Failure> {
+    match operation {
+        ["ui", "windows"] => {
+            Ok(UiRequest::Windows { selection: selection(matches), session: session(matches) })
+        }
+        ["ui", "ax", "tree"] => Ok(UiRequest::AxTree {
+            selection: selection(matches),
+            session: session(matches),
+            window: window(matches),
+            depth: matches
+                .get_one::<Decimal<0, { crate::ui::tree::MAX_DEPTH as u32 }>>("depth")
+                .map(|number| number.0 as usize),
+            no_menu_bar: matches.get_flag("no-menu-bar"),
+        }),
+        ["ui", "screenshot"] => Ok(UiRequest::Screenshot {
+            selection: selection(matches),
+            session: session(matches),
+            window: window(matches),
+            out: PathBuf::from(&matches.get_one::<OutputPath>("out").expect("required output").0),
+        }),
+        ["ui", "session", "preflight"] => {
+            Ok(UiRequest::Session(SessionRequest::Preflight { selection: selection(matches) }))
+        }
+        ["ui", "session", "prepare-host"] => {
+            let action = match (matches.get_flag("status"), matches.get_flag("revert")) {
+                (true, _) => HostPreparation::Status,
+                (_, true) => HostPreparation::Revert,
+                _ => HostPreparation::Apply,
+            };
+            Ok(UiRequest::Session(SessionRequest::PrepareHost { action }))
+        }
+        ["ui", "session", "open"] => {
+            let selection = selection(matches);
+            let mode = choice(matches, "mode", AccessMode::parse);
+            let profile = choice(matches, "profile", AccessProfile::parse);
+            let allow_authorization = matches.get_flag("allow-authorization");
+            if allow_authorization && mode != AccessMode::Attach {
+                return Err(parse_error::usage(
+                    path,
+                    format!(
+                        "--allow-authorization is accepted only with --mode attach, not --mode {mode}"
+                    ),
+                    Some("--allow-authorization"),
+                    Some(mode.as_str()),
+                    "--mode attach",
+                    None,
+                ));
+            }
+            if selection.pid.is_some() && mode == AccessMode::Launch {
+                return Err(parse_error::usage(
+                    path,
+                    "--mode launch starts a non-running application, so it cannot select a running instance".to_owned(),
+                    Some("--pid"),
+                    Some(mode.as_str()),
+                    "--mode existing or --mode attach",
+                    None,
+                ));
+            }
+            Ok(UiRequest::Session(SessionRequest::Open {
+                selection,
+                mode,
+                profile,
+                allow_authorization,
+            }))
+        }
+        ["ui", "session", "close"] => Ok(UiRequest::Session(SessionRequest::Close {
+            session: matches.get_one::<SessionId>("session").expect("required session").clone(),
+        })),
+        ["ui", "view", "tree"] => {
+            let kind = choice(matches, "kind", TraversalKind::parse);
+            let scope = scope(matches);
+            layer_scope(path, kind, &scope)?;
+            Ok(UiRequest::View(ViewRequest::Tree {
+                selection: selection(matches),
+                session: required_session(matches),
+                scope,
+                kind,
+                depth: depth(matches),
+                fields: fields(matches),
+                limit: limit(matches),
+            }))
+        }
+        ["ui", "view", "node"] => Ok(UiRequest::View(ViewRequest::Node {
+            selection: selection(matches),
+            session: required_session(matches),
+            handle: matches.get_one::<NodeHandle>("handle").expect("required handle").clone(),
+            fields: fields(matches),
+        })),
+        ["ui", "view", "find"] => {
+            let kind = choice(matches, "kind", TraversalKind::parse);
+            let scope = scope(matches);
+            layer_scope(path, kind, &scope)?;
+            let filters = Filters {
+                class: matches.get_one::<FilterText>("class").map(|text| text.0.clone()),
+                identifier: matches.get_one::<FilterText>("identifier").map(|text| text.0.clone()),
+            };
+            if filters.is_empty() {
+                return Err(parse_error::usage(
+                    path,
+                    "recon ui view find searches with exact filters and requires at least one"
+                        .to_owned(),
+                    None,
+                    None,
+                    "--class or --identifier",
+                    Some(vec!["--class".to_owned(), "--identifier".to_owned()]),
+                ));
+            }
+            Ok(UiRequest::View(ViewRequest::Find {
+                selection: selection(matches),
+                session: required_session(matches),
+                scope,
+                kind,
+                filters,
+                depth: depth(matches),
+                fields: fields(matches),
+                limit: limit(matches),
+            }))
+        }
+        ["ui", "view", "fonts"] => Ok(UiRequest::View(ViewRequest::Fonts {
+            selection: selection(matches),
+            session: required_session(matches),
+            scope: scope(matches),
+            depth: depth(matches),
+            limit: limit(matches),
+        })),
+        ["ui", "correlate"] => Ok(UiRequest::Correlate {
+            selection: selection(matches),
+            session: required_session(matches),
+            window: window(matches).expect("required window"),
+            depth: depth(matches),
+            limit: limit(matches),
+        }),
+        _ => unreachable!("registry ui operation"),
+    }
+}
+
+fn selection(matches: &clap::ArgMatches) -> Selection {
+    Selection {
+        target: ui_target(matches),
+        pid: matches.get_one::<Decimal<1>>("pid").map(|number| Pid(number.0)),
+    }
+}
+
+fn window(matches: &clap::ArgMatches) -> Option<WindowId> {
+    matches.get_one::<Decimal<0>>("window").map(|number| WindowId(number.0))
+}
+
+fn session(matches: &clap::ArgMatches) -> Option<SessionId> {
+    matches.get_one::<SessionId>("session").cloned()
+}
+
+fn required_session(matches: &clap::ArgMatches) -> SessionId {
+    session(matches).expect("required session")
+}
+
+fn scope(matches: &clap::ArgMatches) -> NativeScope {
+    NativeScope { window: window(matches), root: matches.get_one::<NodeHandle>("root").cloned() }
+}
+
+fn depth(matches: &clap::ArgMatches) -> usize {
+    matches
+        .get_one::<Decimal<0, { MAX_NATIVE_DEPTH as u32 }>>("depth")
+        .expect("depth has a default")
+        .0 as usize
+}
+
+fn limit(matches: &clap::ArgMatches) -> usize {
+    matches
+        .get_one::<Decimal<1, { MAX_NATIVE_LIMIT as u32 }>>("limit")
+        .expect("limit has a default")
+        .0 as usize
+}
+
+fn fields(matches: &clap::ArgMatches) -> FieldSet {
+    matches.get_one::<FieldSet>("fields").expect("fields has a default").clone()
+}
+
+/// Read an option whose accepted values clap already restricted to the ones `parse` knows.
+fn choice<T>(matches: &clap::ArgMatches, name: &str, parse: fn(&str) -> Option<T>) -> T {
+    let value = matches.get_one::<String>(name).expect("a required or defaulted choice");
+    parse(value).expect("clap accepted an unknown value")
+}
+
+/// Layer traversal reads an existing associated layer, so it needs a native window, view, or
+/// layer to start from. Omitting that scope is a usage error, not an empty successful result.
+fn layer_scope(
+    path: &'static [&'static str],
+    kind: TraversalKind,
+    scope: &NativeScope,
+) -> Result<(), Failure> {
+    if kind == TraversalKind::Layer && scope.window.is_none() && scope.root.is_none() {
+        return Err(parse_error::usage(
+            path,
+            "layer traversal needs an existing layer scope: a native window, view, or layer"
+                .to_owned(),
+            Some("--kind"),
+            Some(kind.as_str()),
+            "--kind layer with --window or --root",
+            Some(vec!["--window".to_owned(), "--root".to_owned()]),
+        ));
+    }
+    Ok(())
 }
 
 fn ui_target(matches: &clap::ArgMatches) -> String {

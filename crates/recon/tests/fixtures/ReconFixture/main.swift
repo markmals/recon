@@ -18,7 +18,7 @@ final class ReconFixtureDelegate: NSObject, NSApplicationDelegate {
         // activates itself, so `open -g` leaves the frontmost application untouched.
         for window in [makeInspectorWindow(), makeMainWindow()] {
             openWindows.append(window)
-            window.makeKeyAndOrderFront(nil)
+            window.orderFront(nil)
         }
     }
 }

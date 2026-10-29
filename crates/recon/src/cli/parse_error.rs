@@ -21,6 +21,19 @@ fn invalid(
     if path.is_empty() { failure } else { failure.with_command(path) }
 }
 
+/// Report an option combination the parser enforces after clap has accepted every value on its
+/// own: the registry publishes these rules, and this is where they are refused.
+pub(super) fn usage(
+    path: &[&str],
+    message: String,
+    argument: Option<&str>,
+    value: Option<&str>,
+    expected: &str,
+    accepted: Option<Vec<String>>,
+) -> Failure {
+    invalid(message, path, argument, value, expected, accepted)
+}
+
 fn text(error: &clap::Error, kind: ContextKind) -> Option<&str> {
     match error.get(kind) {
         Some(ContextValue::String(value)) => Some(value),
@@ -147,12 +160,18 @@ fn unknown_argument(
             Some(Vec::new()),
         );
     }
+    let positionals: Vec<String> = parser
+        .get_positionals()
+        .filter_map(|argument| {
+            argument.get_value_names().and_then(|names| names.first()).map(ToString::to_string)
+        })
+        .collect();
     invalid(
-        format!("{invocation} takes one target; {argument:?} is extra"),
+        format!("{invocation} takes {}; {argument:?} is extra", positionals.join(" and ")),
         path,
         None,
         Some(argument),
-        "exactly one target",
+        &format!("exactly one {}", positionals.join(" and one ")),
         None,
     )
 }

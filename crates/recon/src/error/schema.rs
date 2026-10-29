@@ -43,6 +43,10 @@ pub(super) fn details(generator: &mut SchemaGenerator) -> Schema {
             json!({"path":optional_string,"operation":{"enum":["resolve-output","write","read-current-directory"]},"reason":optional_string,"detail":string,"partialFile":optional_string}),
         ),
         object(json!({"detail":string})),
+        serde_json::to_value(generator.subschema_for::<super::InspectionFailure<'static>>())
+            .expect("inspection failure schema serializes"),
+        serde_json::to_value(generator.subschema_for::<super::Interference<'static>>())
+            .expect("interference schema serializes"),
         json!({"type":"null"}),
     ];
     serde_json::from_value(json!({"anyOf":shapes})).expect("valid error detail schema")

@@ -34,7 +34,14 @@ function buildLoader(): void {
     );
     execFileSync(
         "codesign",
-        ["--force", "--sign", "-", "--entitlements", path.resolve("loader/entitlements.plist"), output],
+        [
+            "--force",
+            "--sign",
+            "-",
+            "--entitlements",
+            path.resolve("loader/entitlements.plist"),
+            output,
+        ],
         { stdio: "inherit" },
     );
     console.log(`Built ${path.relative(process.cwd(), output)} (arm64, arm64e)`);

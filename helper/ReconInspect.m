@@ -91,19 +91,31 @@ static uint64_t nowNs(void) {
 static NSArray<NSWindow *> *nativeWindows(ReconWork *work) {
     return NSApp ? [NSApp.windows copy] : @[];
 }
-static NSWindow *mappedWindow(NSNumber *windowId, NSArray<NSWindow *> *windows) {
-    if (!windowId || ![windowId isKindOfClass:NSNumber.class] || [windowId unsignedLongLongValue] > UINT32_MAX) return nil;
+static NSWindow *mappedWindow(NSNumber *windowId, NSArray<NSWindow *> *windows, NSString **failure) {
+    if (!windowId || ![windowId isKindOfClass:NSNumber.class] || [windowId unsignedLongLongValue] > UINT32_MAX) {
+        *failure = @"invalid-window-id";
+        return nil;
+    }
     CGWindowID number = (CGWindowID)[windowId unsignedIntValue];
-    CFArrayRef ids = (__bridge CFArrayRef)@[ @(number) ];
-    NSArray *description = CFBridgingRelease(CGWindowListCreateDescriptionFromArray(ids));
+    CFArrayRef rawDescription = CGWindowListCopyWindowInfo(kCGWindowListOptionAll, kCGNullWindowID);
+    NSArray *description = CFBridgingRelease(rawDescription);
     BOOL owned = NO;
     for (NSDictionary *info in description) {
         if ([info[(id)kCGWindowNumber] unsignedIntValue] == number &&
-            [info[(id)kCGWindowOwnerPID] intValue] == getpid()) owned = YES;
+            [info[(id)kCGWindowOwnerPID] intValue] == getpid() &&
+            [info[(id)kCGWindowIsOnscreen] boolValue]) owned = YES;
     }
-    if (!owned) return nil;
+    if (!owned) {
+        *failure = @"window-server-owner";
+        return nil;
+    }
     NSWindow *resolved = [NSApp windowWithWindowNumber:number];
+    if (!resolved) {
+        *failure = @"appkit-window-number";
+        return nil;
+    }
     for (NSWindow *window in windows) if (window == resolved) return window;
+    *failure = @"app-window-membership";
     return nil;
 }
 static id windowForObject(id object) {
@@ -160,8 +172,9 @@ NSDictionary *ReconInspect(ReconWork *work) {
     NSSet *fields = [NSSet setWithArray:request[@"fields"] ?: @[ @"basic" ]];
     NSArray *windows = request[@"windowId"] || !request[@"root"] || [op isEqual:@"windows"] ? nativeWindows(work) : @[];
     NSNumber *windowId = request[@"windowId"];
-    NSWindow *window = windowId ? mappedWindow(windowId, windows) : nil;
-    if (windowId && !window) return ReconError(@"INSPECTION_UNAVAILABLE", @"window-mapping", @"No live owned native window matches the WindowServer ID");
+    NSString *mappingFailure = nil;
+    NSWindow *window = windowId ? mappedWindow(windowId, windows, &mappingFailure) : nil;
+    if (windowId && !window) return ReconError(@"INSPECTION_UNAVAILABLE", mappingFailure ?: @"window-mapping", [NSString stringWithFormat:@"No live owned native window matches the WindowServer ID (%@)", mappingFailure ?: @"unknown"]);
     id root = nil;
     if (request[@"root"]) {
         if (!ReconValidHandle(request[@"root"])) return ReconError(@"INVALID_ARGUMENT", @"root", @"Malformed native handle");
@@ -182,7 +195,8 @@ NSDictionary *ReconInspect(ReconWork *work) {
         NSMutableArray *bridges = [NSMutableArray new];
         for (NSDictionary *info in inventory) {
             if (![work consume:@"windowserver-inventory"]) break;
-            if ([info[(id)kCGWindowOwnerPID] intValue] != getpid()) continue;
+            if ([info[(id)kCGWindowOwnerPID] intValue] != getpid() ||
+                ![info[(id)kCGWindowIsOnscreen] boolValue]) continue;
             NSNumber *candidate = info[(id)kCGWindowNumber];
             if (![candidate isKindOfClass:NSNumber.class]) continue;
             NSWindow *resolved = [NSApp windowWithWindowNumber:candidate.unsignedIntValue];
@@ -236,7 +250,7 @@ NSDictionary *ReconInspect(ReconWork *work) {
             if (!metadata) return ReconError(@"INSPECTION_UNAVAILABLE", @"registry", @"Native handle capacity exhausted");
             [rootWindows addObject:metadata];
             if (candidate.contentView) [roots addObject:candidate.contentView];
-            if (rootWindows.count >= work.limit) {
+            if (![op isEqual:@"find"] && rootWindows.count >= work.limit) {
                 if (rootWindows.count < windows.count) [work.truncated addObject:@"windows:limit"];
                 break;
             }

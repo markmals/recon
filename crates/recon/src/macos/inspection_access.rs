@@ -2,111 +2,122 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use schemars::JsonSchema;
-use std::ffi::CStr;
 use serde::Serialize;
+use std::ffi::CStr;
 
 #[derive(Clone, Debug, Serialize, JsonSchema)]
-pub struct Fact<T> {
-    pub value: Option<T>,
-    pub source: String,
-    pub detail: Option<String>,
+pub(crate) struct Fact<T> {
+    pub(crate) value: Option<T>,
+    pub(crate) source: String,
+    pub(crate) detail: Option<String>,
 }
 
 impl<T> Fact<T> {
-    pub fn known(value: T, source: &str) -> Self {
+    pub(crate) fn known(value: T, source: &str) -> Self {
         Self { value: Some(value), source: source.into(), detail: None }
     }
-    pub fn unknown(source: &str, detail: &str) -> Self {
+    pub(crate) fn unknown(source: &str, detail: &str) -> Self {
         Self { value: None, source: source.into(), detail: Some(detail.into()) }
     }
 }
 
 #[derive(Clone, Debug, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct TargetSelection {
-    pub bundle_path: PathBuf,
-    pub bundle_id: Option<String>,
-    pub executable_path: Option<PathBuf>,
-    pub pid: Option<u32>,
-    pub running_pids: Vec<u32>,
+pub(crate) struct TargetSelection {
+    pub(crate) bundle_path: PathBuf,
+    pub(crate) bundle_id: Option<String>,
+    pub(crate) executable_path: Option<PathBuf>,
+    pub(crate) pid: Option<u32>,
+    pub(crate) running_pids: Vec<u32>,
 }
 
 #[derive(Clone, Debug, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct TargetFacts {
-    pub bundle_path: PathBuf,
-    pub bundle_id: Option<String>,
-    pub executable_path: Fact<String>,
-    pub pid: Option<u32>,
-    pub running_pids: Vec<u32>,
-    pub process_executable: Fact<String>,
-    pub architecture: Fact<String>,
-    pub executable_architectures: Fact<Vec<String>>,
-    pub signed: Fact<bool>,
-    pub apple_signed: Fact<bool>,
-    pub get_task_allow: Fact<bool>,
-    pub allow_dyld_environment_variables: Fact<bool>,
-    pub hardened_runtime: Fact<bool>,
-    pub library_validation: Fact<bool>,
-    pub platform_binary: Fact<bool>,
+pub(crate) struct TargetFacts {
+    pub(crate) bundle_path: PathBuf,
+    pub(crate) bundle_id: Option<String>,
+    pub(crate) executable_path: Fact<String>,
+    pub(crate) pid: Option<u32>,
+    pub(crate) running_pids: Vec<u32>,
+    pub(crate) process_executable: Fact<String>,
+    pub(crate) architecture: Fact<String>,
+    pub(crate) executable_architectures: Fact<Vec<String>>,
+    pub(crate) signed: Fact<bool>,
+    pub(crate) apple_signed: Fact<bool>,
+    pub(crate) get_task_allow: Fact<bool>,
+    pub(crate) allow_dyld_environment_variables: Fact<bool>,
+    pub(crate) hardened_runtime: Fact<bool>,
+    pub(crate) library_validation: Fact<bool>,
+    pub(crate) platform_binary: Fact<bool>,
 }
 
 #[derive(Clone, Debug, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct HostFacts {
-    pub os_version: Fact<String>,
-    pub architecture: Fact<String>,
-    pub sip_disabled: Fact<bool>,
-    pub amfi_disabled: Fact<bool>,
-    pub active_boot_args: Fact<Vec<String>>,
-    pub configured_boot_args: Fact<Vec<String>>,
+pub(crate) struct HostFacts {
+    pub(crate) os_version: Fact<String>,
+    pub(crate) architecture: Fact<String>,
+    pub(crate) sip_disabled: Fact<bool>,
+    pub(crate) amfi_disabled: Fact<bool>,
+    pub(crate) active_boot_args: Fact<Vec<String>>,
+    pub(crate) configured_boot_args: Fact<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct HelperFacts {
-    pub local_available: Fact<bool>,
-    pub local_compatible: Fact<bool>,
-    pub resident: Fact<bool>,
-    pub resident_compatible: Fact<bool>,
-    pub attach_without_dialog: Fact<bool>,
-    pub inspector_thread_set_state: Fact<bool>,
+pub(crate) struct HelperFacts {
+    pub(crate) local_available: Fact<bool>,
+    pub(crate) local_compatible: Fact<bool>,
+    pub(crate) resident: Fact<bool>,
+    pub(crate) resident_compatible: Fact<bool>,
+    pub(crate) attach_without_dialog: Fact<bool>,
+    pub(crate) inspector_thread_set_state: Fact<bool>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub enum AccessMode { Existing, Launch, Attach }
+pub(crate) enum AccessMode {
+    Existing,
+    Launch,
+    Attach,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub enum AccessProfile { Standard, Research }
+pub(crate) enum AccessProfile {
+    Standard,
+    Research,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub enum Eligibility { Eligible, Blocked, Unknown }
-#[derive(Clone, Debug, Serialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct ModeDecision {
-    pub mode: AccessMode,
-    pub profile: AccessProfile,
-    pub status: Eligibility,
-    pub reasons: Vec<String>,
-    pub evidence_sources: Vec<String>,
+pub(crate) enum Eligibility {
+    Eligible,
+    Blocked,
+    Unknown,
 }
 #[derive(Clone, Debug, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct PreflightReport {
-    pub target: TargetFacts,
-    pub host: HostFacts,
-    pub helper: HelperFacts,
-    pub decisions: Vec<ModeDecision>,
+pub(crate) struct ModeDecision {
+    pub(crate) mode: AccessMode,
+    pub(crate) profile: AccessProfile,
+    pub(crate) status: Eligibility,
+    pub(crate) reasons: Vec<String>,
+    pub(crate) evidence_sources: Vec<String>,
+}
+#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct PreflightReport {
+    pub(crate) target: TargetFacts,
+    pub(crate) host: HostFacts,
+    pub(crate) helper: HelperFacts,
+    pub(crate) decisions: Vec<ModeDecision>,
 }
 
 #[derive(Clone, Debug)]
-pub struct CommandResult {
-    pub success: bool,
-    pub stdout: String,
-    pub stderr: String,
+pub(crate) struct CommandResult {
+    pub(crate) success: bool,
+    pub(crate) stdout: String,
+    pub(crate) stderr: String,
 }
-pub trait CommandRunner {
+pub(crate) trait CommandRunner {
     fn run(&mut self, program: &str, args: &[&str]) -> Result<CommandResult, String>;
     fn process_signing_status(&mut self, _pid: u32) -> Result<u32, String> {
         Err("kernel signing query unavailable".into())
@@ -123,17 +134,17 @@ pub trait CommandRunner {
 }
 #[derive(Clone, Debug, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct HostPreparation {
-    pub boot_args: String,
-    pub operator_steps: String,
+pub(crate) struct HostPreparation {
+    pub(crate) boot_args: String,
+    pub(crate) operator_steps: String,
 }
 #[derive(Clone, Debug, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct HostPreparationStatus {
-    pub host: HostFacts,
-    pub required_boot_args: String,
-    pub readiness: Eligibility,
-    pub operator_steps: String,
+pub(crate) struct HostPreparationStatus {
+    pub(crate) host: HostFacts,
+    pub(crate) required_boot_args: String,
+    pub(crate) readiness: Eligibility,
+    pub(crate) operator_steps: String,
 }
 
 const RESEARCH_BOOT_ARGS: [&str; 3] =
@@ -142,11 +153,16 @@ const OPERATOR_STEPS: &str = "To disable SIP: shut down the Mac; press and hold 
 #[link(name = "proc")]
 unsafe extern "C" {
     fn proc_pidpath(pid: libc::pid_t, buffer: *mut libc::c_void, size: u32) -> libc::c_int;
-    fn proc_pidinfo(pid: libc::pid_t, flavor: libc::c_int, arg: u64, buffer: *mut libc::c_void, size: libc::c_int) -> libc::c_int;
+    fn proc_pidinfo(
+        pid: libc::pid_t,
+        flavor: libc::c_int,
+        arg: u64,
+        buffer: *mut libc::c_void,
+        size: libc::c_int,
+    ) -> libc::c_int;
 }
 
-
-pub struct SystemRunner;
+pub(crate) struct SystemRunner;
 
 impl CommandRunner for SystemRunner {
     fn run(&mut self, program: &str, args: &[&str]) -> Result<CommandResult, String> {
@@ -175,8 +191,14 @@ impl CommandRunner for SystemRunner {
         let mut buffer = [0_u8; 4096];
         // SAFETY: libproc writes at most the supplied buffer size; only the returned bytes are read.
         let count = unsafe { proc_pidpath(pid, buffer.as_mut_ptr().cast(), buffer.len() as u32) };
-        if count <= 0 { return Err(std::io::Error::last_os_error().to_string()); }
-        CStr::from_bytes_until_nul(&buffer).map_err(|e| e.to_string())?.to_str().map(str::to_owned).map_err(|e| e.to_string())
+        if count <= 0 {
+            return Err(std::io::Error::last_os_error().to_string());
+        }
+        CStr::from_bytes_until_nul(&buffer)
+            .map_err(|e| e.to_string())?
+            .to_str()
+            .map(str::to_owned)
+            .map_err(|e| e.to_string())
     }
 
     fn process_architecture(&mut self, pid: u32) -> Result<String, String> {
@@ -184,13 +206,23 @@ impl CommandRunner for SystemRunner {
         let mut architecture = [0_i32; 2];
         // SAFETY: PROC_PIDARCHINFO writes two i32 values to the correctly sized live buffer.
         let read = unsafe { proc_pidinfo(pid, 19, 0, architecture.as_mut_ptr().cast(), 8) };
-        if read != 8 { return Err(format!("proc_pidinfo(PROC_PIDARCHINFO) returned {read}: {}", std::io::Error::last_os_error())); }
+        if read != 8 {
+            return Err(format!(
+                "proc_pidinfo(PROC_PIDARCHINFO) returned {read}: {}",
+                std::io::Error::last_os_error()
+            ));
+        }
         decode_process_architecture(architecture[0], architecture[1])
             .ok_or_else(|| format!("unsupported process CPU type/subtype: {architecture:?}"))
     }
 }
 
-fn csops_read(pid: u32, operation: u32, buffer: *mut libc::c_void, size: usize) -> Result<(), String> {
+fn csops_read(
+    pid: u32,
+    operation: u32,
+    buffer: *mut libc::c_void,
+    size: usize,
+) -> Result<(), String> {
     type CsOps = unsafe extern "C" fn(libc::pid_t, u32, *mut libc::c_void, usize) -> libc::c_int;
     static CSOPS: std::sync::LazyLock<Option<CsOps>> = std::sync::LazyLock::new(|| {
         // SAFETY: csops has the XNU ABI; dlsym returns a function pointer or null.
@@ -208,7 +240,7 @@ fn csops_read(pid: u32, operation: u32, buffer: *mut libc::c_void, size: usize) 
     Ok(())
 }
 
-pub fn decode_process_architecture(cpu_type: i32, cpu_subtype: i32) -> Option<String> {
+pub(crate) fn decode_process_architecture(cpu_type: i32, cpu_subtype: i32) -> Option<String> {
     let subtype = cpu_subtype & 0x00ff_ffff;
     match (cpu_type, subtype) {
         (0x0100_000c, 0 | 1) => Some("arm64".into()),
@@ -219,7 +251,7 @@ pub fn decode_process_architecture(cpu_type: i32, cpu_subtype: i32) -> Option<St
     }
 }
 
-pub fn add_research_boot_args(args: &str) -> String {
+pub(crate) fn add_research_boot_args(args: &str) -> String {
     let mut tokens: Vec<&str> = args.split_whitespace().collect();
     for arg in RESEARCH_BOOT_ARGS {
         if !tokens.contains(&arg) {
@@ -229,15 +261,20 @@ pub fn add_research_boot_args(args: &str) -> String {
     tokens.join(" ")
 }
 
-pub fn remove_research_boot_args(args: &str) -> String {
-    args.split_whitespace().filter(|arg| !RESEARCH_BOOT_ARGS.contains(arg)).collect::<Vec<_>>().join(" ")
+pub(crate) fn remove_research_boot_args(args: &str) -> String {
+    args.split_whitespace()
+        .filter(|arg| !RESEARCH_BOOT_ARGS.contains(arg))
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn read_configured_boot_args<R: CommandRunner>(runner: &mut R) -> Result<String, String> {
     let output = runner.run("/usr/sbin/nvram", &["boot-args"])?;
     if output.success {
         let text = output.stdout.trim();
-        let args = text.strip_prefix("boot-args").ok_or_else(|| format!("unexpected nvram response: {text}"))?;
+        let args = text
+            .strip_prefix("boot-args")
+            .ok_or_else(|| format!("unexpected nvram response: {text}"))?;
         if !args.chars().next().is_none_or(char::is_whitespace) {
             return Err(format!("unexpected nvram response: {text}"));
         }
@@ -249,24 +286,35 @@ fn read_configured_boot_args<R: CommandRunner>(runner: &mut R) -> Result<String,
     Err(format!("cannot read boot-args: {}", output.stderr.trim()))
 }
 
-pub fn prepare_host_status<R: CommandRunner>(runner: &mut R) -> HostPreparationStatus {
+pub(crate) fn prepare_host_status<R: CommandRunner>(runner: &mut R) -> HostPreparationStatus {
     let host = host_status(runner);
-    let required_boot_args = host.configured_boot_args.value.as_ref()
+    let required_boot_args = host
+        .configured_boot_args
+        .value
+        .as_ref()
         .map(|args| add_research_boot_args(&args.join(" ")))
         .unwrap_or_else(|| "unavailable: cannot plan without readable nvram boot-args".into());
-    let active = host.active_boot_args.value.as_ref().map(|args|
-        RESEARCH_BOOT_ARGS.iter().all(|arg| args.iter().any(|actual| actual == arg)));
-    let readiness = if [host.sip_disabled.value, host.amfi_disabled.value, active].contains(&Some(false)) {
-        Eligibility::Blocked
-    } else if [host.sip_disabled.value, host.amfi_disabled.value, active].contains(&None) {
-        Eligibility::Unknown
-    } else {
-        Eligibility::Eligible
-    };
-    HostPreparationStatus { host, required_boot_args, readiness, operator_steps: OPERATOR_STEPS.into() }
+    let active =
+        host.active_boot_args.value.as_ref().map(|args| {
+            RESEARCH_BOOT_ARGS.iter().all(|arg| args.iter().any(|actual| actual == arg))
+        });
+    let readiness =
+        if [host.sip_disabled.value, host.amfi_disabled.value, active].contains(&Some(false)) {
+            Eligibility::Blocked
+        } else if [host.sip_disabled.value, host.amfi_disabled.value, active].contains(&None) {
+            Eligibility::Unknown
+        } else {
+            Eligibility::Eligible
+        };
+    HostPreparationStatus {
+        host,
+        required_boot_args,
+        readiness,
+        operator_steps: OPERATOR_STEPS.into(),
+    }
 }
 
-pub fn prepare_host<R: CommandRunner>(runner: &mut R) -> Result<HostPreparation, String> {
+pub(crate) fn prepare_host<R: CommandRunner>(runner: &mut R) -> Result<HostPreparation, String> {
     let boot_args = add_research_boot_args(&read_configured_boot_args(runner)?);
     let assignment = format!("boot-args={boot_args}");
     let result = runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", &assignment])?;
@@ -276,11 +324,16 @@ pub fn prepare_host<R: CommandRunner>(runner: &mut R) -> Result<HostPreparation,
     Ok(HostPreparation { boot_args, operator_steps: OPERATOR_STEPS.into() })
 }
 
-pub fn revert_host<R: CommandRunner>(runner: &mut R) -> Result<HostPreparation, String> {
+pub(crate) fn revert_host<R: CommandRunner>(runner: &mut R) -> Result<HostPreparation, String> {
     let current = read_configured_boot_args(runner)?;
     let boot_args = remove_research_boot_args(&current);
     if !current.split_whitespace().any(|arg| RESEARCH_BOOT_ARGS.contains(&arg)) {
-        return Ok(HostPreparation { boot_args, operator_steps: "No Recon research boot-args were present; no boot-arg change or reboot is needed.".into() });
+        return Ok(HostPreparation {
+            boot_args,
+            operator_steps:
+                "No Recon research boot-args were present; no boot-arg change or reboot is needed."
+                    .into(),
+        });
     }
     let result = if boot_args.is_empty() {
         runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", "-d", "boot-args"])?
@@ -293,7 +346,13 @@ pub fn revert_host<R: CommandRunner>(runner: &mut R) -> Result<HostPreparation, 
     Ok(HostPreparation { boot_args, operator_steps: "Reboot to apply the reverted boot-args. To re-enable SIP: shut down, enter macOS Recovery by holding the power button until startup options appear; choose Options > Continue; open Utilities > Terminal; run `csrutil enable`; reboot.".into() })
 }
 
-fn require(decision: &mut ModeDecision, fact: &Fact<bool>, predicate: bool, label: &str, remedy: &str) {
+fn require(
+    decision: &mut ModeDecision,
+    fact: &Fact<bool>,
+    predicate: bool,
+    label: &str,
+    remedy: &str,
+) {
     decision.evidence_sources.push(fact.source.clone());
     match fact.value {
         Some(value) if value == predicate => {}
@@ -302,8 +361,14 @@ fn require(decision: &mut ModeDecision, fact: &Fact<bool>, predicate: bool, labe
             decision.reasons.push(format!("{label}: {remedy}"));
         }
         None => {
-            if decision.status != Eligibility::Blocked { decision.status = Eligibility::Unknown; }
-            decision.reasons.push(format!("{label} is unknown ({}: {})", fact.source, fact.detail.as_deref().unwrap_or("unavailable")));
+            if decision.status != Eligibility::Blocked {
+                decision.status = Eligibility::Unknown;
+            }
+            decision.reasons.push(format!(
+                "{label} is unknown ({}: {})",
+                fact.source,
+                fact.detail.as_deref().unwrap_or("unavailable")
+            ));
         }
     }
 }
@@ -317,23 +382,44 @@ fn supported_architecture(decision: &mut ModeDecision, architecture: &Fact<Strin
     decision.evidence_sources.push(architecture.source.clone());
     match architecture.value.as_deref() {
         Some("arm64" | "arm64e" | "arm64e.x1") => {}
-        Some(_) => reject(decision, &format!("{label} must be arm64 or arm64e (including arm64e.x1)")),
+        Some(_) => {
+            reject(decision, &format!("{label} must be arm64 or arm64e (including arm64e.x1)"))
+        }
         None => {
-            if decision.status != Eligibility::Blocked { decision.status = Eligibility::Unknown; }
-            decision.reasons.push(format!("{label} architecture is unknown ({})", architecture.source));
+            if decision.status != Eligibility::Blocked {
+                decision.status = Eligibility::Unknown;
+            }
+            decision
+                .reasons
+                .push(format!("{label} architecture is unknown ({})", architecture.source));
         }
     }
 }
 
-pub fn evaluate(target: &TargetFacts, host: &HostFacts, helper: &HelperFacts) -> Vec<ModeDecision> {
+pub(crate) fn evaluate(
+    target: &TargetFacts,
+    host: &HostFacts,
+    helper: &HelperFacts,
+) -> Vec<ModeDecision> {
     evaluate_with_authorization(target, host, helper, false)
 }
 
-pub fn evaluate_with_authorization(target: &TargetFacts, host: &HostFacts, helper: &HelperFacts, allow_authorization: bool) -> Vec<ModeDecision> {
+pub(crate) fn evaluate_with_authorization(
+    target: &TargetFacts,
+    host: &HostFacts,
+    helper: &HelperFacts,
+    allow_authorization: bool,
+) -> Vec<ModeDecision> {
     let mut decisions = Vec::with_capacity(6);
     for profile in [AccessProfile::Standard, AccessProfile::Research] {
         for mode in [AccessMode::Existing, AccessMode::Launch, AccessMode::Attach] {
-            let mut decision = ModeDecision { mode, profile, status: Eligibility::Eligible, reasons: vec![], evidence_sources: vec![] };
+            let mut decision = ModeDecision {
+                mode,
+                profile,
+                status: Eligibility::Eligible,
+                reasons: vec![],
+                evidence_sources: vec![],
+            };
             decision.evidence_sources.push(host.os_version.source.clone());
             match host.os_version.value.as_deref() {
                 Some(version) if version.split('.').next() == Some("27") => {}
@@ -347,41 +433,102 @@ pub fn evaluate_with_authorization(target: &TargetFacts, host: &HostFacts, helpe
             supported_architecture(&mut decision, &target.architecture, "target");
             if mode == AccessMode::Launch {
                 if !target.running_pids.is_empty() || target.pid.is_some() {
-                    reject(&mut decision, "launch requires a non-running target; no automatic replacement");
+                    reject(
+                        &mut decision,
+                        "launch requires a non-running target; no automatic replacement",
+                    );
                 }
-                require(&mut decision, &helper.local_available, true, "local helper", "helper is unavailable");
-                require(&mut decision, &helper.local_compatible, true, "local helper", "helper build/protocol mismatch");
-                decision.evidence_sources.extend([target.hardened_runtime.source.clone(), target.allow_dyld_environment_variables.source.clone()]);
-                match (target.hardened_runtime.value, target.allow_dyld_environment_variables.value) {
+                require(
+                    &mut decision,
+                    &helper.local_available,
+                    true,
+                    "local helper",
+                    "helper is unavailable",
+                );
+                require(
+                    &mut decision,
+                    &helper.local_compatible,
+                    true,
+                    "local helper",
+                    "helper build/protocol mismatch",
+                );
+                decision.evidence_sources.extend([
+                    target.hardened_runtime.source.clone(),
+                    target.allow_dyld_environment_variables.source.clone(),
+                ]);
+                match (target.hardened_runtime.value, target.allow_dyld_environment_variables.value)
+                {
                     (Some(false), _) | (Some(true), Some(true)) => {}
-                    (Some(true), Some(false)) => reject(&mut decision, "hardened runtime rejects DYLD injection without allow-dyld-environment-variables; attach explicitly instead"),
+                    (Some(true), Some(false)) => reject(
+                        &mut decision,
+                        "hardened runtime rejects DYLD injection without allow-dyld-environment-variables; attach explicitly instead",
+                    ),
                     _ if decision.status != Eligibility::Blocked => {
                         decision.status = Eligibility::Unknown;
-                        decision.reasons.push("launch DYLD injection eligibility cannot be established".into());
+                        decision
+                            .reasons
+                            .push("launch DYLD injection eligibility cannot be established".into());
                     }
                     _ => {}
                 }
             } else {
-                if target.pid.is_none() || !target.pid.is_some_and(|pid| target.running_pids.contains(&pid)) {
+                if target.pid.is_none()
+                    || !target.pid.is_some_and(|pid| target.running_pids.contains(&pid))
+                {
                     reject(&mut decision, "mode requires one selected running process");
                 }
                 decision.evidence_sources.push(target.process_executable.source.clone());
-                if let (Some(actual), Some(expected)) = (&target.process_executable.value, &target.executable_path.value) {
+                if let (Some(actual), Some(expected)) =
+                    (&target.process_executable.value, &target.executable_path.value)
+                {
                     if !same_path(actual, expected) {
-                        reject(&mut decision, "selected PID executable does not match the selected bundle");
+                        reject(
+                            &mut decision,
+                            "selected PID executable does not match the selected bundle",
+                        );
                     }
                 } else if decision.status != Eligibility::Blocked {
                     decision.status = Eligibility::Unknown;
                     decision.reasons.push("process executable identity cannot be verified".into());
                 }
                 if mode == AccessMode::Existing {
-                    require(&mut decision, &helper.resident, true, "resident helper", "no helper exists in the selected process");
-                    require(&mut decision, &helper.resident_compatible, true, "resident helper", "helper build/protocol mismatch");
+                    require(
+                        &mut decision,
+                        &helper.resident,
+                        true,
+                        "resident helper",
+                        "no helper exists in the selected process",
+                    );
+                    require(
+                        &mut decision,
+                        &helper.resident_compatible,
+                        true,
+                        "resident helper",
+                        "helper build/protocol mismatch",
+                    );
                 } else {
-                    require(&mut decision, &helper.local_available, true, "local helper", "helper is unavailable");
-                    require(&mut decision, &helper.local_compatible, true, "local helper", "helper build/protocol mismatch");
+                    require(
+                        &mut decision,
+                        &helper.local_available,
+                        true,
+                        "local helper",
+                        "helper is unavailable",
+                    );
+                    require(
+                        &mut decision,
+                        &helper.local_compatible,
+                        true,
+                        "local helper",
+                        "helper build/protocol mismatch",
+                    );
                     if !allow_authorization {
-                        require(&mut decision, &helper.attach_without_dialog, true, "debugger authorization", "requires explicit --allow-authorization before a possible dialog");
+                        require(
+                            &mut decision,
+                            &helper.attach_without_dialog,
+                            true,
+                            "debugger authorization",
+                            "requires explicit --allow-authorization before a possible dialog",
+                        );
                     }
                 }
             }
@@ -393,31 +540,69 @@ pub fn evaluate_with_authorization(target: &TargetFacts, host: &HostFacts, helpe
                 None if system_bundle => Some(true),
                 None => None,
             };
-            decision.evidence_sources.extend([target.apple_signed.source.clone(), target.platform_binary.source.clone()]);
-            let requires_research = if first_party == Some(true) { Some(true) }
-                else { target.get_task_allow.value.map(|cooperative| !cooperative) };
+            decision.evidence_sources.extend([
+                target.apple_signed.source.clone(),
+                target.platform_binary.source.clone(),
+            ]);
+            let requires_research = if first_party == Some(true) {
+                Some(true)
+            } else {
+                target.get_task_allow.value.map(|cooperative| !cooperative)
+            };
             match requires_research {
-                Some(true) if profile == AccessProfile::Standard => reject(&mut decision, "target requires the research profile and recon ui session prepare-host"),
+                Some(true) if profile == AccessProfile::Standard => reject(
+                    &mut decision,
+                    "target requires the research profile and recon ui session prepare-host",
+                ),
                 Some(true) => {
-                    require(&mut decision, &host.sip_disabled, true, "SIP", "disable SIP in Recovery; recon ui session prepare-host prints operator steps");
-                    require(&mut decision, &host.amfi_disabled, true, "AMFI", "recon ui session prepare-host is required, then reboot");
+                    require(
+                        &mut decision,
+                        &host.sip_disabled,
+                        true,
+                        "SIP",
+                        "disable SIP in Recovery; recon ui session prepare-host prints operator steps",
+                    );
+                    require(
+                        &mut decision,
+                        &host.amfi_disabled,
+                        true,
+                        "AMFI",
+                        "recon ui session prepare-host is required, then reboot",
+                    );
                     decision.evidence_sources.push(host.active_boot_args.source.clone());
                     match host.active_boot_args.value.as_ref() {
-                        Some(args) if RESEARCH_BOOT_ARGS.iter().all(|required| args.iter().any(|actual| actual == required)) => {}
-                        Some(_) => reject(&mut decision, "research boot-args are not active; recon ui session prepare-host then reboot"),
+                        Some(args)
+                            if RESEARCH_BOOT_ARGS
+                                .iter()
+                                .all(|required| args.iter().any(|actual| actual == required)) => {}
+                        Some(_) => reject(
+                            &mut decision,
+                            "research boot-args are not active; recon ui session prepare-host then reboot",
+                        ),
                         None if decision.status != Eligibility::Blocked => {
                             decision.status = Eligibility::Unknown;
-                            decision.reasons.push("active research boot-args could not be read".into());
+                            decision
+                                .reasons
+                                .push("active research boot-args could not be read".into());
                         }
                         None => {}
                     }
                     if first_party == Some(true) {
-                        require(&mut decision, &helper.inspector_thread_set_state, true, "first-party loader signing", "Recon inspector requires com.apple.private.thread-set-state");
+                        require(
+                            &mut decision,
+                            &helper.inspector_thread_set_state,
+                            true,
+                            "first-party loader signing",
+                            "Recon inspector requires com.apple.private.thread-set-state",
+                        );
                     }
                 }
                 None if decision.status != Eligibility::Blocked => {
                     decision.status = Eligibility::Unknown;
-                    decision.reasons.push("target cooperation or first-party protection could not be established".into());
+                    decision.reasons.push(
+                        "target cooperation or first-party protection could not be established"
+                            .into(),
+                    );
                 }
                 _ => {}
             }
@@ -428,10 +613,19 @@ pub fn evaluate_with_authorization(target: &TargetFacts, host: &HostFacts, helpe
 }
 
 fn same_path(actual: &str, expected: &str) -> bool {
-    actual == expected || Path::new(actual).canonicalize().ok().zip(Path::new(expected).canonicalize().ok()).is_some_and(|(a, b)| a == b)
+    actual == expected
+        || Path::new(actual)
+            .canonicalize()
+            .ok()
+            .zip(Path::new(expected).canonicalize().ok())
+            .is_some_and(|(a, b)| a == b)
 }
 
-fn read_output<R: CommandRunner>(runner: &mut R, program: &str, args: &[&str]) -> Result<CommandResult, String> {
+fn read_output<R: CommandRunner>(
+    runner: &mut R,
+    program: &str,
+    args: &[&str],
+) -> Result<CommandResult, String> {
     let output = runner.run(program, args)?;
     if !output.success {
         return Err(format!("{program}: {}", output.stderr.trim()));
@@ -442,41 +636,68 @@ fn read_output<R: CommandRunner>(runner: &mut R, program: &str, args: &[&str]) -
 fn read_text<R: CommandRunner>(runner: &mut R, program: &str, args: &[&str]) -> Fact<String> {
     let source = format!("{program} {}", args.join(" "));
     match read_output(runner, program, args) {
-        Ok(output) if !output.stdout.trim().is_empty() => Fact::known(output.stdout.trim().into(), &source),
+        Ok(output) if !output.stdout.trim().is_empty() => {
+            Fact::known(output.stdout.trim().into(), &source)
+        }
         Ok(_) => Fact::unknown(&source, "empty response"),
         Err(error) => Fact::unknown(&source, &error),
     }
 }
 
-pub fn host_status<R: CommandRunner>(runner: &mut R) -> HostFacts {
+pub(crate) fn host_status<R: CommandRunner>(runner: &mut R) -> HostFacts {
     let os_version = read_text(runner, "/usr/bin/sw_vers", &["-productVersion"]);
     let architecture = read_text(runner, "/usr/bin/uname", &["-m"]);
     let sip = read_text(runner, "/usr/bin/csrutil", &["status"]);
     let sip_disabled = match sip.value.as_deref() {
-        Some(status) if status.contains("System Integrity Protection status: disabled") => Fact::known(true, &sip.source),
-        Some(status) if status.contains("System Integrity Protection status: enabled") => Fact::known(false, &sip.source),
+        Some(status) if status.contains("System Integrity Protection status: disabled") => {
+            Fact::known(true, &sip.source)
+        }
+        Some(status) if status.contains("System Integrity Protection status: enabled") => {
+            Fact::known(false, &sip.source)
+        }
         _ => Fact::unknown(&sip.source, sip.detail.as_deref().unwrap_or("unrecognized SIP status")),
     };
     let active = runner.run("/usr/sbin/sysctl", &["-n", "kern.bootargs"]);
     let active_boot_args = match active {
-        Ok(output) if output.success => Fact::known(output.stdout.split_whitespace().map(str::to_owned).collect::<Vec<_>>(), "sysctl kern.bootargs (current boot)"),
+        Ok(output) if output.success => Fact::known(
+            output.stdout.split_whitespace().map(str::to_owned).collect::<Vec<_>>(),
+            "sysctl kern.bootargs (current boot)",
+        ),
         Ok(output) => Fact::unknown("sysctl kern.bootargs (current boot)", &output.stderr),
         Err(error) => Fact::unknown("sysctl kern.bootargs (current boot)", &error),
     };
     let amfi_disabled = match active_boot_args.value.as_ref() {
-        Some(args) => Fact::known(args.iter().any(|arg| arg == RESEARCH_BOOT_ARGS[0]), "sysctl kern.bootargs (current boot, AMFI boot setting)"),
-        None => Fact::unknown("sysctl kern.bootargs (current boot, AMFI boot setting)", active_boot_args.detail.as_deref().unwrap_or("unavailable")),
+        Some(args) => Fact::known(
+            args.iter().any(|arg| arg == RESEARCH_BOOT_ARGS[0]),
+            "sysctl kern.bootargs (current boot, AMFI boot setting)",
+        ),
+        None => Fact::unknown(
+            "sysctl kern.bootargs (current boot, AMFI boot setting)",
+            active_boot_args.detail.as_deref().unwrap_or("unavailable"),
+        ),
     };
     let configured_boot_args = match read_configured_boot_args(runner) {
-        Ok(args) => Fact::known(args.split_whitespace().map(str::to_owned).collect(), "nvram boot-args (next boot)"),
+        Ok(args) => Fact::known(
+            args.split_whitespace().map(str::to_owned).collect(),
+            "nvram boot-args (next boot)",
+        ),
         Err(error) => Fact::unknown("nvram boot-args (next boot)", &error),
     };
-    HostFacts { os_version, architecture, sip_disabled, amfi_disabled, active_boot_args, configured_boot_args }
+    HostFacts {
+        os_version,
+        architecture,
+        sip_disabled,
+        amfi_disabled,
+        active_boot_args,
+        configured_boot_args,
+    }
 }
 
 fn selected_cdhash(display: &str) -> Option<[u8; 20]> {
     let hex = display.lines().find_map(|line| line.strip_prefix("CDHash="))?.trim();
-    if hex.len() != 40 || !hex.bytes().all(|byte| byte.is_ascii_hexdigit()) { return None; }
+    if hex.len() != 40 || !hex.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return None;
+    }
     let mut hash = [0_u8; 20];
     for (index, byte) in hash.iter_mut().enumerate() {
         *byte = u8::from_str_radix(&hex[index * 2..index * 2 + 2], 16).ok()?;
@@ -484,12 +705,17 @@ fn selected_cdhash(display: &str) -> Option<[u8; 20]> {
     Some(hash)
 }
 
-fn signing_facts<R: CommandRunner>(runner: &mut R, executable: &Fact<String>, target: &mut TargetFacts) -> Option<[u8; 20]> {
+fn signing_facts<R: CommandRunner>(
+    runner: &mut R,
+    executable: &Fact<String>,
+    target: &mut TargetFacts,
+) -> Option<[u8; 20]> {
     let path = executable.value.as_deref()?;
     let arch = target.architecture.value.as_deref();
     let source = format!("codesign --display --verbose=4 {path} (on-disk executable)");
     let display = match arch {
-        Some(arch) => runner.run("/usr/bin/codesign", &["--display", "--architecture", arch, "--verbose=4", path]),
+        Some(arch) => runner
+            .run("/usr/bin/codesign", &["--display", "--architecture", arch, "--verbose=4", path]),
         None => runner.run("/usr/bin/codesign", &["--display", "--verbose=4", path]),
     };
     let mut disk_hash = None;
@@ -498,15 +724,20 @@ fn signing_facts<R: CommandRunner>(runner: &mut R, executable: &Fact<String>, ta
             target.signed = Fact::known(true, &source);
             let display = format!("{}\n{}", output.stderr, output.stdout);
             disk_hash = selected_cdhash(&display);
-            let mut authorities = display.lines().filter_map(|line| line.strip_prefix("Authority="));
+            let mut authorities =
+                display.lines().filter_map(|line| line.strip_prefix("Authority="));
             target.apple_signed = match authorities.next() {
-                Some(first) => Fact::known(first.starts_with("Apple ") || first == "Apple Root CA"
-                    || authorities.any(|name| name.starts_with("Apple ") || name == "Apple Root CA"), &source),
+                Some(first) => Fact::known(
+                    first.starts_with("Apple ")
+                        || first == "Apple Root CA"
+                        || authorities
+                            .any(|name| name.starts_with("Apple ") || name == "Apple Root CA"),
+                    &source,
+                ),
                 None => Fact::unknown(&source, "signing authority not reported"),
             };
-            let flags = display.lines()
-                .find_map(|line| line.split("flags=0x").nth(1))
-                .and_then(|hex| {
+            let flags =
+                display.lines().find_map(|line| line.split("flags=0x").nth(1)).and_then(|hex| {
                     let width = hex.bytes().take_while(u8::is_ascii_hexdigit).count();
                     u32::from_str_radix(&hex[..width], 16).ok()
                 });
@@ -515,31 +746,55 @@ fn signing_facts<R: CommandRunner>(runner: &mut R, executable: &Fact<String>, ta
                 target.library_validation = Fact::known(flags & 0x2000 != 0, &source);
                 target.platform_binary = Fact::known(flags & 0x0400_0000 != 0, &source);
             }
-            let ent_source = format!("codesign --display --entitlements - --xml {path} (on-disk executable)");
+            let ent_source =
+                format!("codesign --display --entitlements - --xml {path} (on-disk executable)");
             let entitlements = match arch {
-                Some(arch) => read_output(runner, "/usr/bin/codesign", &["--display", "--architecture", arch, "--entitlements", "-", "--xml", path]),
-                None => read_output(runner, "/usr/bin/codesign", &["--display", "--entitlements", "-", "--xml", path]),
+                Some(arch) => read_output(
+                    runner,
+                    "/usr/bin/codesign",
+                    &["--display", "--architecture", arch, "--entitlements", "-", "--xml", path],
+                ),
+                None => read_output(
+                    runner,
+                    "/usr/bin/codesign",
+                    &["--display", "--entitlements", "-", "--xml", path],
+                ),
             };
             match entitlements {
                 Ok(entitlements) if entitlements.stdout.is_empty() => {
                     target.get_task_allow = Fact::known(false, &ent_source);
                     target.allow_dyld_environment_variables = Fact::known(false, &ent_source);
                 }
-                Ok(entitlements) => match plist::Value::from_reader_xml(entitlements.stdout.as_bytes()) {
-                    Ok(plist::Value::Dictionary(dictionary)) => {
-                        let entitlement = |key: &str| match dictionary.get(key) {
-                            None => Fact::known(false, &ent_source),
-                            Some(value) => value.as_boolean().map(|value| Fact::known(value, &ent_source))
-                                .unwrap_or_else(|| Fact::unknown(&ent_source, "entitlement is not a Boolean")),
-                        };
-                        target.get_task_allow = entitlement("com.apple.security.get-task-allow");
-                        target.allow_dyld_environment_variables = entitlement("com.apple.security.cs.allow-dyld-environment-variables");
+                Ok(entitlements) => {
+                    match plist::Value::from_reader_xml(entitlements.stdout.as_bytes()) {
+                        Ok(plist::Value::Dictionary(dictionary)) => {
+                            let entitlement = |key: &str| match dictionary.get(key) {
+                                None => Fact::known(false, &ent_source),
+                                Some(value) => value
+                                    .as_boolean()
+                                    .map(|value| Fact::known(value, &ent_source))
+                                    .unwrap_or_else(|| {
+                                        Fact::unknown(&ent_source, "entitlement is not a Boolean")
+                                    }),
+                            };
+                            target.get_task_allow =
+                                entitlement("com.apple.security.get-task-allow");
+                            target.allow_dyld_environment_variables = entitlement(
+                                "com.apple.security.cs.allow-dyld-environment-variables",
+                            );
+                        }
+                        _ => {
+                            target.get_task_allow = Fact::unknown(
+                                &ent_source,
+                                "entitlements are not a readable XML dictionary",
+                            );
+                            target.allow_dyld_environment_variables = Fact::unknown(
+                                &ent_source,
+                                "entitlements are not a readable XML dictionary",
+                            );
+                        }
                     }
-                    _ => {
-                        target.get_task_allow = Fact::unknown(&ent_source, "entitlements are not a readable XML dictionary");
-                        target.allow_dyld_environment_variables = Fact::unknown(&ent_source, "entitlements are not a readable XML dictionary");
-                    }
-                },
+                }
                 Err(error) => {
                     target.get_task_allow = Fact::unknown(&ent_source, &error);
                     target.allow_dyld_environment_variables = Fact::unknown(&ent_source, &error);
@@ -555,12 +810,25 @@ fn signing_facts<R: CommandRunner>(runner: &mut R, executable: &Fact<String>, ta
     disk_hash
 }
 
-pub fn collect_preflight<R: CommandRunner>(runner: &mut R, selection: TargetSelection, helper: HelperFacts) -> PreflightReport {
+pub(crate) fn collect_preflight<R: CommandRunner>(
+    runner: &mut R,
+    selection: TargetSelection,
+    helper: HelperFacts,
+) -> PreflightReport {
     let host = host_status(runner);
-    let pid = selection.pid.or_else(|| (selection.running_pids.len() == 1).then(|| selection.running_pids[0]));
-    let executable_path = selection.executable_path.as_ref().map(|path| Fact::known(path.display().to_string(), "selected bundle Contents/Info.plist"))
-        .unwrap_or_else(|| Fact::unknown("selected bundle Contents/Info.plist", "no readable executable path"));
-    fn unknown<T>(field: &str) -> Fact<T> { Fact::unknown(field, "not yet observed") }
+    let pid = selection
+        .pid
+        .or_else(|| (selection.running_pids.len() == 1).then(|| selection.running_pids[0]));
+    let executable_path = selection
+        .executable_path
+        .as_ref()
+        .map(|path| Fact::known(path.display().to_string(), "selected bundle Contents/Info.plist"))
+        .unwrap_or_else(|| {
+            Fact::unknown("selected bundle Contents/Info.plist", "no readable executable path")
+        });
+    fn unknown<T>(field: &str) -> Fact<T> {
+        Fact::unknown(field, "not yet observed")
+    }
     let mut target = TargetFacts {
         bundle_path: selection.bundle_path,
         bundle_id: selection.bundle_id,
@@ -584,8 +852,12 @@ pub fn collect_preflight<R: CommandRunner>(runner: &mut R, selection: TargetSele
             Err(error) => Fact::unknown("proc_pidpath (live process executable)", &error),
         };
         target.architecture = match runner.process_architecture(pid) {
-            Ok(arch) => Fact::known(arch, "proc_pidinfo PROC_PIDARCHINFO (live process architecture)"),
-            Err(error) => Fact::unknown("proc_pidinfo PROC_PIDARCHINFO (live process architecture)", &error),
+            Ok(arch) => {
+                Fact::known(arch, "proc_pidinfo PROC_PIDARCHINFO (live process architecture)")
+            }
+            Err(error) => {
+                Fact::unknown("proc_pidinfo PROC_PIDARCHINFO (live process architecture)", &error)
+            }
         };
     }
     let disk_hash = if let Some(path) = executable_path.value.as_deref() {
@@ -593,8 +865,14 @@ pub fn collect_preflight<R: CommandRunner>(runner: &mut R, selection: TargetSele
             .map(|arches| arches.split_whitespace().map(str::to_owned).collect());
         if target.pid.is_none() {
             target.architecture = match target.executable_architectures.value.as_ref() {
-                Some(architectures) if architectures.len() == 1 => Fact::known(architectures[0].clone(), "lipo -archs (single on-disk slice; launch prediction)"),
-                _ => Fact::unknown("lipo -archs (on-disk executable)", "running architecture cannot be determined before launch"),
+                Some(architectures) if architectures.len() == 1 => Fact::known(
+                    architectures[0].clone(),
+                    "lipo -archs (single on-disk slice; launch prediction)",
+                ),
+                _ => Fact::unknown(
+                    "lipo -archs (on-disk executable)",
+                    "running architecture cannot be determined before launch",
+                ),
             };
         }
         signing_facts(runner, &executable_path, &mut target)
@@ -619,23 +897,32 @@ pub fn collect_preflight<R: CommandRunner>(runner: &mut R, selection: TargetSele
                 target.platform_binary = Fact::unknown(&source, &error);
             }
         }
-        let hash_source = format!("codesign selected CDHash + csops PID {pid} CDHash (live process binding)");
+        let hash_source =
+            format!("codesign selected CDHash + csops PID {pid} CDHash (live process binding)");
         match (disk_hash, runner.process_cdhash(pid)) {
             (Some(disk), Ok(live)) if disk == live => {
                 target.apple_signed.source = hash_source.clone();
                 target.allow_dyld_environment_variables.source = hash_source;
             }
             (Some(_), Ok(_)) => {
-                target.apple_signed = Fact::unknown(&hash_source, "on-disk signature does not match the running process");
-                target.allow_dyld_environment_variables = Fact::unknown(&hash_source, "on-disk entitlements do not match the running process");
+                target.apple_signed = Fact::unknown(
+                    &hash_source,
+                    "on-disk signature does not match the running process",
+                );
+                target.allow_dyld_environment_variables = Fact::unknown(
+                    &hash_source,
+                    "on-disk entitlements do not match the running process",
+                );
             }
             (_, Err(error)) => {
                 target.apple_signed = Fact::unknown(&hash_source, &error);
                 target.allow_dyld_environment_variables = Fact::unknown(&hash_source, &error);
             }
             (None, _) => {
-                target.apple_signed = Fact::unknown(&hash_source, "on-disk CodeDirectory hash is unavailable");
-                target.allow_dyld_environment_variables = Fact::unknown(&hash_source, "on-disk CodeDirectory hash is unavailable");
+                target.apple_signed =
+                    Fact::unknown(&hash_source, "on-disk CodeDirectory hash is unavailable");
+                target.allow_dyld_environment_variables =
+                    Fact::unknown(&hash_source, "on-disk CodeDirectory hash is unavailable");
             }
         }
     }

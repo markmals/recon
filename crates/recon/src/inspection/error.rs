@@ -62,6 +62,10 @@ impl fmt::Display for InspectionErrorCode {
 /// target.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Stage {
+    /// Reading target, host, and helper facts before any access is attempted.
+    Preflight,
+    /// Binding the loader and starting the helper in the selected incarnation.
+    Attach,
     /// Reading, creating, or validating the owner-private descriptor root and its records.
     Store,
     /// Opening the local endpoint.
@@ -74,6 +78,10 @@ pub enum Stage {
     Send,
     /// Reading and decoding a response frame.
     Receive,
+    /// Target-side evaluation of a native read.
+    Read,
+    /// Revoking a session.
+    Close,
     /// Resolving an uncertain close against authenticated bootstrap state.
     Reconcile,
 }
@@ -81,12 +89,16 @@ pub enum Stage {
 impl Stage {
     pub fn as_wire(self) -> &'static str {
         match self {
+            Self::Preflight => "preflight",
+            Self::Attach => "attach",
             Self::Store => "store",
             Self::Connect => "connect",
             Self::Peer => "peer",
             Self::Handshake => "handshake",
             Self::Send => "send",
             Self::Receive => "receive",
+            Self::Read => "read",
+            Self::Close => "close",
             Self::Reconcile => "reconcile",
         }
     }
@@ -148,12 +160,16 @@ impl InspectionError {
             .get("stage")
             .and_then(Value::as_str)
             .and_then(|reported| match reported {
+                "preflight" => Some(Stage::Preflight),
+                "attach" => Some(Stage::Attach),
                 "store" => Some(Stage::Store),
                 "connect" => Some(Stage::Connect),
                 "peer" => Some(Stage::Peer),
                 "handshake" => Some(Stage::Handshake),
                 "send" => Some(Stage::Send),
                 "receive" => Some(Stage::Receive),
+                "read" | "target-execution" | "main-thread-queue" => Some(Stage::Read),
+                "close" => Some(Stage::Close),
                 "reconcile" => Some(Stage::Reconcile),
                 _ => None,
             })

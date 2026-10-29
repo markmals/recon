@@ -34,12 +34,16 @@ fn rejects(words: &[&str]) {
 fn windows_takes_a_target_and_an_optional_pid() {
     assert_eq!(
         parse(&["windows", "Logic Pro"]).unwrap(),
-        UiRequest::Windows { selection: Selection { target: "Logic Pro".to_owned(), pid: None } }
+        UiRequest::Windows {
+            selection: Selection { target: "Logic Pro".to_owned(), pid: None },
+            session: None,
+        }
     );
     assert_eq!(
         parse(&["windows", "Logic Pro", "--pid", "412"]).unwrap(),
         UiRequest::Windows {
             selection: Selection { target: "Logic Pro".to_owned(), pid: Some(Pid(412)) },
+            session: None,
         }
     );
 }
@@ -48,6 +52,7 @@ fn windows_takes_a_target_and_an_optional_pid() {
 fn tree_takes_pid_and_window_flags_in_any_order() {
     let expected = UiRequest::AxTree {
         selection: Selection { target: "/Applications/Notes.app".to_owned(), pid: Some(Pid(7)) },
+        session: None,
         window: Some(WindowId(53510)),
         depth: None,
         no_menu_bar: false,
@@ -66,6 +71,7 @@ fn tree_takes_pid_and_window_flags_in_any_order() {
         parse(&["ax", "tree", "Notes"]).unwrap(),
         UiRequest::AxTree {
             selection: Selection { target: "Notes".to_owned(), pid: None },
+            session: None,
             window: None,
             depth: None,
             no_menu_bar: false,
@@ -77,6 +83,7 @@ fn tree_takes_pid_and_window_flags_in_any_order() {
 fn flags_may_come_before_the_target() {
     let safari = UiRequest::AxTree {
         selection: Selection { target: "Safari".to_owned(), pid: Some(Pid(7)) },
+        session: None,
         window: Some(WindowId(9)),
         depth: None,
         no_menu_bar: false,
@@ -88,6 +95,7 @@ fn flags_may_come_before_the_target() {
         parse(&["screenshot", "--out", "a.png", "Finder"]).unwrap(),
         UiRequest::Screenshot {
             selection: Selection { target: "Finder".to_owned(), pid: None },
+            session: None,
             window: None,
             out: PathBuf::from("a.png"),
         }
@@ -100,6 +108,7 @@ fn screenshot_requires_an_output_file_and_accepts_a_window() {
         parse(&["screenshot", "Notes", "--out", "shot.png"]).unwrap(),
         UiRequest::Screenshot {
             selection: Selection { target: "Notes".to_owned(), pid: None },
+            session: None,
             window: None,
             out: PathBuf::from("shot.png"),
         }
@@ -109,6 +118,7 @@ fn screenshot_requires_an_output_file_and_accepts_a_window() {
             .unwrap(),
         UiRequest::Screenshot {
             selection: Selection { target: "Notes".to_owned(), pid: Some(Pid(3)) },
+            session: None,
             window: Some(WindowId(9)),
             out: PathBuf::from("/tmp/shot.png"),
         }
@@ -165,6 +175,7 @@ fn a_pid_must_be_a_positive_integer() {
         parse(&["windows", "Notes", "--pid", "4294967295"]).unwrap(),
         UiRequest::Windows {
             selection: Selection { target: "Notes".to_owned(), pid: Some(Pid(u32::MAX)) },
+            session: None,
         }
     );
     rejects(&["windows", "Notes", "--pid", "0"]);
@@ -183,6 +194,7 @@ fn a_window_id_must_be_a_u32() {
         parse(&["ax", "tree", "Notes", "--window", "0"]).unwrap(),
         UiRequest::AxTree {
             selection: Selection { target: "Notes".to_owned(), pid: None },
+            session: None,
             window: Some(WindowId(0)),
             depth: None,
             no_menu_bar: false,

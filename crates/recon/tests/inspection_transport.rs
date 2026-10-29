@@ -611,6 +611,7 @@ fn opening_records_one_active_session_for_the_process() {
     assert_eq!(outcome.record.bundle_id, "com.apple.TextEdit");
     assert_eq!(outcome.record.protocol, PROTOCOL);
     assert_eq!(outcome.record.socket_path, fixture.endpoint);
+    assert!(outcome.response.get("capability").is_none());
 
     // It round-trips through the descriptor, capability included.
     let reloaded = fixture.store.record(&outcome.record.session_id).unwrap().expect("a descriptor");

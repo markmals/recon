@@ -48,6 +48,9 @@ objc2-core-foundation = { version = "0.3", features = [
 ], default-features = false }
 objc2-core-graphics = { version = "0.3", features = [
     "CGDataProvider",
+    "CGEvent",
+    "CGEventSource",
+    "CGEventTypes",
     "CGGeometry",
     "CGImage",
     "CGWindow",
@@ -97,5 +100,8 @@ objc2-core-foundation = { version = "0.3", features = [
 ], default-features = false }
 objc2-core-graphics = { version = "0.3", features = [
     "CGDirectDisplay",
+    "CGEvent",
+    "CGEventSource",
+    "CGEventTypes",
     "CGWindow",
 ], default-features = false }

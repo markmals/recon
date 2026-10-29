@@ -63,13 +63,13 @@ fn proposal0003_tree_schema_tracks_handwritten_serialization_and_omission() {
             depth_limited: false,
             menu_bar_excluded: false,
         }));
-        let response = TreeResponse {
-            application: ObservedApplication { path: Path::new("/Example.app"), pid: Pid(42) },
-            window_id: None,
+        let response = TreeResponse::new(
+            ObservedApplication { path: Path::new("/Example.app"), pid: Pid(42) },
+            None,
             truncated,
-            narrowed: false,
+            false,
             root,
-        };
+        );
         validate(&["ui", "ax", "tree"], &serde_json::to_value(response).unwrap());
     }
 }

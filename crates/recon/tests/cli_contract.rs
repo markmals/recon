@@ -93,7 +93,7 @@ fn proposal0003_usage_errors_carry_recovery_data() {
     assert_eq!(error["details"]["argument"], "--out");
     assert!(error["details"]["value"].is_null());
     let error = invalid(&["ui", "windows", "Calculator", "--bogus"]);
-    assert_eq!(error["details"]["accepted"], json!(["--pid"]));
+    assert_eq!(error["details"]["accepted"], json!(["--pid", "--session"]));
     assert_eq!(invalid(&["app", "list", "--json"])["details"]["accepted"], json!(["--running"]));
     assert_eq!(invalid(&["app"])["details"]["accepted"], json!(["list", "inspect", "launch"]));
     assert_eq!(invalid(&["app", "inspect", "Safari", "Mail"])["details"]["value"], "Mail");
@@ -130,6 +130,15 @@ fn proposal0003_registry_is_discoverable_and_constraints_are_enforced() {
             ["ui", "windows"],
             ["ui", "ax", "tree"],
             ["ui", "screenshot"],
+            ["ui", "session", "preflight"],
+            ["ui", "session", "prepare-host"],
+            ["ui", "session", "open"],
+            ["ui", "session", "close"],
+            ["ui", "view", "tree"],
+            ["ui", "view", "node"],
+            ["ui", "view", "find"],
+            ["ui", "view", "fonts"],
+            ["ui", "correlate"],
             ["schema"],
             ["context"]
         ])
@@ -258,7 +267,7 @@ fn proposal0003_unknown_options_are_not_matched_by_value_name_text() {
     assert_eq!(error["details"]["argument"], "--PID");
     assert_eq!(
         error["details"]["accepted"],
-        json!(["--pid", "--window", "--depth", "--no-menu-bar"])
+        json!(["--pid", "--window", "--depth", "--no-menu-bar", "--session"])
     );
 }
 

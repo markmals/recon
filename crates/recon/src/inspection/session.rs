@@ -157,7 +157,7 @@ pub fn open(
         body.insert("capability".to_owned(), Value::from(prior.capability.expose()));
     }
 
-    let response = connection.request(Op::Open, Value::Object(body))?;
+    let mut response = connection.request(Op::Open, Value::Object(body))?;
     require_compatible(&response, request.protocol, request.helper_build)?;
     require_incarnation(&response, request.incarnation)?;
 
@@ -231,6 +231,7 @@ pub fn open(
     } else {
         store.insert(&record)?;
     }
+    response.remove("capability");
     Ok(OpenOutcome { record, reused, response })
 }
 

@@ -56,6 +56,15 @@ impl Refusal {
 ///
 /// [`ErrorCode::LaunchFailed`], naming in its details which step did not happen.
 pub(super) fn launch(path: &Path) -> Result<Pid, Failure> {
+    launch_with_activation(path, true)
+}
+
+/// Starts exactly `path` without requesting activation or substituting another running copy.
+pub(super) fn launch_background(path: &Path) -> Result<Pid, Failure> {
+    launch_with_activation(path, false)
+}
+
+fn launch_with_activation(path: &Path, activates: bool) -> Result<Pid, Failure> {
     let Some(path_string) = path.to_str() else {
         return Err(launch_failure(
             path,
@@ -66,7 +75,7 @@ pub(super) fn launch(path: &Path) -> Result<Pid, Failure> {
     };
     let url = NSURL::fileURLWithPath(&NSString::from_str(path_string));
     let configuration = NSWorkspaceOpenConfiguration::configuration();
-    configuration.setActivates(true);
+    configuration.setActivates(activates);
     configuration.setCreatesNewApplicationInstance(false);
     configuration.setAllowsRunningApplicationSubstitution(false);
 

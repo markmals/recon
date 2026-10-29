@@ -19,14 +19,14 @@ function buildHelper(): void {
         "helper/ReconFacets.m",
         "helper/ReconInspect.m",
         "helper/ReconServer.m",
-    ].map((source) => path.resolve(source));
+    ].map(source => path.resolve(source));
     let outDir = path.resolve("target");
     let dylib = path.join(outDir, "recon-helper.dylib");
     let buildIdPath = path.join(outDir, "recon-helper.build-id");
     let headers = readdirSync("helper")
-        .filter((file) => file.endsWith(".h"))
+        .filter(file => file.endsWith(".h"))
         .sort()
-        .map((file) => path.resolve("helper", file));
+        .map(file => path.resolve("helper", file));
     let hash = createHash("sha256");
     for (let source of [...sources, ...headers]) hash.update(readFileSync(source));
     hash.update("arm64+arm64e|arc|ReconProtocolVersion=1");

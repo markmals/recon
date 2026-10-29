@@ -12,7 +12,7 @@ if (process.platform === "darwin") {
         "helper/ReconFacets.m",
         "helper/ReconInspect.m",
         "helper/ReconServer.m",
-    ].map((source) => path.resolve(source));
+    ].map(source => path.resolve(source));
     for (let test of ["helper_tests", "session_tests", "inspection_tests"]) {
         let executable = path.join(output, test);
         execFileSync(
