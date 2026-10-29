@@ -18,27 +18,25 @@ Every failure is one JSON error object printed on a single line to standard erro
 
 ## How to use it
 
-### Sign `recon` and grant it permission
+### Grant `recon` permission
 
 `ui` commands work on macOS only. On any other host they fail with `UNSUPPORTED_HOST`, whose `details` name the host you are on and the hosts the command supports, and exit with a nonzero status.
 
-Put `recon` at the path where you intend to keep it before granting anything, because macOS records a permission grant against an executable at a location. Then sign it with your own Developer ID Application identity and Recon's identifier:
+Install Recon at the path where you intend to keep it before granting anything, because macOS records a permission grant against an executable at a location. Homebrew source builds and bottles are ad-hoc signed. Their designated requirement is the code hash, so an upgrade or replacement with a different build needs fresh grants; Homebrew's versioned Cellar path also changes between releases. Run `recon context` to inspect the current installation's signing facts and grants without requesting either permission.
 
-```sh
-codesign --force --sign "Developer ID Application: <Your Name> (<TEAMID>)" --identifier me.malstrom.recon /path/to/recon
-```
-
-That signature gives the executable a designated requirement naming the identifier `me.malstrom.recon` and your team. A later build signed the same way and written over the same path keeps the permissions you granted, which is what makes in-place upgrades painless. Moving or copying the executable breaks this: the copy at the new path is a different client to macOS and holds no grant until you grant it again.
-
-Grant the permissions once. Run a `ui` command, let macOS show its prompt, then open System Settings and enable `recon` in Privacy & Security → Screen & System Audio Recording and in Privacy & Security → Accessibility. Both lists show the executable as "recon", from the Info.plist embedded in it.
+Grant the permissions to the installed `recon`. Run a `ui` command, let macOS show its prompt, then open System Settings and enable `recon` in Privacy & Security → Screen & System Audio Recording and in Privacy & Security → Accessibility. Both lists show the executable as "recon", from the Info.plist embedded in it.
 
 Which permission a command needs depends on what it reads. `recon ui windows` needs Screen Recording, because macOS withholds other processes' window titles without it, and it reads no accessibility data at all. `recon ui ax tree` needs Accessibility. `recon ui screenshot` needs Screen Recording to capture pixels, and it needs Accessibility as well whenever you omit `--window`, because the default window is the one the application reports as its main window through Accessibility.
 
 When a needed permission is missing, Recon asks macOS to request it. macOS may show its prompt, and will stay silent if you denied the permission earlier. Recon then exits with a nonzero status and fails with `PERMISSION_DENIED`. Its `message` names the missing permissions and the executable; `details` carries the same facts as data. `details.permissions` holds one entry per missing permission, each with a `permission` of `screen-recording` or `accessibility` and the `settingsPane` that grants it. `details.executablePath` is the absolute path of the running executable, which is what macOS records a grant against. `details.adHocSigned` says whether this build is ad-hoc signed.
 
-If both permissions are missing, both appear in `details.permissions`. When `adHocSigned` is `true`, macOS forgets the grant whenever the executable is rebuilt, and signing it with a Developer ID Application identity keeps the grant across rebuilds.
+If both permissions are missing, both appear in `details.permissions`. When `adHocSigned` is `true`, macOS forgets the grant whenever the executable is rebuilt or replaced. For a stable development copy instead, you can sign it with your own Developer ID Application identity and Recon's identifier:
 
-Ad-hoc signing is what `cargo build` and CI produce on Apple silicon, and the designated requirement of an ad-hoc signature is the code hash itself. Such a build works after you grant it, then loses the grant the moment it is rebuilt or replaced, because the new binary hashes differently. Developer ID signing with the identifier above is the way out.
+```sh
+codesign --force --sign "Developer ID Application: <Your Name> (<TEAMID>)" --identifier me.malstrom.recon /path/to/recon
+```
+
+A later build signed the same way and written over the same path keeps the permissions you granted. Moving or copying the executable still breaks this: the copy at the new path is a different client to macOS and holds no grant until you grant it again.
 
 Since macOS 15, macOS periodically asks you to reconfirm screen-recording permission. Expect that to interrupt long unattended runs.
 
@@ -180,4 +178,4 @@ The result reports the absolute path of the PNG, its pixel width and height, and
 - Reading a closed menu can make an application run its own menu-update code. Recon does not open menus, and no visible change was observed from reading them.
 - Every failure, including a missing permission, an ambiguous instance, an unowned window, and an existing `--out` path, prints one JSON error object to standard error, exits with a nonzero status, and prints no success JSON.
 - Grants are tied to the executable at its path. Rebuilding an ad-hoc binary, moving a signed one, or running a second copy from another directory all mean granting again in System Settings.
-- Adoption is reversible: revoke the two grants in System Settings and delete the executable.
+- Adoption is reversible: revoke the two grants in System Settings and run `brew uninstall recon`, or delete a manually installed executable.

@@ -317,6 +317,13 @@ test("rule 3 accepts resolved cross-references", () => {
     ).toBe(false);
 });
 
+test("rule 3 accepts dated user authority for a decision without a proposal", () => {
+    let records = validArtifacts();
+    records[3].frontmatter["established-by"] = "user.2026-10-29";
+
+    expect(validateArtifacts(records)).toStrictEqual([]);
+});
+
 function policySupersession(status: string): Artifact[] {
     return [
         artifact("proposals/0001-records.md", {

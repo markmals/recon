@@ -1,7 +1,7 @@
 ---
 id: decision.0002
 title: Recon Owns Its macOS Privacy Identity, And Can Report It
-status: accepted
+status: superseded
 established-by: proposal.0003
 supersedes: [decision.0001]
 ---

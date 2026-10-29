@@ -2,15 +2,19 @@
 
 Recon aims to give coding agents a repeatable way to investigate applications and compare independent implementations with the originals, starting with native, Electron, and web applications on macOS. The [vision](VISION.md) describes the intended investigation loop. On macOS, the `recon` CLI can list application bundles, inspect their metadata and running process IDs, and launch a selected bundle.
 
-## Investigate a macOS application
+## Install Recon
 
-Build the executable with the pinned Rust toolchain, then install it somewhere on your `PATH`:
+Install the official release from the personal Homebrew tap:
 
 ```sh
-cargo build --release -p recon
-mkdir -p ~/.local/bin
-install -m 755 target/release/recon ~/.local/bin/recon
-export PATH="$HOME/.local/bin:$PATH"
+brew install markmals/tap/recon
+```
+
+Homebrew installs the CLI and its matched native inspection artifacts. Subsequent upgrades use `brew upgrade recon`.
+
+## Investigate a macOS application
+
+```sh
 recon app list
 recon app inspect /System/Applications/Calculator.app
 recon app launch /System/Applications/Calculator.app

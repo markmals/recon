@@ -117,7 +117,8 @@ function referencesFor(artifact: Artifact, type: ArtifactType): { field: string;
     return fields.flatMap(field => {
         let value = frontmatter[field];
         if (field === "established-by") {
-            return typeof value === "string" ? [{ field, id: value }] : [];
+            if (typeof value !== "string" || /^user\.\d{4}-\d{2}-\d{2}$/.test(value)) return [];
+            return [{ field, id: value }];
         }
         return Array.isArray(value) ? value.map(id => ({ field, id })) : [];
     });
