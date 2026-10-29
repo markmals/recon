@@ -7,6 +7,8 @@
 #import <mach/mach.h>
 #import <sys/sysctl.h>
 #import <stdatomic.h>
+#import <libproc.h>
+#import <mach/machine.h>
 
 #ifndef RECON_HELPER_BUILD
 #error "RECON_HELPER_BUILD must be the content hash embedded by build-helper.ts"
@@ -107,7 +109,7 @@ NSString *ReconJSONString(NSString *value, NSUInteger maxScalars) {
     return i == value.length ? value : [value substringToIndex:i];
 }
 NSDictionary *ReconError(NSString *code, NSString *stage, NSString *message) {
-    return @{ @"ok": @NO, @"error": @{ @"code": code, @"stage": stage, @"message": message } };
+    return @{ @"ok": (NSNumber *)kCFBooleanFalse, @"error": @{ @"code": code, @"stage": stage, @"message": message } };
 }
 NSString *ReconToken(void) {
     uint8_t bytes[32];
@@ -145,11 +147,13 @@ NSDictionary *ReconProcessIdentity(void) {
     char build[128] = {0};
     size_t size = sizeof(build);
     if (sysctlbyname("kern.osversion", build, &size, NULL, 0) != 0) build[0] = 0;
-#if defined(__arm64e__)
-    NSString *architecture = @"arm64e";
-#else
-    NSString *architecture = @"arm64";
-#endif
+    struct proc_archinfo architectureInfo = {0};
+    NSString *architecture = @"unknown";
+    if (proc_pidinfo(getpid(), PROC_PIDARCHINFO, 0, &architectureInfo, sizeof(architectureInfo)) == sizeof(architectureInfo) &&
+        architectureInfo.p_cputype == CPU_TYPE_ARM64) {
+        int subtype = architectureInfo.p_cpusubtype & ~CPU_SUBTYPE_MASK;
+        architecture = subtype == CPU_SUBTYPE_ARM64E || subtype == 12 ? @"arm64e" : @"arm64";
+    }
     return @{ @"pid": @(getpid()), @"pidversion": @(pidversion), @"uid": @(geteuid()),
         @"bundleId": bundle.bundleIdentifier ?: NSNull.null,
         @"bundlePath": bundlePath ?: NSNull.null,

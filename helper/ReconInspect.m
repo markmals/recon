@@ -80,7 +80,7 @@ static uint64_t nowNs(void) {
     if ([_truncated containsObject:@"registry:100000"])
         return ReconError(@"INSPECTION_UNAVAILABLE", @"registry", @"Native handle capacity exhausted");
     NSMutableDictionary *result = [payload mutableCopy];
-    result[@"ok"] = @YES;
+    result[@"ok"] = (NSNumber *)kCFBooleanTrue;
     result[@"coverage"] = @{ @"visited": @(_visited), @"returned": @(_emitted),
         @"narrowed": _narrowed, @"truncated": _truncated,
         @"complete": @(_truncated.count == 0) };
@@ -258,7 +258,7 @@ NSDictionary *ReconInspect(ReconWork *work) {
                 NSString *reference = [work reference:object];
                 if (!reference) return ReconError(@"INSPECTION_UNAVAILABLE", @"registry", @"Native handle capacity exhausted");
                 [records addObject:@{ @"handle": reference, @"kind": ReconKind(object),
-                    @"depth": @(depth), @"reference": @YES }];
+                    @"depth": @(depth), @"reference": (NSNumber *)kCFBooleanTrue }];
                 work.emitted++;
                 if (work.emitted >= work.limit) {
                     if (index < queue.count) [work.truncated addObject:@"returned:limit"];

@@ -55,7 +55,7 @@ static NSDictionary *handleLifecycle(NSDictionary *request) {
     if ([op isEqual:@"reconcile"]) {
         if (![sessionId isKindOfClass:NSString.class] || !sessionId.length)
             response = ReconError(@"INVALID_ARGUMENT", @"reconcile", @"Session identity is required");
-        else response = @{ @"ok": @YES, @"active": @([activeSession isEqual:sessionId]),
+        else response = @{ @"ok": (NSNumber *)kCFBooleanTrue, @"active": @([activeSession isEqual:sessionId]),
             @"outstandingRead": @(atomic_load(&reading)), @"sessionId": [activeSession isEqual:sessionId] ? activeSession : NSNull.null,
             @"incarnation": @{ @"pid": @(getpid()), @"pidversion": @(ownPidversion) } };
     } else if ([op isEqual:@"close"]) {
@@ -68,12 +68,12 @@ static NSDictionary *handleLifecycle(NSDictionary *request) {
                 lastClosed = activeSession;
                 activeSession = nil; activeCapability = nil; activeProfile = nil; establishedMode = nil;
                 activeRegistry = nil;
-                response = @{ @"ok": @YES, @"revoked": @YES, @"wasActive": @YES,
-                    @"helperResident": @YES, @"bootstrapActive": @YES };
+                response = @{ @"ok": (NSNumber *)kCFBooleanTrue, @"revoked": (NSNumber *)kCFBooleanTrue, @"wasActive": (NSNumber *)kCFBooleanTrue,
+                    @"helperResident": (NSNumber *)kCFBooleanTrue, @"bootstrapActive": (NSNumber *)kCFBooleanTrue };
             }
         } else if ([lastClosed isEqual:sessionId])
-            response = @{ @"ok": @YES, @"revoked": @YES, @"wasActive": @NO,
-                @"helperResident": @YES, @"bootstrapActive": @YES };
+            response = @{ @"ok": (NSNumber *)kCFBooleanTrue, @"revoked": (NSNumber *)kCFBooleanTrue, @"wasActive": (NSNumber *)kCFBooleanFalse,
+                @"helperResident": (NSNumber *)kCFBooleanTrue, @"bootstrapActive": (NSNumber *)kCFBooleanTrue };
         else response = ReconError(@"STALE_SESSION", @"close", @"Session is not known to this process");
     } else if ([op isEqual:@"open"]) {
         response = validateIdentity(request);
@@ -91,12 +91,12 @@ static NSDictionary *handleLifecycle(NSDictionary *request) {
         if (!response) {
             BOOL reused = activeSession != nil;
             if (!reused) {
-                activeSession = ReconToken(); activeCapability = ReconToken();
+                activeSession = [ReconToken() substringToIndex:32]; activeCapability = ReconToken();
                 if (!activeSession || !activeCapability) response = ReconError(@"INSPECTION_FAILED", @"random", @"Secure randomness is unavailable");
                 else { activeRegistry = [ReconRegistry new]; activeProfile = profile; establishedMode = mode; }
             }
             if (!response) {
-                NSMutableDictionary *opened = [@{ @"ok": @YES, @"sessionId": activeSession, @"reused": @(reused),
+                NSMutableDictionary *opened = [@{ @"ok": (NSNumber *)kCFBooleanTrue, @"sessionId": activeSession, @"reused": @(reused),
                 @"pid": @(getpid()), @"pidversion": @(ownPidversion), @"uid": @(geteuid()),
                 @"incarnation": @{ @"pid": @(getpid()), @"pidversion": @(ownPidversion) },
                 @"identity": ReconProcessIdentity(),
@@ -105,7 +105,7 @@ static NSDictionary *handleLifecycle(NSDictionary *request) {
                 @"requestedProfile": profile, @"establishedMode": establishedMode,
                 @"capabilities": @[ @"windows", @"tree", @"node", @"find", @"fonts" ],
                 @"effects": @[ @"helper-bootstrap-resident" ],
-                @"helperResident": @YES, @"bootstrapActive": @YES } mutableCopy];
+                @"helperResident": (NSNumber *)kCFBooleanTrue, @"bootstrapActive": (NSNumber *)kCFBooleanTrue } mutableCopy];
                 if (!reused) opened[@"capability"] = activeCapability;
                 response = opened;
             }
@@ -171,7 +171,7 @@ static NSDictionary *handleRead(NSDictionary *request, uint64_t requestStart) {
     });
     uint64_t remaining = nowNs() < work.deadline ? work.deadline - nowNs() : 0;
     if (dispatch_semaphore_wait(done, dispatch_time(DISPATCH_TIME_NOW, (int64_t)remaining)))
-        return @{ @"ok": @NO, @"error": @{ @"code": @"INSPECTION_TIMEOUT",
+        return @{ @"ok": (NSNumber *)kCFBooleanFalse, @"error": @{ @"code": @"INSPECTION_TIMEOUT",
             @"message": @"Native read exceeded its deadline", @"stage": atomic_load(&started) ? @"target-execution" : @"main-thread-queue",
             @"targetExecutionMayContinue": @(atomic_load(&started)) } };
     [stateLock lock]; BOOL current = [activeSession isEqual:session] && [activeCapability isEqual:request[@"capability"]]; [stateLock unlock];

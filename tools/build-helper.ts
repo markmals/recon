@@ -61,6 +61,7 @@ function buildHelper(): void {
             "-framework",
             "Security",
             "-lbsm",
+            "-lproc",
             "-o",
             dylib,
         ],

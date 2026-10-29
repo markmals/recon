@@ -34,6 +34,7 @@ if (process.platform === "darwin") {
                 "-framework",
                 "Security",
                 "-lbsm",
+                "-lproc",
                 "-o",
                 executable,
             ],

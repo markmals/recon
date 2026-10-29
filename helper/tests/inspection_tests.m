@@ -3,6 +3,10 @@
 #import <mach/mach_time.h>
 #include <assert.h>
 
+/// Defined by ReconFields.m. The flip is the one piece of the top-left normalization that can be
+/// exercised without a window server session, so it is tested on its own numbers.
+extern NSRect ReconScreenTopLeftRect(NSRect rect, CGFloat primaryScreenHeight);
+
 @interface RepeatedView : NSView @end
 @implementation RepeatedView
 - (NSArray<NSView *> *)subviews {
@@ -93,6 +97,39 @@ int main(void) {
         NSDictionary *notFound = inspect(registry, @{ @"op": @"find", @"root": duplicateRoot,
             @"depth": @1, @"identifier": @"nomatch", @"fields": @[ @"basic" ] });
         assert([notFound[@"nodes"] count] == 0);
+
+        // Accessibility's own properties are read in the target and are not NSView.identifier.
+        NSView *labeled = [NSView new];
+        labeled.identifier = @"native-identifier";
+        labeled.accessibilityIdentifier = @"ax-identifier";
+        labeled.accessibilityRole = NSAccessibilityButtonRole;
+        NSDictionary *labels = inspect(registry, @{ @"op": @"node",
+            @"root": [registry handleForObject:labeled], @"fields": @[ @"basic" ] })[@"node"][@"basic"];
+        assert([labels[@"identifier"][@"value"] isEqual:@"native-identifier"]);
+        assert([labels[@"accessibilityIdentifier"][@"value"] isEqual:@"ax-identifier"]);
+        assert([labels[@"accessibilityIdentifier"][@"read"] isEqual:@"target-executed"]);
+        assert([labels[@"accessibilityRole"][@"value"] isEqual:NSAccessibilityButtonRole]);
+        // A view in no window has no normalization to report, which is an absence, not a rectangle.
+        assert([labels[@"normalizedFrame"][@"status"] isEqual:@"absent"]);
+
+        // AppKit's empty identifier is the absence of one: reporting it as a value would relate
+        // every unidentified view to every unidentified accessibility element.
+        NSDictionary *unlabeled = inspect(registry, @{ @"op": @"node",
+            @"root": [registry handleForObject:[NSView new]], @"fields": @[ @"basic" ] })[@"node"][@"basic"];
+        assert([unlabeled[@"accessibilityIdentifier"][@"status"] isEqual:@"absent"]);
+        assert(!unlabeled[@"accessibilityIdentifier"][@"value"]);
+
+        // The primary screen's height is the whole transform: a rectangle 100 points above the
+        // bottom of a 900-point screen sits 780 points below its top.
+        NSRect flipped = ReconScreenTopLeftRect(NSMakeRect(10, 100, 50, 20), 900);
+        assert(NSEqualRects(flipped, NSMakeRect(10, 780, 50, 20)));
+        // A display above and left of the primary one produces negative coordinates, which are a
+        // position rather than an error.
+        NSRect second = ReconScreenTopLeftRect(NSMakeRect(-1520, 1056, 80, 24), 900);
+        assert(NSEqualRects(second, NSMakeRect(-1520, -180, 80, 24)));
+        // Logical points only: the flip is its own inverse whatever the display's backing scale.
+        NSRect retina = NSMakeRect(12.5, 33.25, 100.5, 50.75);
+        assert(NSEqualRects(ReconScreenTopLeftRect(ReconScreenTopLeftRect(retina, 1050.5), 1050.5), retina));
         [registry revoke];
         assert([inspect(registry, @{ @"op": @"node", @"root": handle })[@"error"][@"code"] isEqual:@"STALE_NODE"]);
     }

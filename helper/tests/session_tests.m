@@ -51,6 +51,8 @@ int main(void) {
         NSMutableDictionary *open = [base mutableCopy]; open[@"op"] = @"open";
         NSDictionary *first = exchange(path, open);
         assert([first[@"ok"] boolValue]);
+        assert(CFGetTypeID((__bridge CFTypeRef)first[@"ok"]) == CFBooleanGetTypeID());
+        assert([first[@"sessionId"] length] == 32);
         assert([first[@"identity"][@"pid"] intValue] == getpid());
         assert([first[@"identity"][@"pidversion"] unsignedIntValue] == audit_token_to_pidversion(token));
         assert([first[@"identity"][@"architecture"] isKindOfClass:NSString.class]);
