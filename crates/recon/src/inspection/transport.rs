@@ -6,6 +6,7 @@
 //! checked against the kernel's report of who is on the far end before a request is written.
 
 use std::io::{Read, Write};
+use std::os::fd::AsRawFd;
 use std::os::unix::net::UnixStream;
 use std::path::Path;
 use std::time::{Duration, Instant};
@@ -133,6 +134,17 @@ impl Connection {
     /// `body` must be a JSON object; `op` is written into it. A helper failure envelope becomes an
     /// `Err`, so a caller never has to inspect `ok` itself.
     pub fn request(&mut self, op: Op, body: Value) -> Result<Map<String, Value>, InspectionError> {
+        self.request_until(op, body, Instant::now() + op.deadline())
+    }
+
+    /// Use an open operation's existing absolute deadline instead of restarting its budget.
+    pub fn request_until(
+        &mut self,
+        op: Op,
+        body: Value,
+        deadline: Instant,
+    ) -> Result<Map<String, Value>, InspectionError> {
+        let deadline = deadline.min(Instant::now() + op.deadline());
         let Value::Object(mut request) = body else {
             return Err(InspectionError::new(
                 InspectionErrorCode::InvalidArgument,
@@ -142,61 +154,152 @@ impl Connection {
         };
         request.insert("op".to_owned(), Value::String(op.as_wire().to_owned()));
 
-        let frame = encode_frame(&Value::Object(request), MAX_REQUEST_BYTES)?;
-        let started = Instant::now();
-        let deadline = op.deadline();
-
-        self.set_timeout(op, Stage::Send, remaining(started, deadline))?;
-        self.stream.write_all(&frame).map_err(|error| {
-            io_failure(op, Stage::Send, "the request could not be written", &error)
-        })?;
-        self.stream.flush().map_err(|error| {
-            io_failure(op, Stage::Send, "the request could not be flushed", &error)
-        })?;
-
-        self.set_timeout(op, Stage::Receive, remaining(started, deadline))?;
-        let payload = self.read_frame(op)?;
-        decode_response(op, &payload)
-    }
-
-    fn set_timeout(
-        &self,
-        op: Op,
-        stage: Stage,
-        budget: Option<Duration>,
-    ) -> Result<(), InspectionError> {
-        let Some(budget) = budget else {
-            return Err(InspectionError::new(
-                InspectionErrorCode::Timeout,
-                stage,
-                format!("the {} deadline expired before the {stage} stage", op.as_wire()),
-            ));
-        };
-        let result = match stage {
-            Stage::Send => self.stream.set_write_timeout(Some(budget)),
-            _ => self.stream.set_read_timeout(Some(budget)),
-        };
-        result.map_err(|error| {
+        // poll bounds readiness, and nonblocking I/O prevents a ready socket from then waiting
+        // past the deadline while writing a frame larger than its remaining send buffer.
+        self.stream.set_nonblocking(true).map_err(|error| {
             InspectionError::from_io(
                 InspectionErrorCode::Failed,
-                stage,
-                "the channel deadline could not be installed",
+                Stage::Send,
+                "the helper channel could not be made nonblocking",
                 &error,
             )
-        })
+        })?;
+        let frame = encode_frame(&Value::Object(request), MAX_REQUEST_BYTES)?;
+        self.write_until(op, &frame, deadline)?;
+        let payload = self.read_frame(op, deadline)?;
+        let response = decode_response(op, &payload)?;
+        if op != Op::Open && remaining(deadline).is_none() {
+            let error = InspectionError::new(
+                InspectionErrorCode::Timeout,
+                Stage::Receive,
+                format!("the {} deadline expired before the response was delivered", op.as_wire()),
+            );
+            return Err(if op.is_lifecycle() {
+                error
+            } else {
+                error.target_execution_may_continue()
+            });
+        }
+        Ok(response)
     }
 
-    fn read_frame(&mut self, op: Op) -> Result<Vec<u8>, InspectionError> {
+    fn wait_ready(&self, op: Op, stage: Stage, deadline: Instant) -> Result<(), InspectionError> {
+        let events = if stage == Stage::Send { libc::POLLOUT } else { libc::POLLIN };
+        loop {
+            let Some(left) = remaining(deadline) else {
+                let error = InspectionError::new(
+                    InspectionErrorCode::Timeout,
+                    stage,
+                    format!("the {} deadline expired before the {stage} stage", op.as_wire()),
+                );
+                return Err(if op.is_lifecycle() {
+                    error
+                } else {
+                    error.target_execution_may_continue()
+                });
+            };
+            let timeout_ms = left.as_millis().saturating_add(1).min(i32::MAX as u128) as i32;
+            let mut descriptor = libc::pollfd { fd: self.stream.as_raw_fd(), events, revents: 0 };
+            // SAFETY: poll receives one writable pollfd whose file descriptor is owned by self.
+            let ready = unsafe { libc::poll(&raw mut descriptor, 1, timeout_ms) };
+            if ready > 0 {
+                if descriptor.revents & libc::POLLNVAL != 0 {
+                    return Err(InspectionError::new(
+                        InspectionErrorCode::Failed,
+                        stage,
+                        "the helper connection became invalid while waiting for I/O",
+                    ));
+                }
+                return Ok(());
+            }
+            if ready == 0 {
+                continue;
+            }
+            let error = std::io::Error::last_os_error();
+            if error.kind() != std::io::ErrorKind::Interrupted {
+                return Err(InspectionError::from_io(
+                    InspectionErrorCode::Failed,
+                    stage,
+                    "the helper connection could not be polled",
+                    &error,
+                ));
+            }
+        }
+    }
+
+    fn write_until(
+        &mut self,
+        op: Op,
+        frame: &[u8],
+        deadline: Instant,
+    ) -> Result<(), InspectionError> {
+        let mut sent = 0;
+        while sent < frame.len() {
+            self.wait_ready(op, Stage::Send, deadline)?;
+            match self.stream.write(&frame[sent..]) {
+                Ok(0) => {
+                    return Err(InspectionError::new(
+                        InspectionErrorCode::Failed,
+                        Stage::Send,
+                        "the helper connection stopped accepting request bytes",
+                    ));
+                }
+                Ok(written) => sent += written,
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        std::io::ErrorKind::Interrupted | std::io::ErrorKind::WouldBlock
+                    ) => {}
+                Err(error) => {
+                    return Err(io_failure(
+                        op,
+                        Stage::Send,
+                        "the request could not be written",
+                        &error,
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn read_exact_until(
+        &mut self,
+        op: Op,
+        buffer: &mut [u8],
+        deadline: Instant,
+        context: &str,
+    ) -> Result<(), InspectionError> {
+        let mut received = 0;
+        while received < buffer.len() {
+            self.wait_ready(op, Stage::Receive, deadline)?;
+            match self.stream.read(&mut buffer[received..]) {
+                Ok(0) => {
+                    return Err(InspectionError::new(
+                        InspectionErrorCode::Failed,
+                        Stage::Receive,
+                        format!("{context}: the helper closed the connection early"),
+                    ));
+                }
+                Ok(read) => received += read,
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        std::io::ErrorKind::Interrupted | std::io::ErrorKind::WouldBlock
+                    ) => {}
+                Err(error) => return Err(io_failure(op, Stage::Receive, context, &error)),
+            }
+        }
+        Ok(())
+    }
+
+    fn read_frame(&mut self, op: Op, deadline: Instant) -> Result<Vec<u8>, InspectionError> {
         let mut header = [0_u8; 4];
-        self.stream.read_exact(&mut header).map_err(|error| {
-            io_failure(op, Stage::Receive, "the response length could not be read", &error)
-        })?;
+        self.read_exact_until(op, &mut header, deadline, "the response length could not be read")?;
         let length = decode_frame_length(header, MAX_RESPONSE_BYTES)?;
 
         let mut payload = vec![0_u8; length];
-        self.stream.read_exact(&mut payload).map_err(|error| {
-            io_failure(op, Stage::Receive, "the response body could not be read", &error)
-        })?;
+        self.read_exact_until(op, &mut payload, deadline, "the response body could not be read")?;
         Ok(payload)
     }
 }
@@ -285,8 +388,8 @@ fn decode_response(op: Op, payload: &[u8]) -> Result<Map<String, Value>, Inspect
     }
 }
 
-fn remaining(started: Instant, deadline: Duration) -> Option<Duration> {
-    deadline.checked_sub(started.elapsed()).filter(|left| !left.is_zero())
+fn remaining(deadline: Instant) -> Option<Duration> {
+    deadline.checked_duration_since(Instant::now()).filter(|left| !left.is_zero())
 }
 
 /// An expired channel deadline is a timeout; a native read that times out may still be running on

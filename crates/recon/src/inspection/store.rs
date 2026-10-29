@@ -6,7 +6,7 @@
 //! replaced, because replacing one would discard the uncertainty that an unacknowledged close left
 //! behind.
 
-use std::fs::{self, DirBuilder, File, OpenOptions};
+use std::fs::{self, DirBuilder, File, OpenOptions, TryLockError};
 use std::io::{self, Read, Write};
 use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
@@ -119,9 +119,14 @@ impl SessionStore {
                 )
             })?;
         }
-        for directory in
-            [&store.root, &store.sessions_dir(), &store.endpoints_dir(), &store.executions_dir()]
-        {
+        for directory in [
+            &store.root,
+            &store.sessions_dir(),
+            &store.endpoints_dir(),
+            &store.executions_dir(),
+            &store.locks_dir(),
+            &store.attaches_dir(),
+        ] {
             create_private_dir(directory)?;
         }
         Ok(store)
@@ -167,6 +172,227 @@ impl SessionStore {
             ));
         }
         Ok(endpoint)
+    }
+
+    /// The returned file holds the lock until dropped; its stable path must never be unlinked.
+    pub fn lock_lifecycle(&self, incarnation: Incarnation) -> Result<File, InspectionError> {
+        create_private_dir(&self.root)?;
+        create_private_dir(&self.locks_dir())?;
+        let path = self.locks_dir().join(format!("{}.lock", incarnation.slug()));
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .mode(0o600)
+            .open(&path)
+            .map_err(|error| {
+                InspectionError::from_io(
+                    InspectionErrorCode::Unavailable,
+                    Stage::Store,
+                    "the incarnation lock could not be opened",
+                    &error,
+                )
+            })?;
+        let metadata = fs::symlink_metadata(&path).map_err(|error| {
+            InspectionError::from_io(
+                InspectionErrorCode::Unavailable,
+                Stage::Store,
+                "the incarnation lock could not be inspected",
+                &error,
+            )
+        })?;
+        if !metadata.is_file()
+            || !matches!(file.metadata(), Ok(opened) if opened.ino() == metadata.ino())
+        {
+            return Err(InspectionError::new(
+                InspectionErrorCode::Unavailable,
+                Stage::Store,
+                "the incarnation lock is not a stable regular file",
+            ));
+        }
+        verify_private(&path, &metadata, 0o600, "incarnation lock")?;
+        file.try_lock().map_err(|error| match error {
+            TryLockError::WouldBlock => InspectionError::new(
+                InspectionErrorCode::Busy,
+                Stage::Store,
+                format!("another CLI is changing inspection access for {incarnation}"),
+            ),
+            TryLockError::Error(error) => InspectionError::from_io(
+                InspectionErrorCode::Unavailable,
+                Stage::Store,
+                "the incarnation lock could not be claimed",
+                &error,
+            ),
+        })?;
+        Ok(file)
+    }
+
+    /// A loader may have changed the target even if this process dies before authentication.
+    pub fn reserve_attach(
+        &self,
+        incarnation: Incarnation,
+        executable: &Path,
+    ) -> Result<(), InspectionError> {
+        create_private_dir(&self.root)?;
+        create_private_dir(&self.attaches_dir())?;
+        let path = self.attach_path(incarnation);
+        let encoded = serde_json::to_vec(&StoredAttach {
+            version: RECORD_VERSION,
+            pid: incarnation.pid,
+            pidversion: incarnation.pidversion,
+            executable_path: path_text(executable)?,
+        })
+        .map_err(|error| {
+            InspectionError::new(
+                InspectionErrorCode::Failed,
+                Stage::Store,
+                format!("the attach reservation could not be encoded: {error}"),
+            )
+        })?;
+        let mut file =
+            OpenOptions::new().write(true).create_new(true).mode(0o600).open(&path).map_err(
+                |error| {
+                    if error.kind() == io::ErrorKind::AlreadyExists {
+                        InspectionError::new(
+                            InspectionErrorCode::Busy,
+                            Stage::Store,
+                            format!("an earlier attach to {incarnation} has not been reconciled"),
+                        )
+                        .target_execution_may_continue()
+                    } else {
+                        InspectionError::from_io(
+                            InspectionErrorCode::Unavailable,
+                            Stage::Store,
+                            "the attach reservation could not be created",
+                            &error,
+                        )
+                    }
+                },
+            )?;
+        let persisted = file.write_all(&encoded).and_then(|()| file.sync_all()).map_err(|error| {
+            InspectionError::from_io(
+                InspectionErrorCode::Unavailable,
+                Stage::Store,
+                "the attach reservation could not be persisted",
+                &error,
+            )
+        });
+        drop(file);
+        let persisted = persisted.and_then(|()| sync_directory(&self.attaches_dir()));
+        if let Err(error) = persisted {
+            // No loader ran yet. A partial marker must not block this incarnation indefinitely.
+            if let Err(cleanup) = self.remove_attach_reservation(incarnation) {
+                return Err(InspectionError::new(
+                    InspectionErrorCode::Unavailable,
+                    Stage::Store,
+                    format!(
+                        "{error}; the failed reservation could not be safely cleared ({cleanup})"
+                    ),
+                ));
+            }
+            return Err(error);
+        }
+        Ok(())
+    }
+
+    pub fn attach_reservation(
+        &self,
+        incarnation: Incarnation,
+    ) -> Result<Option<PathBuf>, InspectionError> {
+        let raw = match read_private_file(&self.attach_path(incarnation), "attach reservation") {
+            Ok(raw) => raw,
+            Err(error) if error.code() == InspectionErrorCode::StaleSession => return Ok(None),
+            Err(error) => return Err(error),
+        };
+        let stored: StoredAttach = serde_json::from_slice(&raw).map_err(|error| {
+            InspectionError::new(
+                InspectionErrorCode::Unavailable,
+                Stage::Store,
+                format!("the attach reservation for {incarnation} is unreadable: {error}"),
+            )
+        })?;
+        let executable = PathBuf::from(stored.executable_path);
+        if stored.version != RECORD_VERSION
+            || stored.pid != incarnation.pid
+            || stored.pidversion != incarnation.pidversion
+            || !executable.is_absolute()
+        {
+            return Err(InspectionError::new(
+                InspectionErrorCode::Unavailable,
+                Stage::Store,
+                format!("the attach reservation for {incarnation} has an invalid identity"),
+            ));
+        }
+        Ok(Some(executable))
+    }
+
+    /// The active descriptor must reach disk before the uncertainty marker is removed.
+    pub fn complete_attach(&self, incarnation: Incarnation) -> Result<(), InspectionError> {
+        if self.attach_reservation(incarnation)?.is_none() {
+            return Err(InspectionError::new(
+                InspectionErrorCode::Unavailable,
+                Stage::Store,
+                format!("there is no attach reservation for {incarnation}"),
+            ));
+        }
+        let Some(record) = self.live_record_for(incarnation)? else {
+            return Err(InspectionError::new(
+                InspectionErrorCode::Busy,
+                Stage::Store,
+                format!("the attach to {incarnation} has no durable authenticated session"),
+            ));
+        };
+        if record.state != SessionState::Active {
+            return Err(InspectionError::new(
+                InspectionErrorCode::Busy,
+                Stage::Store,
+                format!("the attach to {incarnation} has no active session"),
+            ));
+        }
+        File::open(self.record_path(&record.session_id)).and_then(|file| file.sync_all()).map_err(
+            |error| {
+                InspectionError::from_io(
+                    InspectionErrorCode::Unavailable,
+                    Stage::Store,
+                    "the authenticated session could not be persisted",
+                    &error,
+                )
+            },
+        )?;
+        sync_directory(&self.sessions_dir())?;
+        self.remove_attach_reservation(incarnation)
+    }
+
+    /// Only a kernel-confirmed absent PID can discard an attach whose handshake was lost.
+    pub fn clear_exited_attach(&self, incarnation: Incarnation) -> Result<bool, InspectionError> {
+        #[cfg(target_os = "macos")]
+        {
+            // SAFETY: signal zero checks existence without delivering a signal.
+            let absent = unsafe { libc::kill(incarnation.pid, 0) } == -1
+                && io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH);
+            if absent {
+                self.remove_attach_reservation(incarnation)?;
+            }
+            Ok(absent)
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            let _ = incarnation;
+            Ok(false)
+        }
+    }
+
+    fn remove_attach_reservation(&self, incarnation: Incarnation) -> Result<(), InspectionError> {
+        fs::remove_file(self.attach_path(incarnation)).map_err(|error| {
+            InspectionError::from_io(
+                InspectionErrorCode::Unavailable,
+                Stage::Store,
+                "the attach reservation could not be cleared",
+                &error,
+            )
+        })?;
+        sync_directory(&self.attaches_dir())
     }
 
     pub fn record(&self, id: &SessionId) -> Result<Option<SessionRecord>, InspectionError> {
@@ -283,8 +509,9 @@ impl SessionStore {
                 format!("session {} is not recorded", record.session_id),
             ));
         }
-        let temporary = path.with_extension("json.tmp");
-        let _ = fs::remove_file(&temporary);
+        let encoded = encode_record(record)?;
+        // Each writer owns a distinct temporary inode; another writer must never unlink it.
+        let temporary = path.with_extension(format!("json.{}.tmp", SessionId::generate()?));
         let mut file =
             OpenOptions::new().write(true).create_new(true).mode(0o600).open(&temporary).map_err(
                 |error| {
@@ -296,23 +523,30 @@ impl SessionStore {
                     )
                 },
             )?;
-        file.write_all(&encode_record(record)?).map_err(|error| {
-            InspectionError::from_io(
-                InspectionErrorCode::Unavailable,
-                Stage::Store,
-                "the session descriptor could not be written",
-                &error,
-            )
-        })?;
-        drop(file);
-        fs::rename(&temporary, &path).map_err(|error| {
-            InspectionError::from_io(
-                InspectionErrorCode::Unavailable,
-                Stage::Store,
-                "the session descriptor could not be replaced",
-                &error,
-            )
-        })
+        let saved = (|| -> Result<(), InspectionError> {
+            file.write_all(&encoded).and_then(|()| file.sync_all()).map_err(|error| {
+                InspectionError::from_io(
+                    InspectionErrorCode::Unavailable,
+                    Stage::Store,
+                    "the session descriptor could not be written",
+                    &error,
+                )
+            })?;
+            drop(file);
+            fs::rename(&temporary, &path).map_err(|error| {
+                InspectionError::from_io(
+                    InspectionErrorCode::Unavailable,
+                    Stage::Store,
+                    "the session descriptor could not be replaced",
+                    &error,
+                )
+            })?;
+            sync_directory(&self.sessions_dir())
+        })();
+        if saved.is_err() {
+            let _ = fs::remove_file(&temporary);
+        }
+        saved
     }
 
     /// Remove a record outright. Only a confirmed-closed or confirmed-dead session may be
@@ -440,12 +674,24 @@ impl SessionStore {
         self.root.join("executions")
     }
 
+    fn locks_dir(&self) -> PathBuf {
+        self.root.join("locks")
+    }
+
+    fn attaches_dir(&self) -> PathBuf {
+        self.root.join("attaches")
+    }
+
     fn record_path(&self, id: &SessionId) -> PathBuf {
         self.sessions_dir().join(format!("{id}.json"))
     }
 
     fn execution_path(&self, incarnation: Incarnation) -> PathBuf {
         self.executions_dir().join(format!("{}.json", incarnation.slug()))
+    }
+
+    fn attach_path(&self, incarnation: Incarnation) -> PathBuf {
+        self.attaches_dir().join(format!("{}.json", incarnation.slug()))
     }
 
     /// Drop confirmed-closed records once they are old enough that no caller can still be asking
@@ -491,6 +737,15 @@ struct StoredExecution {
     op: String,
     session_id: Option<String>,
     since: u64,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct StoredAttach {
+    version: u32,
+    pid: i32,
+    pidversion: u32,
+    executable_path: String,
 }
 
 fn encode_record(record: &SessionRecord) -> Result<Vec<u8>, InspectionError> {
@@ -597,6 +852,17 @@ fn read_private_file(path: &Path, kind: &str) -> Result<Vec<u8>, InspectionError
         )
     })?;
     Ok(raw)
+}
+
+fn sync_directory(path: &Path) -> Result<(), InspectionError> {
+    File::open(path).and_then(|directory| directory.sync_all()).map_err(|error| {
+        InspectionError::from_io(
+            InspectionErrorCode::Unavailable,
+            Stage::Store,
+            &format!("{} could not be persisted", path.display()),
+            &error,
+        )
+    })
 }
 
 fn create_private_dir(path: &Path) -> Result<(), InspectionError> {

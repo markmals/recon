@@ -10,9 +10,11 @@ use crate::inspection::{
 };
 use crate::ui::request::{FieldSet, Filters, NativeScope, TraversalKind, ViewRequest};
 
-pub(crate) fn validate_session(
+// Native reads authenticate under their own two-second deadline; do not spend a
+// separate ten-second reconciliation round trip before sending them.
+pub(crate) fn session_record(
     application: &Application,
-    pid: Pid,
+    requested_pid: Option<Pid>,
     session: &SessionId,
 ) -> Result<SessionRecord, InspectionError> {
     let store = default_store()?;
@@ -23,11 +25,21 @@ pub(crate) fn validate_session(
             format!("session {session} is not recorded"),
         )
     })?;
-    if record.incarnation.pid != pid.0 as i32 || !same_bundle(&record, application) {
+    if requested_pid.is_some_and(|pid| i64::from(pid.0) != i64::from(record.incarnation.pid))
+        || !same_bundle(&record, application)
+    {
         return Err(InspectionError::new(
             InspectionErrorCode::StaleSession,
             Stage::Store,
             "the session and selected application or process do not match",
+        ));
+    }
+    let pid = u32::try_from(record.incarnation.pid).ok().map(Pid);
+    if !pid.is_some_and(|pid| application.running_pids.contains(&pid)) {
+        return Err(InspectionError::new(
+            InspectionErrorCode::StaleSession,
+            Stage::Store,
+            "the session's bound process is not a running instance of this application",
         ));
     }
     match record.state {
@@ -47,6 +59,16 @@ pub(crate) fn validate_session(
             ));
         }
     }
+    Ok(record)
+}
+
+pub(crate) fn validate_session(
+    application: &Application,
+    pid: Pid,
+    session: &SessionId,
+) -> Result<SessionRecord, InspectionError> {
+    let record = session_record(application, Some(pid), session)?;
+    let store = default_store()?;
     match reconcile(&store, session)? {
         Reconciliation::Active => Ok(record),
         Reconciliation::Revoked | Reconciliation::ProcessExited => Err(InspectionError::new(
@@ -95,7 +117,7 @@ pub(crate) fn view(
             (session, Op::Fonts, params)
         }
     };
-    validate_session(application, pid, session)?;
+    session_record(application, Some(pid), session)?;
     let store = default_store()?;
     native_request(&store, session, op, Value::Object(params)).map(Value::Object)
 }
@@ -105,7 +127,7 @@ pub(crate) fn native_windows(
     pid: Pid,
     session: &SessionId,
 ) -> Result<Value, InspectionError> {
-    validate_session(application, pid, session)?;
+    session_record(application, Some(pid), session)?;
     let store = default_store()?;
     native_request(&store, session, Op::Windows, json!({})).map(Value::Object)
 }

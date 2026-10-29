@@ -793,3 +793,226 @@ fn the_optional_session_does_not_change_an_unbound_request() {
     rejects(&["ui", "ax", "tree", "Notes", "--session"]);
     rejects(&["ui", "session", "preflight", "Notes", "--session", SESSION]);
 }
+
+#[cfg(target_os = "macos")]
+#[test]
+#[ignore = "requires vp run fixture:build and a hands-off macOS desktop"]
+fn proposal0005_preflight_rejects_ambiguous_running_fixture_instances_and_selects_pid() {
+    use std::path::Path;
+    use std::thread::sleep;
+    use std::time::{Duration, Instant};
+
+    struct Started(Vec<u32>);
+    impl Drop for Started {
+        fn drop(&mut self) {
+            for pid in &self.0 {
+                let _ = Command::new("/bin/kill").arg(pid.to_string()).status();
+            }
+        }
+    }
+
+    let bundle = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/fixtures/ReconFixture.app")
+        .canonicalize()
+        .expect("build the controlled AppKit fixture with vp run fixture:build");
+    let executable = bundle.join("Contents/MacOS/ReconFixture");
+    let running = || {
+        let output = Command::new("/usr/bin/pgrep")
+            .arg("-f")
+            .arg(&executable)
+            .output()
+            .expect("check for controlled fixture processes");
+        String::from_utf8(output.stdout)
+            .expect("process IDs are UTF-8")
+            .lines()
+            .map(|line| line.trim().parse::<u32>().expect("a numeric fixture process ID"))
+            .collect::<Vec<_>>()
+    };
+    assert!(running().is_empty(), "do not adopt or terminate an existing fixture instance");
+    let mut started = Started(Vec::new());
+    for count in 1..=2 {
+        let opened = Command::new("/usr/bin/open")
+            .args(["-g", "-n"])
+            .arg(&bundle)
+            .status()
+            .expect("launch a background fixture instance");
+        assert!(opened.success(), "open -g -n failed");
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            let pids = running();
+            started.0 = pids.clone();
+            if pids.len() == count {
+                break;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "expected {count} controlled instances, got {pids:?}"
+            );
+            sleep(Duration::from_millis(25));
+        }
+    }
+
+    let target = bundle.to_str().unwrap();
+    let response = recon(&["ui", "session", "preflight", target]);
+    assert!(!response.status.success(), "ambiguous preflight must fail, not return pid:null");
+    assert!(response.stdout.is_empty());
+    let failure: Value = serde_json::from_slice(&response.stderr).expect("typed CLI error");
+    assert_eq!(failure["error"]["code"], "AMBIGUOUS_INSTANCE", "{failure}");
+    let reported = failure["error"]["details"]["pids"].as_array().expect("candidate PIDs");
+    assert_eq!(reported.len(), 2);
+    for pid in &started.0 {
+        assert!(reported.contains(&json!(pid)), "the error must name each actual instance");
+        let selected = recon(&["ui", "session", "preflight", target, "--pid", &pid.to_string()]);
+        assert!(selected.status.success(), "{selected:?}");
+        let report: Value = serde_json::from_slice(&selected.stdout).unwrap();
+        assert_eq!(report["target"]["pid"], *pid);
+        assert_eq!(report["application"]["pid"], *pid);
+    }
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+#[ignore = "requires signed ReconFixture.app, signed loader and helper, and a hands-off macOS desktop"]
+fn proposal0005_session_selects_its_incarnation_among_two_running_instances() {
+    use std::path::Path;
+    use std::thread::sleep;
+    use std::time::{Duration, Instant};
+
+    struct Started(Vec<u32>);
+    impl Drop for Started {
+        fn drop(&mut self) {
+            for pid in &self.0 {
+                let _ = Command::new("/bin/kill").arg(pid.to_string()).status();
+            }
+        }
+    }
+
+    let bundle = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/fixtures/ReconFixture.app")
+        .canonicalize()
+        .expect("build the signed AppKit fixture with vp run fixture:build");
+    let executable = bundle.join("Contents/MacOS/ReconFixture");
+    let running = || {
+        let output =
+            Command::new("/usr/bin/pgrep").arg("-f").arg(&executable).output().expect("pgrep");
+        String::from_utf8(output.stdout)
+            .expect("numeric PIDs")
+            .lines()
+            .map(|line| line.parse::<u32>().expect("numeric PID"))
+            .collect::<Vec<_>>()
+    };
+    assert!(running().is_empty(), "do not adopt or terminate an existing fixture");
+    let mut started = Started(Vec::new());
+    for count in 1..=2 {
+        assert!(
+            Command::new("/usr/bin/open")
+                .args(["-g", "-n"])
+                .arg(&bundle)
+                .status()
+                .expect("launch background fixture")
+                .success()
+        );
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            let pids = running();
+            started.0 = pids.clone();
+            if pids.len() == count {
+                break;
+            }
+            assert!(Instant::now() < deadline, "expected {count} fixtures, got {pids:?}");
+            sleep(Duration::from_millis(25));
+        }
+    }
+    sleep(Duration::from_millis(300));
+
+    let home = tempfile::Builder::new().prefix("rcn").tempdir_in("/tmp").unwrap();
+    let screenshot = home.path().join("bound-session.png");
+    let screenshot = screenshot.to_str().expect("UTF-8 temporary path");
+    let target = bundle.to_str().unwrap();
+    let selected = started.0[0].to_string();
+    let other = started.0[1].to_string();
+    let run = |arguments: &[&str]| {
+        Command::new(env!("CARGO_BIN_EXE_recon"))
+            .args(arguments)
+            .env("HOME", home.path())
+            .output()
+            .expect("invoke recon against isolated session store")
+    };
+    let opened = run(&["ui", "session", "open", target, "--mode", "attach", "--pid", &selected]);
+    assert!(opened.status.success(), "open: {opened:?}");
+    let opened: Value = serde_json::from_slice(&opened.stdout).unwrap();
+    let session = opened["sessionId"].as_str().expect("minted session id");
+    assert_eq!(opened["identity"]["pid"], started.0[0], "{opened}");
+
+    let tree = run(&["ui", "view", "tree", target, "--session", session, "--depth", "0"]);
+    assert!(tree.status.success(), "session-bound native read: {tree:?}");
+    let tree: Value = serde_json::from_slice(&tree.stdout).unwrap();
+    assert_eq!(tree["observation"]["identity"]["pid"], started.0[0], "{tree}");
+
+    // Every consumer must bind the session before instance selection and before permissions.
+    for arguments in [
+        vec!["ui", "windows", target, "--session", session],
+        vec!["ui", "ax", "tree", target, "--session", session, "--depth", "0"],
+        vec![
+            "ui",
+            "screenshot",
+            target,
+            "--session",
+            session,
+            "--window",
+            "1",
+            "--out",
+            screenshot,
+        ],
+        vec!["ui", "correlate", target, "--session", session, "--window", "1"],
+    ] {
+        let output = run(&arguments);
+        if output.status.success() {
+            let response: Value = serde_json::from_slice(&output.stdout).unwrap();
+            let selected_pid = if arguments[1] == "correlate" {
+                &response["native"]["observation"]["identity"]["pid"]
+            } else if arguments[1] == "windows"
+                || arguments[1] == "screenshot"
+                || arguments[1] == "ax"
+            {
+                &response["application"]["pid"]
+            } else {
+                panic!("unexpected command: {arguments:?}");
+            };
+            assert_eq!(*selected_pid, json!(started.0[0]), "{arguments:?}: {response}");
+        } else {
+            let failure: Value = serde_json::from_slice(&output.stderr).expect("typed error");
+            assert_ne!(failure["error"]["code"], "AMBIGUOUS_INSTANCE", "{arguments:?}: {failure}");
+            assert_ne!(failure["error"]["code"], "STALE_SESSION", "{arguments:?}: {failure}");
+        }
+    }
+    for arguments in [
+        vec!["ui", "view", "tree", target, "--session", session, "--pid", &other],
+        vec!["ui", "windows", target, "--session", session, "--pid", &other],
+        vec!["ui", "ax", "tree", target, "--session", session, "--pid", &other],
+        vec![
+            "ui",
+            "screenshot",
+            target,
+            "--session",
+            session,
+            "--pid",
+            &other,
+            "--out",
+            screenshot,
+        ],
+        vec!["ui", "correlate", target, "--session", session, "--pid", &other, "--window", "1"],
+    ] {
+        let output = run(&arguments);
+        assert!(!output.status.success(), "wrong PID must fail: {arguments:?}: {output:?}");
+        assert!(output.stdout.is_empty(), "no success JSON on wrong PID: {arguments:?}");
+        let failure: Value = serde_json::from_slice(&output.stderr).expect("typed error");
+        assert_eq!(failure["error"]["code"], "STALE_SESSION", "{arguments:?}: {failure}");
+    }
+    let closed = run(&["ui", "session", "close", session]);
+    assert!(closed.status.success(), "close: {closed:?}");
+    let stale = run(&["ui", "view", "tree", target, "--session", session, "--depth", "0"]);
+    assert!(!stale.status.success(), "closed session must not read any running instance");
+    let failure: Value = serde_json::from_slice(&stale.stderr).expect("typed stale-session error");
+    assert_eq!(failure["error"]["code"], "STALE_SESSION", "{failure}");
+}

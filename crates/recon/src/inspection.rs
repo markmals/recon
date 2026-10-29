@@ -16,7 +16,8 @@ mod transport;
 pub use error::{InspectionError, InspectionErrorCode, Stage};
 pub use identity::{AccessProfile, AcquisitionMode, Capability, Incarnation, SessionId};
 pub use session::{
-    CloseOutcome, OpenOutcome, OpenRequest, Reconciliation, close, native_request, open, reconcile,
+    CloseOutcome, OpenOutcome, OpenRequest, Reconciliation, close, close_until, native_request,
+    open, open_until, reconcile,
 };
 pub use store::{SessionRecord, SessionState, SessionStore, UnresolvedExecution};
 pub use transport::{

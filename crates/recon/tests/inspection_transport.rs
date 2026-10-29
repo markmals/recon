@@ -12,19 +12,22 @@ use std::io::{Read, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::{JoinHandle, sleep};
 use std::time::{Duration, Instant};
 
+use proptest::prelude::*;
 use serde_json::{Map, Value, json};
 use tempfile::TempDir;
 
 use recon::inspection::{
-    AccessProfile, AcquisitionMode, Capability, CloseOutcome, Incarnation, InspectionErrorCode,
-    MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES, Op, OpenRequest, Reconciliation, SessionId,
-    SessionRecord, SessionState, SessionStore, Stage, close, current_incarnation,
-    decode_frame_length, encode_frame, native_request, open, reconcile,
+    AccessProfile, AcquisitionMode, Capability, CloseOutcome, Connection, Incarnation,
+    InspectionErrorCode, MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES, Op, OpenRequest, Reconciliation,
+    SessionId, SessionRecord, SessionState, SessionStore, Stage, close, close_until,
+    current_incarnation, decode_frame_length, encode_frame, native_request, open, open_until,
+    reconcile,
 };
 
 const PROTOCOL: u32 = 1;
@@ -44,6 +47,8 @@ enum Reply {
     Raw(Vec<u8>),
     /// Wait, then answer. Used to let a read deadline expire with work still dispatched.
     Delayed(Duration, Value),
+    /// Send the length and body in separate reads to expose a reset per-read timeout.
+    Split { header_after: Duration, body_after: Duration, value: Value },
     /// Close the connection without answering, like a helper that died mid-close.
     Hangup,
 }
@@ -141,6 +146,13 @@ fn serve(
         Reply::Delayed(delay, value) => {
             sleep(delay);
             let _ = stream.write_all(&frame(&value));
+        }
+        Reply::Split { header_after, body_after, value } => {
+            let bytes = frame(&value);
+            sleep(header_after);
+            let _ = stream.write_all(&bytes[..4]);
+            sleep(body_after);
+            let _ = stream.write_all(&bytes[4..]);
         }
         Reply::Hangup => {}
     }
@@ -358,6 +370,112 @@ fn a_helper_failure_envelope_keeps_its_published_classification() {
         .expect_err("the helper refused");
     assert_eq!(failure.code(), InspectionErrorCode::Busy);
     assert!(failure.message().contains("another session"), "{failure}");
+}
+
+#[test]
+fn a_composite_open_deadline_bounds_the_helper_round_trip() {
+    let fixture = Fixture::new();
+    let incarnation = fixture.incarnation;
+    let _helper = Helper::start(
+        &fixture.endpoint,
+        always(move |_| {
+            Reply::Delayed(
+                Duration::from_millis(250),
+                open_reply(incarnation, SESSION_A, CAPABILITY_A, false),
+            )
+        }),
+    );
+    let started = Instant::now();
+    let failure = open_until(
+        &fixture.store,
+        &fixture.open_request(AcquisitionMode::Existing),
+        started + Duration::from_millis(40),
+    )
+    .expect_err("the helper cannot take a fresh ten seconds after setup");
+    assert_eq!(failure.code(), InspectionErrorCode::Timeout);
+    assert!(started.elapsed() < Duration::from_millis(180), "{:?}", started.elapsed());
+}
+
+#[test]
+fn a_split_open_response_cannot_extend_the_absolute_deadline() {
+    let fixture = Fixture::new();
+    let incarnation = fixture.incarnation;
+    let _helper = Helper::start(
+        &fixture.endpoint,
+        always(move |_| Reply::Split {
+            header_after: Duration::from_millis(100),
+            body_after: Duration::from_millis(250),
+            value: open_reply(incarnation, SESSION_A, CAPABILITY_A, false),
+        }),
+    );
+    let started = Instant::now();
+    let failure = open_until(
+        &fixture.store,
+        &fixture.open_request(AcquisitionMode::Existing),
+        started + Duration::from_millis(300),
+    )
+    .expect_err("a response split across reads must respect one deadline");
+    assert_eq!(failure.code(), InspectionErrorCode::Timeout);
+}
+
+#[test]
+fn a_full_send_buffer_cannot_block_past_the_open_deadline() {
+    let fixture = Fixture::new();
+    let listener = UnixListener::bind(&fixture.endpoint).expect("bind controlled endpoint");
+    fs::set_permissions(&fixture.endpoint, fs::Permissions::from_mode(0o600))
+        .expect("owner-only endpoint");
+    let server = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept host connection");
+        sleep(Duration::from_millis(300));
+        let mut buffer = [0_u8; 64 * 1024];
+        let _ = stream.read(&mut buffer);
+    });
+    let mut connection = Connection::connect(&fixture.endpoint).expect("connect to same-user peer");
+    let started = Instant::now();
+    let failure = connection
+        .request_until(
+            Op::Open,
+            json!({ "padding": "x".repeat(MAX_REQUEST_BYTES - 1024) }),
+            started + Duration::from_millis(50),
+        )
+        .expect_err("an unread request must not block a live open");
+    assert!(started.elapsed() < Duration::from_millis(200), "{:?}", started.elapsed());
+    assert_eq!(failure.code(), InspectionErrorCode::Timeout);
+    server.join().expect("controlled server finished");
+}
+
+#[test]
+fn a_composite_open_deadline_includes_uncertain_close_reconciliation() {
+    let fixture = Fixture::new();
+    let record = SessionRecord {
+        socket_path: fixture.endpoint.clone(),
+        ..record_for(fixture.incarnation, SESSION_A, CAPABILITY_A, SessionState::CloseUnconfirmed)
+    };
+    fixture.store.insert(&record).expect("record uncertain close");
+    let _helper = Helper::start(
+        &fixture.endpoint,
+        always(|_| {
+            Reply::Delayed(
+                Duration::from_millis(250),
+                json!({
+                    "ok": true,
+                    "protocol": PROTOCOL,
+                    "helperBuild": HELPER_BUILD,
+                    "active": false,
+                    "outstandingRead": false
+                }),
+            )
+        }),
+    );
+    let started = Instant::now();
+    let failure = open_until(
+        &fixture.store,
+        &fixture.open_request(AcquisitionMode::Existing),
+        started + Duration::from_millis(40),
+    )
+    .expect_err("reconciliation cannot reset the open budget");
+    assert_eq!(failure.code(), InspectionErrorCode::Timeout);
+    assert!(started.elapsed() < Duration::from_millis(180), "{:?}", started.elapsed());
 }
 
 #[test]
@@ -657,6 +775,162 @@ fn a_handshake_answering_for_another_process_cannot_establish_a_session() {
     assert_eq!(failure.stage(), Stage::Handshake);
 }
 
+#[test]
+fn proposal_0005_helper_free_open_does_not_claim_a_session_before_authentication() {
+    let fixture = Fixture::new();
+    let missing = open(&fixture.store, &fixture.open_request(AcquisitionMode::Attach))
+        .expect_err("an absent helper cannot authenticate a session");
+    assert_eq!(missing.stage(), Stage::Connect);
+    assert!(fixture.store.records().expect("read descriptors").is_empty());
+    let reopened = SessionStore::open(fixture.store.root()).expect("reopen the owner-private root");
+    assert!(reopened.records().expect("read persisted descriptors").is_empty());
+}
+
+// --- per-incarnation attach ownership ---
+
+#[test]
+fn proposal_0005_attach_lock_refuses_a_concurrent_owner_and_survives_reopen() {
+    let fixture = Fixture::new();
+    let first = fixture.store.lock_lifecycle(fixture.incarnation).expect("claim the incarnation");
+    let reopened = SessionStore::open(fixture.store.root()).expect("another CLI opens the store");
+    let contender = std::thread::spawn(move || {
+        reopened.lock_lifecycle(fixture.incarnation).expect_err("the first CLI still owns it")
+    });
+    let failure = contender.join().expect("contender finishes without waiting for the loader");
+    assert_eq!(failure.code(), InspectionErrorCode::Busy);
+    drop(first);
+
+    let reopened = SessionStore::open(fixture.store.root()).expect("open the store again");
+    let _next =
+        reopened.lock_lifecycle(fixture.incarnation).expect("a released lock can be claimed");
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig {
+        cases: 16,
+        failure_persistence: None,
+        ..ProptestConfig::default()
+    })]
+
+    #[test]
+    fn proposal_0005_lifecycle_lock_is_unique_for_any_incarnation(
+        pid in 1_i32..100_000,
+        generation in any::<u32>(),
+    ) {
+        let fixture = Fixture::new();
+        let incarnation = Incarnation::new(pid, generation);
+        let first = fixture.store.lock_lifecycle(incarnation).expect("claim an incarnation");
+        let second = SessionStore::open(fixture.store.root()).expect("independent CLI store");
+        prop_assert_eq!(
+            second.lock_lifecycle(incarnation).expect_err("same incarnation is occupied").code(),
+            InspectionErrorCode::Busy,
+        );
+        let successor = Incarnation::new(pid, generation.wrapping_add(1));
+        let _unrelated = second.lock_lifecycle(successor).expect("a new incarnation is independent");
+        drop(first);
+    }
+}
+
+#[test]
+fn proposal_0005_attach_reservation_survives_store_reopen_until_a_session_is_durable() {
+    let fixture = Fixture::new();
+    let executable = Path::new("/System/Applications/TextEdit.app/Contents/MacOS/TextEdit");
+    fixture.store.reserve_attach(fixture.incarnation, executable).expect("reserve before loading");
+    drop(fixture.store.lock_lifecycle(fixture.incarnation).expect("a CLI may exit"));
+
+    let reopened = SessionStore::open(fixture.store.root()).expect("a later CLI opens the store");
+    assert_eq!(
+        reopened.attach_reservation(fixture.incarnation).expect("read the reservation").as_deref(),
+        Some(executable),
+    );
+    assert_eq!(
+        reopened
+            .reserve_attach(fixture.incarnation, executable)
+            .expect_err("never reinject")
+            .code(),
+        InspectionErrorCode::Busy,
+    );
+    assert!(
+        reopened.complete_attach(fixture.incarnation).is_err(),
+        "the reservation cannot be cleared before a session is recorded",
+    );
+    reopened
+        .insert(&record_for(fixture.incarnation, SESSION_A, CAPABILITY_A, SessionState::Active))
+        .expect("authenticated handshake records the session");
+    reopened.complete_attach(fixture.incarnation).expect("the recorded session resolves the claim");
+    assert!(
+        reopened
+            .attach_reservation(fixture.incarnation)
+            .expect("read the resolved reservation")
+            .is_none(),
+    );
+}
+
+#[test]
+fn reserve_attach_does_not_leave_a_partial_marker_after_write_failure() {
+    if let Some(root) = std::env::var_os("RECON_TEST_ATTACH_FAULT_ROOT") {
+        let store = SessionStore::open(PathBuf::from(root)).expect("open private store");
+        let incarnation = current_incarnation().expect("bind the child process");
+        // SAFETY: this limit and signal disposition affect only the isolated test child.
+        unsafe {
+            assert_ne!(libc::signal(libc::SIGXFSZ, libc::SIG_IGN), libc::SIG_ERR);
+            let mut limit = std::mem::MaybeUninit::<libc::rlimit>::uninit();
+            assert_eq!(libc::getrlimit(libc::RLIMIT_FSIZE, limit.as_mut_ptr()), 0);
+            let mut limit = limit.assume_init();
+            limit.rlim_cur = 8;
+            assert_eq!(libc::setrlimit(libc::RLIMIT_FSIZE, &limit), 0);
+        }
+        let failed = store.reserve_attach(
+            incarnation,
+            Path::new("/System/Applications/TextEdit.app/Contents/MacOS/TextEdit"),
+        );
+        assert_eq!(
+            failed.expect_err("file-size limit stops the reservation write").code(),
+            InspectionErrorCode::Unavailable
+        );
+        assert!(
+            matches!(store.attach_reservation(incarnation), Ok(None)),
+            "the loader never ran; the failed marker must not block a later open"
+        );
+        return;
+    }
+
+    let root = TempDir::new().expect("isolated store root");
+    let child = Command::new(std::env::current_exe().expect("test binary"))
+        .args([
+            "--exact",
+            "reserve_attach_does_not_leave_a_partial_marker_after_write_failure",
+            "--nocapture",
+        ])
+        .env("RECON_TEST_ATTACH_FAULT_ROOT", root.path().join("inspection"))
+        .output()
+        .expect("run isolated file-size fault");
+    assert!(
+        child.status.success(),
+        "stdout: {}; stderr: {}",
+        String::from_utf8_lossy(&child.stdout),
+        String::from_utf8_lossy(&child.stderr),
+    );
+}
+
+#[test]
+fn saving_a_session_does_not_unlink_another_writers_in_progress_descriptor() {
+    let fixture = Fixture::new();
+    let record = record_for(fixture.incarnation, SESSION_A, CAPABILITY_A, SessionState::Active);
+    fixture.store.insert(&record).expect("record an active session");
+    let other_writer =
+        fixture.store.root().join("sessions").join(format!("{}.json.tmp", record.session_id));
+    fs::write(&other_writer, b"in-progress descriptor").expect("another writer's temporary file");
+
+    fixture.store.save(&record).expect("save without clobbering another writer's work");
+
+    assert_eq!(
+        fs::read(other_writer).expect("other writer still owns its file"),
+        b"in-progress descriptor"
+    );
+    assert_eq!(fixture.store.record(&record.session_id).unwrap(), Some(record));
+}
+
 // --- session state ---
 
 #[test]
@@ -798,6 +1072,86 @@ fn a_lost_close_acknowledgment_keeps_the_session_recoverable() {
     let refused = native_request(&fixture.store, &record.session_id, Op::Tree, json!({}))
         .expect_err("reads wait for certainty");
     assert_eq!(refused.code(), InspectionErrorCode::Busy);
+}
+
+#[test]
+fn an_uncertain_close_shares_one_budget_between_reconcile_and_revoke() {
+    let fixture = Fixture::new();
+    let record = SessionRecord {
+        socket_path: fixture.endpoint.clone(),
+        ..record_for(fixture.incarnation, SESSION_A, CAPABILITY_A, SessionState::CloseUnconfirmed)
+    };
+    fixture.store.insert(&record).expect("record an uncertain close");
+    let _helper = Helper::start(
+        &fixture.endpoint,
+        always(|request| match request["op"].as_str() {
+            Some("reconcile") => Reply::Delayed(
+                Duration::from_millis(100),
+                json!({
+                    "ok": true,
+                    "protocol": PROTOCOL,
+                    "helperBuild": HELPER_BUILD,
+                    "active": true,
+                    "sessionId": SESSION_A,
+                    "outstandingRead": false
+                }),
+            ),
+            Some("close") => {
+                Reply::Delayed(Duration::from_millis(200), json!({ "ok": true, "wasActive": true }))
+            }
+            other => panic!("unexpected helper operation: {other:?}"),
+        }),
+    );
+    let started = Instant::now();
+    let outcome =
+        close_until(&fixture.store, &record.session_id, started + Duration::from_millis(250))
+            .expect("a lost acknowledgment remains an explicit uncertain outcome");
+    let CloseOutcome::Unconfirmed(cause) = outcome else {
+        panic!("the close exceeded its composite deadline: {outcome:?}");
+    };
+    assert_eq!(cause.code(), InspectionErrorCode::Timeout);
+    assert_eq!(
+        fixture.store.record(&record.session_id).unwrap().unwrap().state,
+        SessionState::CloseUnconfirmed
+    );
+}
+
+#[test]
+fn reconciliation_cannot_rewrite_a_record_while_close_owns_its_incarnation() {
+    let fixture = Fixture::new();
+    let record = SessionRecord {
+        socket_path: fixture.endpoint.clone(),
+        ..record_for(fixture.incarnation, SESSION_A, CAPABILITY_A, SessionState::Active)
+    };
+    fixture.store.insert(&record).expect("record an active session");
+    let _helper = Helper::start(
+        &fixture.endpoint,
+        always(|_| {
+            Reply::Json(json!({
+                "ok": true,
+                "protocol": PROTOCOL,
+                "helperBuild": HELPER_BUILD,
+                "active": false,
+                "sessionId": SESSION_A,
+                "outstandingRead": false
+            }))
+        }),
+    );
+    let owned_by_close =
+        fixture.store.lock_lifecycle(fixture.incarnation).expect("close owns lock");
+    let failure = reconcile(&fixture.store, &record.session_id)
+        .expect_err("preflight cannot reconcile while close holds the lifecycle lock");
+    assert_eq!(failure.code(), InspectionErrorCode::Busy);
+    assert_eq!(
+        fixture.store.record(&record.session_id).unwrap().unwrap().state,
+        SessionState::Active
+    );
+    owned_by_close.unlock().expect("release close's lifecycle lock");
+    drop(owned_by_close);
+    assert!(matches!(
+        reconcile(&fixture.store, &record.session_id).unwrap(),
+        Reconciliation::Revoked
+    ));
 }
 
 #[test]

@@ -10,9 +10,9 @@ use crate::ui::request::{
     MAX_NATIVE_DEPTH, MAX_NATIVE_LIMIT, TraversalKind,
 };
 use crate::ui::response::{
-    CloseResponse, CorrelateResponse, NativeFontsResponse, NativeNodeResponse, NativeNodesResponse,
-    OpenResponse, PreflightResponse, PrepareHostResponse, ScreenshotResponse, TreeResponse,
-    WindowsResponse,
+    ConfirmedClose, CorrelateResponse, NativeFontsResponse, NativeNodeResponse,
+    NativeNodesResponse, OpenResponse, PreflightResponse, PrepareHostResponse, ScreenshotResponse,
+    TreeResponse, WindowsResponse,
 };
 use crate::ui::tree::MAX_DEPTH;
 
@@ -386,7 +386,7 @@ pub fn registry() -> Vec<CommandSpec> {
         specification(
             &["ui", "session", "close"],
             "Close one inspection session",
-            "Revoke the session capability, end its inspection channel, and drop its handles. It leaves the target running, reports resident helper code separately, and reports an unacknowledged teardown as unconfirmed rather than inventing success.",
+            "Revoke the session capability, end its inspection channel, and drop its handles. It leaves the target running, reports resident helper code separately, and fails with a typed error if teardown is unconfirmed.",
             vec![
                 Arg::new("session")
                     .value_name("SESSION")
@@ -394,7 +394,7 @@ pub fn registry() -> Vec<CommandSpec> {
                     .value_parser(native::session_parser())
                     .help("The session to close, written as 32 lowercase hex digits"),
             ],
-            output_schema::<CloseResponse>,
+            output_schema::<ConfirmedClose>,
         ),
         specification(
             &["ui", "view", "tree"],

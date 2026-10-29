@@ -1,12 +1,12 @@
 //! What `NSWorkspace` knows: which applications are running, and how to launch one.
 
-use std::path::{Path, PathBuf};
-use std::sync::mpsc;
-
 use block2::RcBlock;
 use objc2_app_kit::{NSRunningApplication, NSWorkspace, NSWorkspaceOpenConfiguration};
 use objc2_foundation::{NSError, NSString, NSURL};
 use serde_json::json;
+use std::path::{Path, PathBuf};
+use std::sync::mpsc::{self, RecvTimeoutError};
+use std::time::Instant;
 
 use crate::application::Pid;
 use crate::error::{ErrorCode, Failure};
@@ -56,15 +56,22 @@ impl Refusal {
 ///
 /// [`ErrorCode::LaunchFailed`], naming in its details which step did not happen.
 pub(super) fn launch(path: &Path) -> Result<Pid, Failure> {
-    launch_with_activation(path, true)
+    launch_with_activation(path, true, None)
 }
 
 /// Starts exactly `path` without requesting activation or substituting another running copy.
-pub(super) fn launch_background(path: &Path) -> Result<Pid, Failure> {
-    launch_with_activation(path, false)
+pub(super) fn launch_background(path: &Path, deadline: Instant) -> Result<Pid, Failure> {
+    launch_with_activation(path, false, Some(deadline))
 }
 
-fn launch_with_activation(path: &Path, activates: bool) -> Result<Pid, Failure> {
+fn launch_with_activation(
+    path: &Path,
+    activates: bool,
+    deadline: Option<Instant>,
+) -> Result<Pid, Failure> {
+    if deadline.is_some_and(|limit| Instant::now() >= limit) {
+        return Err(background_launch_timeout(path));
+    }
     let Some(path_string) = path.to_str() else {
         return Err(launch_failure(
             path,
@@ -103,14 +110,27 @@ fn launch_with_activation(path: &Path, activates: bool) -> Result<Pid, Failure> 
         &configuration,
         Some(&completion),
     );
-    let opened = receiver.recv().map_err(|error| {
-        launch_failure(
-            path,
-            "callback-failed",
-            Some(error.to_string()),
-            format!("macOS launch callback failed: {error}"),
-        )
-    })?;
+    let opened = match deadline {
+        Some(limit) => receiver
+            .recv_timeout(limit.saturating_duration_since(Instant::now()))
+            .map_err(|error| match error {
+                RecvTimeoutError::Timeout => background_launch_timeout(path),
+                RecvTimeoutError::Disconnected => launch_failure(
+                    path,
+                    "callback-failed",
+                    Some(error.to_string()),
+                    format!("macOS launch callback failed: {error}"),
+                ),
+            })?,
+        None => receiver.recv().map_err(|error| {
+            launch_failure(
+                path,
+                "callback-failed",
+                Some(error.to_string()),
+                format!("macOS launch callback failed: {error}"),
+            )
+        })?,
+    };
     opened.map_err(|refusal| {
         let (reason, detail, sentence) = refusal.parts();
         launch_failure(
@@ -120,6 +140,17 @@ fn launch_with_activation(path: &Path, activates: bool) -> Result<Pid, Failure> 
             format!("cannot launch {}: {sentence}", path.display()),
         )
     })
+}
+
+fn background_launch_timeout(path: &Path) -> Failure {
+    Failure::new(
+        ErrorCode::InspectionTimeout,
+        format!(
+            "the inspection open deadline expired while starting {}; launch may still finish",
+            path.display()
+        ),
+        json!({ "detail": "LaunchServices callback did not complete within the open budget" }),
+    )
 }
 
 fn launch_failure(path: &Path, reason: &str, detail: Option<String>, message: String) -> Failure {
@@ -137,6 +168,7 @@ fn launch_failure(path: &Path, reason: &str, detail: Option<String>, message: St
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::{Duration, Instant};
 
     #[test]
     fn each_refusal_names_the_step_that_did_not_happen() {
@@ -176,5 +208,14 @@ mod tests {
                 "detail": "The application is damaged",
             })
         );
+    }
+    #[test]
+    fn expired_session_open_budget_never_starts_a_background_application() {
+        let failure = launch_background(
+            Path::new("/Applications/Nonexistent.app"),
+            Instant::now() - Duration::from_millis(1),
+        )
+        .expect_err("an expired open must stop before LaunchServices is called");
+        assert_eq!(failure.code, ErrorCode::InspectionTimeout);
     }
 }

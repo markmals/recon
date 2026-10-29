@@ -1,3 +1,6 @@
+use std::fs::{self, File, OpenOptions};
+use std::os::fd::AsRawFd;
+use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -73,6 +76,13 @@ pub(crate) struct HelperFacts {
     pub(crate) inspector_thread_set_state: Fact<bool>,
 }
 
+#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ProfileHelperFacts {
+    pub(crate) standard: HelperFacts,
+    pub(crate) research: HelperFacts,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) enum AccessMode {
@@ -107,7 +117,7 @@ pub(crate) struct ModeDecision {
 pub(crate) struct PreflightReport {
     pub(crate) target: TargetFacts,
     pub(crate) host: HostFacts,
-    pub(crate) helper: HelperFacts,
+    pub(crate) helper: ProfileHelperFacts,
     pub(crate) decisions: Vec<ModeDecision>,
 }
 
@@ -135,6 +145,7 @@ pub(crate) trait CommandRunner {
 #[derive(Clone, Debug, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HostPreparation {
+    pub(crate) changed: bool,
     pub(crate) boot_args: String,
     pub(crate) operator_steps: String,
 }
@@ -335,9 +346,67 @@ fn read_recon_added<R: CommandRunner>(runner: &mut R) -> Result<Option<Vec<Strin
     Ok(Some(rest.split_whitespace().map(str::to_owned).collect()))
 }
 
-pub(crate) fn prepare_host<R: CommandRunner>(runner: &mut R) -> Result<HostPreparation, String> {
+fn lock_host_preparation(root: &Path) -> Result<File, String> {
+    // SAFETY: geteuid reads the caller's effective UID without pointer arguments.
+    let owner_uid = unsafe { libc::geteuid() };
+    let directory = fs::symlink_metadata(root)
+        .map_err(|error| format!("cannot inspect the host-preparation lock directory: {error}"))?;
+    if !directory.is_dir()
+        || directory.permissions().mode() & 0o777 != 0o700
+        || directory.uid() != owner_uid
+    {
+        return Err("the host-preparation lock directory is not owner-private".into());
+    }
+
+    // Keep this inode permanently: unlinking it could let another process lock a different inode.
+    let path = root.join("prepare-host.lock");
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW)
+        .open(&path)
+        .map_err(|error| format!("cannot open the host-preparation lock: {error}"))?;
+    let metadata = file
+        .metadata()
+        .map_err(|error| format!("cannot inspect the host-preparation lock: {error}"))?;
+    let named = fs::symlink_metadata(&path)
+        .map_err(|error| format!("cannot inspect the host-preparation lock path: {error}"))?;
+    if !metadata.is_file()
+        || metadata.permissions().mode() & 0o777 != 0o600
+        || metadata.uid() != owner_uid
+        || metadata.dev() != named.dev()
+        || metadata.ino() != named.ino()
+    {
+        return Err("the host-preparation lock is not an owner-private regular file".into());
+    }
+    // SAFETY: flock uses the live file descriptor; File's drop releases the lock on every exit.
+    if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX) } != 0 {
+        return Err(format!(
+            "cannot acquire the host-preparation lock: {}",
+            std::io::Error::last_os_error()
+        ));
+    }
+    Ok(file)
+}
+
+pub(crate) fn prepare_host<R: CommandRunner>(
+    runner: &mut R,
+    root: &Path,
+    disclosed_boot_args: &str,
+) -> Result<HostPreparation, String> {
+    let _lock = lock_host_preparation(root)?;
     let prior = read_configured_boot_args(runner)?;
     let boot_args = add_research_boot_args(&prior);
+    if boot_args != disclosed_boot_args {
+        return Err(
+            "the research boot-arg plan changed after confirmation; no changes were made. \
+             Run prepare-host again and confirm the new plan"
+                .into(),
+        );
+    }
 
     // A pre-existing record is kept untouched: re-running prepare-host must not relabel an operator
     // argument as one Recon added. An unreadable record aborts rather than overwriting ownership
@@ -376,15 +445,20 @@ pub(crate) fn prepare_host<R: CommandRunner>(runner: &mut R) -> Result<HostPrepa
             ));
         }
     }
-    Ok(HostPreparation { boot_args, operator_steps: OPERATOR_STEPS.into() })
+    Ok(HostPreparation { changed: true, boot_args, operator_steps: OPERATOR_STEPS.into() })
 }
 
-pub(crate) fn revert_host<R: CommandRunner>(runner: &mut R) -> Result<HostPreparation, String> {
+pub(crate) fn revert_host<R: CommandRunner>(
+    runner: &mut R,
+    root: &Path,
+) -> Result<HostPreparation, String> {
+    let _lock = lock_host_preparation(root)?;
     let current = read_configured_boot_args(runner)?;
     // Without a record of what Recon added, do nothing: removing arguments Recon cannot prove it set
     // would clobber the operator's configuration. An unreadable record aborts rather than guesses.
     let Some(recorded) = read_recon_added(runner)? else {
         return Ok(HostPreparation {
+            changed: false,
             boot_args: current,
             operator_steps:
                 "No Recon research boot-arg record was found, so nothing was reverted. \
@@ -430,7 +504,12 @@ pub(crate) fn revert_host<R: CommandRunner>(runner: &mut R) -> Result<HostPrepar
             }
         }
     }
-    Ok(HostPreparation { boot_args, operator_steps: "Reboot to apply the reverted boot-args. To re-enable SIP: shut down, enter macOS Recovery by holding the power button until startup options appear; choose Options > Continue; open Utilities > Terminal; run `csrutil enable`; reboot.".into() })
+    let operator_steps = if removed_any {
+        "Reboot to apply the reverted boot-args. To re-enable SIP: shut down, enter macOS Recovery by holding the power button until startup options appear; choose Options > Continue; open Utilities > Terminal; run `csrutil enable`; reboot."
+    } else {
+        "No recorded research boot-args remained, so no boot-arg reboot is needed. To re-enable SIP: shut down, enter macOS Recovery by holding the power button until startup options appear; choose Options > Continue; open Utilities > Terminal; run `csrutil enable`; reboot."
+    };
+    Ok(HostPreparation { changed: removed_any, boot_args, operator_steps: operator_steps.into() })
 }
 
 fn require(
@@ -486,19 +565,23 @@ fn supported_architecture(decision: &mut ModeDecision, architecture: &Fact<Strin
 pub(crate) fn evaluate(
     target: &TargetFacts,
     host: &HostFacts,
-    helper: &HelperFacts,
+    helpers: &ProfileHelperFacts,
 ) -> Vec<ModeDecision> {
-    evaluate_with_authorization(target, host, helper, false)
+    evaluate_with_authorization(target, host, helpers, false)
 }
 
 pub(crate) fn evaluate_with_authorization(
     target: &TargetFacts,
     host: &HostFacts,
-    helper: &HelperFacts,
+    helpers: &ProfileHelperFacts,
     allow_authorization: bool,
 ) -> Vec<ModeDecision> {
     let mut decisions = Vec::with_capacity(6);
     for profile in [AccessProfile::Standard, AccessProfile::Research] {
+        let helper = match profile {
+            AccessProfile::Standard => &helpers.standard,
+            AccessProfile::Research => &helpers.research,
+        };
         for mode in [AccessMode::Existing, AccessMode::Launch, AccessMode::Attach] {
             let mut decision = ModeDecision {
                 mode,
@@ -539,25 +622,6 @@ pub(crate) fn evaluate_with_authorization(
                     "local helper",
                     "helper build/protocol mismatch",
                 );
-                decision.evidence_sources.extend([
-                    target.hardened_runtime.source.clone(),
-                    target.allow_dyld_environment_variables.source.clone(),
-                ]);
-                match (target.hardened_runtime.value, target.allow_dyld_environment_variables.value)
-                {
-                    (Some(false), _) | (Some(true), Some(true)) => {}
-                    (Some(true), Some(false)) => reject(
-                        &mut decision,
-                        "hardened runtime rejects DYLD injection without allow-dyld-environment-variables; attach explicitly instead",
-                    ),
-                    _ if decision.status != Eligibility::Blocked => {
-                        decision.status = Eligibility::Unknown;
-                        decision
-                            .reasons
-                            .push("launch DYLD injection eligibility cannot be established".into());
-                    }
-                    _ => {}
-                }
             } else {
                 if target.pid.is_none()
                     || !target.pid.is_some_and(|pid| target.running_pids.contains(&pid))
@@ -617,6 +681,28 @@ pub(crate) fn evaluate_with_authorization(
                             "requires explicit --allow-authorization before a possible dialog",
                         );
                     }
+                }
+            }
+            if profile == AccessProfile::Standard && mode != AccessMode::Existing {
+                decision.evidence_sources.push(target.library_validation.source.clone());
+                match target.library_validation.value {
+                    Some(false) => {}
+                    Some(true) => {
+                        if decision.status != Eligibility::Blocked {
+                            decision.status = Eligibility::Unknown;
+                        }
+                        decision.reasons.push(
+                            "library validation compatibility with the selected helper is unverified"
+                                .into(),
+                        );
+                    }
+                    None if decision.status != Eligibility::Blocked => {
+                        decision.status = Eligibility::Unknown;
+                        decision
+                            .reasons
+                            .push("target library validation status could not be read".into());
+                    }
+                    None => {}
                 }
             }
             let system_bundle = target.bundle_path.starts_with("/System/");
@@ -900,7 +986,7 @@ fn signing_facts<R: CommandRunner>(
 pub(crate) fn collect_preflight<R: CommandRunner>(
     runner: &mut R,
     selection: TargetSelection,
-    helper: HelperFacts,
+    helpers: ProfileHelperFacts,
 ) -> PreflightReport {
     let host = host_status(runner);
     let pid = selection
@@ -1013,8 +1099,8 @@ pub(crate) fn collect_preflight<R: CommandRunner>(
             }
         }
     }
-    let decisions = evaluate(&target, &host, &helper);
-    PreflightReport { target, host, helper, decisions }
+    let decisions = evaluate(&target, &host, &helpers);
+    PreflightReport { target, host, helper: helpers, decisions }
 }
 
 impl<T> Fact<T> {

@@ -72,20 +72,15 @@ pub(super) struct Scope {
     /// The instance the request selected, when it names one. Evidence about this process is
     /// attributable to the operation; evidence about any other process is not.
     pub(super) target: Option<Pid>,
-    /// Whether decision.0002's setup prompts are expected for this request, as they are for an
-    /// explicitly authorized debugger attach. A macOS authorization dialog interrupts the desktop
-    /// by design, and that interruption is the retained setup exception rather than a failure of
-    /// the operation. A request that fails because a prerequisite is missing is excused anyway:
-    /// the guard never replaces an operation's own typed failure.
+    /// An expected macOS setup prompt may interrupt the desktop; it does not excuse target
+    /// activation, pointer movement, input redirection, or Space changes.
     pub(super) setup_prompts_expected: bool,
 }
 
 /// Runs `operation` while the guard watches, and refuses to return a success the Mac contradicts.
 ///
-/// A failed operation keeps its own typed failure: it already reported why it failed, and a
-/// disturbance describes effects rather than a second cause. A successful operation that
-/// disturbed the user's foreground work becomes [`ErrorCode::UiInterference`] instead; nothing is
-/// retried, and nothing is put back.
+/// Observed interference is reported even when the operation also fails. The error message
+/// retains that failure's cause; no attempt is retried or its effects undone.
 ///
 /// # Errors
 ///
@@ -99,11 +94,7 @@ pub(super) fn guarded<T>(
     let guard = Guard::start(scope)?;
     let result = operation();
     let observation = guard.finish();
-    let value = result?;
-    match observation.outcome() {
-        Some(failure) => Err(failure),
-        None => Ok(value),
-    }
+    observation.resolve(result)
 }
 
 /// A running watch over one operation. A guard that is dropped instead of finished stops the
@@ -220,6 +211,21 @@ impl Observation {
             .filter(|disturbance| disturbance.attribution.reportable())
             .min_by_key(|disturbance| (disturbance.attribution.rank(), disturbance.at))?;
         Some(reportable.failure(&self.scope))
+    }
+
+    fn resolve<T>(&self, result: Result<T, Failure>) -> Result<T, Failure> {
+        match (result, self.outcome()) {
+            (Ok(value), None) => Ok(value),
+            (Err(error), None) => Err(error),
+            (Ok(_), Some(interference)) => Err(interference),
+            (Err(error), Some(mut interference)) => {
+                interference.message = format!(
+                    "{}; the operation also failed with {:?}: {}",
+                    interference.message, error.code, error.message
+                );
+                Err(interference)
+            }
+        }
     }
 }
 
@@ -739,8 +745,7 @@ fn window_order(
         return;
     }
 
-    // A window the target put on screen is the target presenting UI, which observation must never
-    // cause.
+    // A target-owned window may have appeared in response to a person's input, not this read.
     if let Some(target) = target
         && let Some(opened) = current.windows.iter().find(|window| {
             window.owner == target
@@ -751,7 +756,7 @@ fn window_order(
             found,
             Disturbance::new(
                 InterferenceEvidence::KeyWindow,
-                Attribution::Target,
+                attribute(Some(target), Some(target), previous, current),
                 current.at,
                 &format!("window {} appeared on screen", opened.id),
             )
@@ -861,11 +866,11 @@ fn attribute(
     previous: &Snapshot,
     current: &Snapshot,
 ) -> Attribution {
-    if pid.is_some() && pid == target {
-        return Attribution::Target;
-    }
     if used_by_hand(previous, current) {
         return Attribution::ConcurrentUser;
+    }
+    if pid.is_some() && pid == target {
+        return Attribution::Target;
     }
     Attribution::Unexplained
 }
@@ -997,6 +1002,21 @@ mod tests {
     }
 
     #[test]
+    fn a_person_clicking_the_selected_target_is_not_blamed_on_the_operation() {
+        let before = snapshot(0);
+        let mut after = snapshot(10);
+        after.front = Some(FrontProcess { serial: 7, pid: Some(TARGET) });
+        after.counters.hid_input += 1;
+        after.counters.session_input += 1;
+
+        let found = changes(&before, &after);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].attribution, Attribution::ConcurrentUser);
+        assert!(observed(found).outcome().is_none());
+    }
+
+    #[test]
     fn an_unexplained_foreground_change_fails_the_operation() {
         let before = snapshot(0);
         let mut after = snapshot(10);
@@ -1073,6 +1093,21 @@ mod tests {
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].attribution, Attribution::Target);
         assert_eq!(found[0].window, Some(WindowId(9)));
+    }
+
+    #[test]
+    fn a_user_opening_a_window_in_the_target_is_not_blamed_on_a_read() {
+        let before = snapshot(0);
+        let mut after = snapshot(10);
+        after.windows.push(place(9, TARGET));
+        after.counters.hid_input += 1;
+        after.counters.session_input += 1;
+
+        let found = changes(&before, &after);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].attribution, Attribution::ConcurrentUser);
+        assert!(observed(found).outcome().is_none());
     }
 
     #[test]
@@ -1309,12 +1344,17 @@ mod tests {
     }
 
     #[test]
-    fn a_guarded_operation_keeps_its_own_failure() {
-        let result: Result<(), Failure> = guarded(scope(), || {
-            Err(Failure::new(ErrorCode::NotRunning, "nothing is running", Value::Null))
-        });
+    fn a_failed_operation_reports_the_observed_interference_and_its_original_cause() {
+        let before = snapshot(0);
+        let mut after = snapshot(10);
+        after.front = Some(FrontProcess { serial: 7, pid: Some(TARGET) });
+        let observation = observed(changes(&before, &after));
+        let original: Result<(), Failure> =
+            Err(Failure::new(ErrorCode::NotRunning, "getter failed", Value::Null));
 
-        let failure = result.expect_err("the operation failed");
-        assert_eq!(failure.code, ErrorCode::NotRunning);
+        let failure = observation.resolve(original).expect_err("the operation disturbed focus");
+        assert_eq!(failure.code, ErrorCode::UiInterference);
+        assert!(failure.message.contains("getter failed"), "{}", failure.message);
+        assert_eq!(failure.details.expect("details")["evidenceSource"], "foreground-application");
     }
 }

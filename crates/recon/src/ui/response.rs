@@ -430,13 +430,6 @@ pub enum ConfirmedCloseState {
     ClosedAfterReconciliation,
 }
 
-/// The state of a close whose acknowledgment never arrived.
-#[derive(Clone, Copy, Debug, Serialize, JsonSchema)]
-#[serde(rename_all = "kebab-case")]
-pub enum UnconfirmedCloseState {
-    CloseUnconfirmed,
-}
-
 /// A close the helper or authenticated bootstrap state settled. Closing a session never quits an
 /// application and never unloads code, so residency is reported rather than claimed to be
 /// reversed.
@@ -450,29 +443,6 @@ pub struct ConfirmedClose {
     pub process_exited: bool,
     pub helper_resident: bool,
     pub bootstrap_active: bool,
-}
-
-/// A close whose acknowledgment never arrived. Revocation stays uncertain, so residency is
-/// reported as unknown rather than guessed.
-#[derive(Clone, Debug, Serialize, JsonSchema)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct UnconfirmedClose {
-    pub session_id: String,
-    pub state: UnconfirmedCloseState,
-    pub acknowledged: bool,
-    pub helper_resident: Option<bool>,
-    pub bootstrap_active: Option<bool>,
-    /// What stopped the acknowledgment from arriving.
-    pub detail: String,
-}
-
-/// What `recon ui session close` prints. A missing acknowledgment is neither success nor failure
-/// but uncertainty, and says so in its own shape.
-#[derive(Clone, Debug, Serialize, JsonSchema)]
-#[serde(untagged)]
-pub enum CloseResponse {
-    Confirmed(ConfirmedClose),
-    Unconfirmed(UnconfirmedClose),
 }
 
 // --------------------------------------------------------------- preflight
@@ -554,6 +524,13 @@ pub struct HelperFacts {
     pub inspector_thread_set_state: Fact<bool>,
 }
 
+#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ProfileHelperFacts {
+    pub standard: HelperFacts,
+    pub research: HelperFacts,
+}
+
 /// What `recon ui session preflight` prints. A report whose every mode is blocked is a successful
 /// result; no system-wide readiness flag substitutes for these target-specific facts.
 #[derive(Debug, Serialize, JsonSchema)]
@@ -562,7 +539,7 @@ pub struct PreflightResponse<'a> {
     pub application: SelectedApplication<'a>,
     pub target: TargetFacts,
     pub host: HostFacts,
-    pub helper: HelperFacts,
+    pub helper: ProfileHelperFacts,
     /// One entry per mode and profile combination, each with its own facts. These are the modes
     /// the facts allow, not a decision about which one to use.
     pub modes: Vec<ModeEligibility>,

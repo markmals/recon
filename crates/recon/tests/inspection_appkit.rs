@@ -8,6 +8,13 @@ use std::process::{Child, Command};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
+use objc2_core_foundation::{
+    CFArray, CFDictionary, CFNumber, CFRetained, CFString, CFType, CGRect,
+};
+use objc2_core_graphics::{
+    CGRectMakeWithDictionaryRepresentation, CGWindowListCopyWindowInfo, CGWindowListOption,
+    kCGNullWindowID, kCGWindowBounds, kCGWindowNumber, kCGWindowOwnerPID,
+};
 use recon::inspection::{
     AccessProfile, AcquisitionMode, CloseOutcome, Op, OpenRequest, SessionStore, Stage, close,
     native_request, open,
@@ -18,6 +25,35 @@ use tempfile::TempDir;
 
 fn artifact(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target").join(name)
+}
+
+fn fixture_main_window_server_id(pid: u32) -> Option<u64> {
+    let listed = CGWindowListCopyWindowInfo(CGWindowListOption::OptionAll, kCGNullWindowID)?;
+    // SAFETY: WindowServer returns dictionaries keyed by CFString.
+    let listed: CFRetained<CFArray<CFDictionary<CFString, CFType>>> =
+        unsafe { CFRetained::cast_unchecked(listed) };
+    // SAFETY: these are documented immutable WindowServer dictionary keys.
+    let (owner_key, bounds_key, number_key) =
+        unsafe { (kCGWindowOwnerPID, kCGWindowBounds, kCGWindowNumber) };
+    listed.iter().find_map(|entry| {
+        let owner = entry.get(owner_key)?.downcast::<CFNumber>().ok()?;
+        if owner.as_i64()? != i64::from(pid) {
+            return None;
+        }
+        let bounds = entry.get(bounds_key)?.downcast::<CFDictionary>().ok()?;
+        let mut frame = CGRect::ZERO;
+        // SAFETY: the dictionary is a WindowServer bounds value; frame is a writable CGRect.
+        if !unsafe { CGRectMakeWithDictionaryRepresentation(Some(&bounds), &raw mut frame) } {
+            return None;
+        }
+        // The controlled main window is at x=160 and is 480x352 including its title bar.
+        // Other target-owned windows can be wider than 400 points; width alone is not an oracle.
+        if frame.origin.x != 160.0 || frame.size.width != 480.0 || frame.size.height != 352.0 {
+            return None;
+        }
+        let id = entry.get(number_key)?.downcast::<CFNumber>().ok()?;
+        u64::try_from(id.as_i64()?).ok()
+    })
 }
 
 struct Fixture(Child);
@@ -92,7 +128,19 @@ fn resolves_a_window_server_id_to_a_live_native_window() {
             })
         });
         if let Some(main) = main {
-            break main["basic"]["windowNumber"]["value"].as_u64().expect("WindowServer id");
+            if let Some(independent) = fixture_main_window_server_id(fixture.0.id())
+                && let Some(mapped) = main["windowId"].as_u64()
+            {
+                assert_eq!(
+                    mapped, independent,
+                    "native and external inventories must name one window"
+                );
+                break mapped;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "fixture main window never gained a verified WindowServer mapping: {main}"
+            );
         }
         assert!(Instant::now() < deadline, "fixture main window was not created");
         sleep(Duration::from_millis(25));

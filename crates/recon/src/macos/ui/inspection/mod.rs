@@ -8,7 +8,7 @@ use std::io::{self, Write};
 
 use serde_json::{Value, json};
 
-pub(super) use native::{native_windows, validate_session, view};
+pub(super) use native::{native_windows, session_record, validate_session, view};
 pub(super) use session::{close_session, open_session};
 
 use crate::application::{Application, Pid};
@@ -85,15 +85,23 @@ pub(super) fn prepare_host(action: HostPreparation) -> Result<Value, InspectionE
                     "host preparation was not confirmed; no changes were made",
                 ));
             }
-            let changed = inspection_access::prepare_host(&mut runner).map_err(|error| {
+            let store = session::default_store()?;
+            let changed = inspection_access::prepare_host(
+                &mut runner,
+                store.root(),
+                &status.required_boot_args,
+            )
+            .map_err(|error| {
                 InspectionError::new(InspectionErrorCode::Unavailable, Stage::Attach, error)
             })?;
             preparation_value("apply", changed)
         }
         HostPreparation::Revert => {
-            let changed = inspection_access::revert_host(&mut runner).map_err(|error| {
-                InspectionError::new(InspectionErrorCode::Unavailable, Stage::Attach, error)
-            })?;
+            let store = session::default_store()?;
+            let changed =
+                inspection_access::revert_host(&mut runner, store.root()).map_err(|error| {
+                    InspectionError::new(InspectionErrorCode::Unavailable, Stage::Attach, error)
+                })?;
             preparation_value("revert", changed)
         }
     }
@@ -105,8 +113,8 @@ fn preparation_value(
 ) -> Result<Value, InspectionError> {
     Ok(json!({
         "action": action,
-        "changed": true,
-        "rebootRequired": true,
+        "changed": preparation.changed,
+        "rebootRequired": preparation.changed,
         "reconBootArgs": preparation.boot_args.split_whitespace().collect::<Vec<_>>(),
         "operatorSteps": [preparation.operator_steps],
     }))
@@ -164,4 +172,22 @@ pub(super) fn failure(
         details = details.helper_may_remain_resident();
     }
     Failure::new(code, error.message().to_owned(), details.details())
+}
+
+#[cfg(test)]
+mod preparation_tests {
+    use super::*;
+
+    #[test]
+    fn revert_with_no_record_reports_no_change_or_reboot() {
+        let preparation = inspection_access::HostPreparation {
+            changed: false,
+            boot_args: "keepsyms=1".into(),
+            operator_steps: "No Recon record was found; nothing was reverted.".into(),
+        };
+        let output = preparation_value("revert", preparation).expect("one response");
+        assert_eq!(output["changed"], false);
+        assert_eq!(output["rebootRequired"], false);
+        assert_eq!(output["reconBootArgs"], json!(["keepsyms=1"]));
+    }
 }

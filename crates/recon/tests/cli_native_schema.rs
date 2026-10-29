@@ -674,7 +674,7 @@ fn proposal0005_session_open_never_publishes_the_capability_it_withholds() {
 }
 
 #[test]
-fn proposal0005_session_close_accepts_every_settled_state_and_the_unconfirmed_one() {
+fn proposal0005_session_close_accepts_only_confirmed_states() {
     validate(
         &["ui", "session", "close"],
         &[
@@ -701,14 +701,6 @@ fn proposal0005_session_close_accepts_every_settled_state_and_the_unconfirmed_on
                 "processExited": true,
                 "helperResident": false,
                 "bootstrapActive": false,
-            }),
-            json!({
-                "sessionId": SESSION,
-                "state": "close-unconfirmed",
-                "acknowledged": false,
-                "helperResident": null,
-                "bootstrapActive": null,
-                "detail": "the close acknowledgment never arrived: connection reset",
             }),
         ],
     );
@@ -757,12 +749,22 @@ fn preflight_report(pid: Value, running: Value) -> Value {
             },
             "host": host_facts(),
             "helper": {
-                "localAvailable": fact(json!(true), "packaged-helper"),
-                "localCompatible": fact(json!(true), "helper-build-id+protocol"),
-                "resident": fact(json!(false), "selected-process"),
-                "residentCompatible": unknown_fact("helper-build-id+protocol", "resident bootstrap compatibility requires an open handshake"),
-                "attachWithoutDialog": fact(json!(true), "bound-c-loader"),
-                "inspectorThreadSetState": fact(json!(false), "loader-entitlements"),
+                "standard": {
+                    "localAvailable": fact(json!(true), "standard-helper-artifacts"),
+                    "localCompatible": unknown_fact("standard-build", "requires authenticated handshake"),
+                    "resident": fact(json!(false), "selected-process"),
+                    "residentCompatible": unknown_fact("standard-build", "requires authenticated handshake"),
+                    "attachWithoutDialog": fact(json!(true), "standard-bound-loader"),
+                    "inspectorThreadSetState": fact(json!(false), "standard-loader-entitlements"),
+                },
+                "research": {
+                    "localAvailable": fact(json!(true), "research-helper-artifacts"),
+                    "localCompatible": unknown_fact("research-build", "requires authenticated handshake"),
+                    "resident": fact(json!(false), "selected-process"),
+                    "residentCompatible": unknown_fact("research-build", "requires authenticated handshake"),
+                    "attachWithoutDialog": fact(json!(true), "research-bound-loader"),
+                    "inspectorThreadSetState": fact(json!(true), "research-loader-entitlements"),
+                },
             },
             "modes": [
                 {

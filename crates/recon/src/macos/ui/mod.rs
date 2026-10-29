@@ -18,6 +18,8 @@ mod window_element;
 mod window_server;
 
 #[cfg(test)]
+mod focus_scope_tests;
+#[cfg(test)]
 mod menu_bar_tests;
 
 use std::env;
@@ -53,12 +55,14 @@ use crate::ui::window::{Window, WindowId, select_window};
 pub fn observe(request: &UiRequest) -> Result<String, Failure> {
     responsibility::take_responsibility()
         .map_err(responsibility::ResponsibilityError::into_failure)?;
-    focus::guarded(scope_of(request), || dispatch(request))
+    let scope = scope_of(request)?;
+    let selected_pid = scope.target;
+    focus::guarded(scope, || dispatch(request, selected_pid))
 }
 
 /// What the no-focus guard watches while this request runs: the stage a disturbance is reported
 /// against, the instance it selected, and whether a setup prompt is an expected interruption.
-fn scope_of(request: &UiRequest) -> focus::Scope {
+fn scope_of(request: &UiRequest) -> Result<focus::Scope, Failure> {
     let (stage, selection, setup_prompts_expected) = match request {
         UiRequest::Windows { selection, .. }
         | UiRequest::AxTree { selection, .. }
@@ -76,14 +80,33 @@ fn scope_of(request: &UiRequest) -> focus::Scope {
         }
         UiRequest::Session(SessionRequest::Close { .. }) => (InspectionStage::Close, None, false),
     };
-    focus::Scope {
-        stage,
-        target: selection.and_then(|selection| selection.pid),
-        setup_prompts_expected,
-    }
+    let bound_session = match request {
+        UiRequest::Windows { session, .. }
+        | UiRequest::AxTree { session, .. }
+        | UiRequest::Screenshot { session, .. } => session.as_ref(),
+        UiRequest::View(view) => Some(view_selection(view).1),
+        UiRequest::Correlate { session, .. } => Some(session),
+        UiRequest::Session(_) => None,
+    };
+    // Bind session reads and implicit authorized attaches before starting the no-focus guard.
+    let target = match (selection, bound_session) {
+        (Some(selected), Some(session)) => {
+            Some(super::with_target(&selected.target, |application| {
+                let record = inspection::session_record(application, selected.pid, session)
+                    .map_err(|error| inspection::failure(&error, Some(session), selected.pid))?;
+                Ok(Pid(record.incarnation.pid as u32))
+            })?)
+        }
+        (Some(selected), None) if setup_prompts_expected && selected.pid.is_none() => {
+            Some(with_instance(selected, None, |_, pid| Ok(pid))?)
+        }
+        (Some(selected), None) => selected.pid,
+        (None, _) => None,
+    };
+    Ok(focus::Scope { stage, target, setup_prompts_expected })
 }
 
-fn dispatch(request: &UiRequest) -> Result<String, Failure> {
+fn dispatch(request: &UiRequest, selected_pid: Option<Pid>) -> Result<String, Failure> {
     match request {
         UiRequest::Windows { selection, session } => windows(selection, session.as_ref()),
         UiRequest::AxTree { selection, session, window, depth, no_menu_bar } => {
@@ -94,11 +117,16 @@ fn dispatch(request: &UiRequest) -> Result<String, Failure> {
         }
         UiRequest::Session(SessionRequest::Preflight { selection }) => {
             super::with_target(&selection.target, |application| {
-                encode_inspection(
-                    inspection::preflight(application, selection.pid),
-                    None,
-                    selection.pid,
-                )
+                let pid = if application.running_pids.is_empty() && selection.pid.is_none() {
+                    None
+                } else {
+                    Some(select_instance(
+                        &application.path,
+                        &application.running_pids,
+                        selection.pid,
+                    )?)
+                };
+                encode_inspection(inspection::preflight(application, pid), None, pid)
             })
         }
         UiRequest::Session(SessionRequest::PrepareHost { action }) => {
@@ -114,6 +142,7 @@ fn dispatch(request: &UiRequest) -> Result<String, Failure> {
                 inspection::open_session(
                     application,
                     selection,
+                    selected_pid,
                     acquisition_mode(*mode),
                     access_profile(*profile),
                     *allow_authorization,
@@ -127,7 +156,7 @@ fn dispatch(request: &UiRequest) -> Result<String, Failure> {
         }
         UiRequest::View(view) => {
             let (selection, session) = view_selection(view);
-            with_instance(selection, |application, pid| {
+            with_instance(selection, Some(session), |application, pid| {
                 encode_inspection(
                     inspection::view(application, pid, view),
                     Some(session),
@@ -142,15 +171,17 @@ fn dispatch(request: &UiRequest) -> Result<String, Failure> {
 }
 
 fn windows(selection: &Selection, session: Option<&SessionId>) -> Result<String, Failure> {
-    with_instance(selection, |application, pid| {
+    with_instance(selection, session, |application, pid| {
+        let record = session
+            .map(|session| inspection::validate_session(application, pid, session))
+            .transpose()
+            .map_err(|error| inspection::failure(&error, session, Some(pid)))?;
         permissions::require(&[Permission::ScreenRecording])?;
         let windows = window_server::windows_owned_by(pid)?;
         let mut response =
             serde_json::to_value(WindowsResponse::new(observed(application, pid), windows))
                 .map_err(|error| Failure::internal(error.to_string()))?;
-        if let Some(session) = session {
-            let record = inspection::validate_session(application, pid, session)
-                .map_err(|error| inspection::failure(&error, Some(session), Some(pid)))?;
+        if let (Some(session), Some(record)) = (session, record) {
             let native = inspection::native_windows(application, pid, session)
                 .map_err(|error| inspection::failure(&error, Some(session), Some(pid)))?;
             response["session"] = serde_json::to_value(session_summary(&record))
@@ -170,7 +201,7 @@ fn tree(
     depth: Option<usize>,
     no_menu_bar: bool,
 ) -> Result<String, Failure> {
-    with_instance(selection, |application, pid| {
+    with_instance(selection, session, |application, pid| {
         let record = session
             .map(|session| inspection::validate_session(application, pid, session))
             .transpose()
@@ -218,7 +249,7 @@ fn screenshot(
     window: Option<WindowId>,
     out: &Path,
 ) -> Result<String, Failure> {
-    with_instance(selection, |application, pid| {
+    with_instance(selection, session, |application, pid| {
         let record = session
             .map(|session| inspection::validate_session(application, pid, session))
             .transpose()
@@ -270,7 +301,7 @@ fn correlate(
     depth: usize,
     limit: usize,
 ) -> Result<String, Failure> {
-    let native = with_instance(selection, |application, pid| {
+    let native = with_instance(selection, Some(session), |application, pid| {
         let request = ViewRequest::Tree {
             selection: selection.clone(),
             session: session.clone(),
@@ -407,10 +438,18 @@ fn main_window(application: &Application, pid: Pid) -> Result<Window, Failure> {
 
 fn with_instance<T>(
     selection: &Selection,
+    session: Option<&SessionId>,
     observe_instance: impl FnOnce(&Application, Pid) -> Result<T, Failure>,
 ) -> Result<T, Failure> {
     super::with_target(&selection.target, |application| {
-        let pid = select_instance(&application.path, &application.running_pids, selection.pid)?;
+        let pid = match session {
+            Some(session) => {
+                let record = inspection::session_record(application, selection.pid, session)
+                    .map_err(|error| inspection::failure(&error, Some(session), selection.pid))?;
+                Pid(record.incarnation.pid as u32)
+            }
+            None => select_instance(&application.path, &application.running_pids, selection.pid)?,
+        };
         observe_instance(application, pid)
     })
 }

@@ -70,7 +70,15 @@ pub(super) fn load(
     incarnation: Incarnation,
     socket: &Path,
     expected_executable: &Path,
+    deadline: Instant,
 ) -> Result<(), InspectionError> {
+    if Instant::now() >= deadline {
+        return Err(InspectionError::new(
+            InspectionErrorCode::Timeout,
+            Stage::Attach,
+            "the open deadline expired before the Recon loader started",
+        ));
+    }
     let mut child = Command::new(&artifacts.loader)
         .arg(incarnation.pid.to_string())
         .arg(incarnation.pidversion.to_string())
@@ -89,7 +97,6 @@ pub(super) fn load(
             )
         })?;
 
-    let deadline = Instant::now() + Duration::from_secs(10);
     loop {
         if let Some(status) = child.try_wait().map_err(|error| {
             InspectionError::from_io(
@@ -129,5 +136,36 @@ pub(super) fn load(
             ));
         }
         sleep(Duration::from_millis(20));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+
+    #[test]
+    fn loader_uses_the_remaining_open_budget() {
+        let temporary = tempfile::tempdir().expect("private loader fixture");
+        let loader = temporary.path().join("slow-loader");
+        fs::write(&loader, "#!/bin/sh\nsleep 1\n").expect("write the fake loader");
+        fs::set_permissions(&loader, fs::Permissions::from_mode(0o700))
+            .expect("make the fake loader executable");
+        let artifacts = Artifacts {
+            loader,
+            helper: temporary.path().join("helper.dylib"),
+            helper_build: "fixture-build".to_owned(),
+        };
+        let started = Instant::now();
+        let failure = load(
+            &artifacts,
+            Incarnation { pid: 42, pidversion: 7 },
+            &temporary.path().join("socket"),
+            Path::new("/bin/true"),
+            started + Duration::from_millis(40),
+        )
+        .expect_err("the loader cannot take a fresh ten seconds");
+        assert_eq!(failure.code(), InspectionErrorCode::Timeout);
+        assert!(started.elapsed() < Duration::from_millis(500), "{:?}", started.elapsed());
     }
 }

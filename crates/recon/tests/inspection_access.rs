@@ -3,14 +3,18 @@
 #[path = "../src/macos/inspection_access.rs"]
 mod inspection_access;
 
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
 use inspection_access::{
     AccessMode, AccessProfile, CommandResult, CommandRunner, Eligibility, Fact, HelperFacts,
-    HostFacts, TargetFacts, TargetSelection, add_research_boot_args, collect_preflight, evaluate,
-    prepare_host, revert_host,
+    HostFacts, ProfileHelperFacts, TargetFacts, TargetSelection, add_research_boot_args,
+    prepare_host as prepare_host_in, revert_host as revert_host_in,
 };
 use proptest::prelude::*;
+use std::sync::{Arc, Mutex, mpsc};
+use std::thread;
+use std::time::Duration;
 
 fn known<T>(value: T) -> Fact<T> {
     Fact::known(value, "test fixture")
@@ -56,6 +60,30 @@ fn helper() -> HelperFacts {
         attach_without_dialog: known(true),
         inspector_thread_set_state: known(true),
     }
+}
+
+fn evaluate(
+    t: &TargetFacts,
+    h: &HostFacts,
+    x: &HelperFacts,
+) -> Vec<inspection_access::ModeDecision> {
+    inspection_access::evaluate(
+        t,
+        h,
+        &ProfileHelperFacts { standard: x.clone(), research: x.clone() },
+    )
+}
+
+fn collect_preflight<R: CommandRunner>(
+    runner: &mut R,
+    selection: TargetSelection,
+    helper: HelperFacts,
+) -> inspection_access::PreflightReport {
+    inspection_access::collect_preflight(
+        runner,
+        selection,
+        ProfileHelperFacts { standard: helper.clone(), research: helper },
+    )
 }
 
 fn state(
@@ -244,6 +272,31 @@ proptest! {
     }
 }
 
+fn private_host_root() -> tempfile::TempDir {
+    let root = tempfile::tempdir().unwrap();
+    std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
+    root
+}
+
+fn prepare_host(runner: &mut FakeRunner) -> Result<inspection_access::HostPreparation, String> {
+    let root = private_host_root();
+    let prior = match runner.responses.first() {
+        Some(Ok(response)) if response.success => {
+            response.stdout.trim().split_once('\t').map_or("", |(_, value)| value.trim())
+        }
+        _ => "",
+    };
+    let disclosed = add_research_boot_args(prior);
+    prepare_host_in(runner, root.path(), &disclosed)
+}
+
+fn revert_host<R: CommandRunner>(
+    runner: &mut R,
+) -> Result<inspection_access::HostPreparation, String> {
+    let root = private_host_root();
+    revert_host_in(runner, root.path())
+}
+
 #[derive(Default)]
 struct FakeRunner {
     invocations: Vec<(String, Vec<String>)>,
@@ -395,6 +448,22 @@ fn proposal0005_prepare_failed_boot_arg_write_never_creates_an_ownership_record(
 }
 
 #[test]
+fn proposal0005_prepare_refuses_to_apply_a_plan_changed_since_confirmation() {
+    let mut runner = FakeRunner {
+        responses: vec![ok("boot-args\toperator-added=1\n"), absent(), ok(""), ok("")],
+        ..Default::default()
+    };
+    let root = private_host_root();
+    let disclosed = add_research_boot_args("previously-seen=1");
+
+    let failure = prepare_host_in(&mut runner, root.path(), &disclosed)
+        .expect_err("a different boot-args plan requires a new confirmation");
+
+    assert!(failure.contains("changed"), "{failure}");
+    assert!(runner.invocations.iter().all(|(program, _)| program != "/usr/bin/sudo"));
+}
+
+#[test]
 fn proposal0005_revert_without_a_record_leaves_operator_boot_args_untouched() {
     // No Recon record exists, so revert must not remove the operator's research-looking argument.
     let mut runner = FakeRunner {
@@ -409,6 +478,7 @@ fn proposal0005_revert_without_a_record_leaves_operator_boot_args_untouched() {
         reverted.boot_args,
         "amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0"
     );
+    assert!(!reverted.changed, "no record means no host boot-args change");
     assert!(runner.invocations.iter().all(|(program, _)| program != "/usr/bin/sudo"));
 }
 
@@ -482,6 +552,95 @@ fn proposal0005_revert_does_not_change_boot_args_when_record_deletion_fails() {
             .iter()
             .all(|(_, args)| { !args.iter().any(|arg| arg.starts_with("boot-args=")) })
     );
+}
+
+struct ConcurrentNvram {
+    state: Arc<Mutex<(String, Option<String>)>>,
+    before_apply_write: Option<mpsc::Sender<()>>,
+    resume_apply: Option<mpsc::Receiver<()>>,
+}
+
+impl CommandRunner for ConcurrentNvram {
+    fn run(&mut self, program: &str, args: &[&str]) -> Result<CommandResult, String> {
+        if program == "/usr/sbin/nvram" {
+            let state = self.state.lock().unwrap();
+            return match args {
+                ["boot-args"] if !state.0.is_empty() => ok(&format!("boot-args\t{}\n", state.0)),
+                ["boot-args"] => absent(),
+                ["recon-added-boot-args"] => match &state.1 {
+                    Some(record) => ok(&format!("recon-added-boot-args\t{record}\n")),
+                    None => absent(),
+                },
+                _ => panic!("unexpected nvram read: {args:?}"),
+            };
+        }
+        assert_eq!(program, "/usr/bin/sudo");
+        assert_eq!(args[0], "/usr/sbin/nvram");
+        if let Some(value) = args[1].strip_prefix("boot-args=") {
+            if let Some(notify) = self.before_apply_write.take() {
+                notify.send(()).unwrap();
+                // A serialized revert cannot finish until this write completes.
+                let _ = self.resume_apply.take().unwrap().recv_timeout(Duration::from_millis(500));
+            }
+            self.state.lock().unwrap().0 = value.to_owned();
+        } else if let Some(value) = args[1].strip_prefix("recon-added-boot-args=") {
+            self.state.lock().unwrap().1 = Some(value.to_owned());
+        } else if args == ["/usr/sbin/nvram", "-d", "recon-added-boot-args"] {
+            self.state.lock().unwrap().1 = None;
+        } else if args == ["/usr/sbin/nvram", "-d", "boot-args"] {
+            self.state.lock().unwrap().0.clear();
+        } else {
+            panic!("unexpected nvram write: {args:?}");
+        }
+        ok("")
+    }
+}
+
+#[test]
+fn proposal0005_concurrent_prepare_and_revert_do_not_leave_untracked_boot_args() {
+    let tokens = "amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0";
+    let state = Arc::new(Mutex::new((tokens.to_owned(), Some(tokens.to_owned()))));
+    let root = private_host_root();
+    let apply_root = root.path().to_path_buf();
+    let revert_root = root.path().to_path_buf();
+    let (paused_tx, paused_rx) = mpsc::channel();
+    let (resume_tx, resume_rx) = mpsc::channel();
+    let apply = {
+        let state = Arc::clone(&state);
+        thread::spawn(move || {
+            prepare_host_in(
+                &mut ConcurrentNvram {
+                    state,
+                    before_apply_write: Some(paused_tx),
+                    resume_apply: Some(resume_rx),
+                },
+                &apply_root,
+                tokens,
+            )
+        })
+    };
+    paused_rx
+        .recv_timeout(Duration::from_secs(5))
+        .expect("apply reached its planned boot-arg write");
+    let (revert_done_tx, revert_done_rx) = mpsc::channel();
+    let revert = {
+        let state = Arc::clone(&state);
+        thread::spawn(move || {
+            let result = revert_host_in(
+                &mut ConcurrentNvram { state, before_apply_write: None, resume_apply: None },
+                &revert_root,
+            );
+            revert_done_tx.send(()).unwrap();
+            result
+        })
+    };
+    let _ = revert_done_rx.recv_timeout(Duration::from_millis(250));
+    resume_tx.send(()).unwrap();
+    apply.join().unwrap().expect("apply succeeds");
+    revert.join().unwrap().expect("revert succeeds");
+    let state = state.lock().unwrap();
+    assert_eq!(state.0, "", "revert must remove the boot-args written by apply");
+    assert_eq!(state.1, None, "revert must remove the ownership record");
 }
 
 #[test]
@@ -559,21 +718,71 @@ fn proposal0005_prepare_host_status_is_read_only_and_reports_each_prerequisite()
 }
 
 #[test]
-fn proposal0005_hardened_launch_requires_dyld_entitlement_not_absent_hardening() {
+fn proposal0005_bound_loader_allows_cooperative_hardened_background_launch_without_dyld_entitlement()
+ {
     let mut t = target();
     t.pid = None;
     t.running_pids.clear();
     t.hardened_runtime = known(true);
-    t.allow_dyld_environment_variables = known(true);
-    assert_eq!(
-        state(&t, &host(), &helper(), AccessMode::Launch, AccessProfile::Standard),
-        Eligibility::Eligible
-    );
+    t.library_validation = known(false);
     t.allow_dyld_environment_variables = known(false);
+    let launch = evaluate(&t, &host(), &helper())
+        .into_iter()
+        .find(|decision| {
+            decision.mode == AccessMode::Launch && decision.profile == AccessProfile::Standard
+        })
+        .unwrap();
+    assert_eq!(launch.status, Eligibility::Eligible, "{:?}", launch.reasons);
+    assert!(!launch.reasons.iter().any(|reason| reason.contains("DYLD")));
+
+    t.get_task_allow = known(false);
     assert_eq!(
         state(&t, &host(), &helper(), AccessMode::Launch, AccessProfile::Standard),
-        Eligibility::Blocked
+        Eligibility::Blocked,
+        "a protected, non-cooperative target still requires research access"
     );
+}
+
+#[test]
+fn proposal0005_preflight_uses_each_profiles_candidate_for_its_own_mode_decisions() {
+    let mut t = target();
+    t.pid = None;
+    t.running_pids.clear();
+    let mut research = helper();
+    research.local_compatible =
+        Fact::unknown("/Library/Application Support/Recon/recon-helper.dylib", "unverified build");
+    let candidates = ProfileHelperFacts { standard: helper(), research };
+    let modes = inspection_access::evaluate(&t, &host(), &candidates);
+    let launch = |profile| {
+        modes
+            .iter()
+            .find(|decision| decision.mode == AccessMode::Launch && decision.profile == profile)
+            .unwrap()
+    };
+    assert_eq!(launch(AccessProfile::Standard).status, Eligibility::Eligible);
+    assert_eq!(launch(AccessProfile::Research).status, Eligibility::Unknown);
+    assert!(
+        launch(AccessProfile::Research)
+            .evidence_sources
+            .iter()
+            .any(|source| source.contains("/Library/Application Support/Recon/recon-helper.dylib"))
+    );
+}
+
+#[test]
+fn proposal0005_hardened_validated_target_does_not_claim_unproven_standard_loader_access() {
+    let mut t = target();
+    t.pid = None;
+    t.running_pids.clear();
+    t.hardened_runtime = known(true);
+    t.library_validation = known(true);
+    let decision = evaluate(&t, &host(), &helper())
+        .into_iter()
+        .find(|decision| {
+            decision.mode == AccessMode::Launch && decision.profile == AccessProfile::Standard
+        })
+        .unwrap();
+    assert_ne!(decision.status, Eligibility::Eligible, "{:?}", decision.reasons);
 }
 
 #[test]
@@ -581,14 +790,15 @@ fn proposal0005_preflight_report_uses_cli_camel_case_fields() {
     let report = inspection_access::PreflightReport {
         target: target(),
         host: host(),
-        helper: helper(),
+        helper: ProfileHelperFacts { standard: helper(), research: helper() },
         decisions: evaluate(&target(), &host(), &helper()),
     };
     let json = serde_json::to_value(&report).unwrap();
     assert!(json["target"]["bundlePath"].is_string());
     assert_eq!(json["target"]["getTaskAllow"]["value"], true);
     assert_eq!(json["host"]["sipDisabled"]["value"], false);
-    assert!(json["helper"]["inspectorThreadSetState"].is_object());
+    assert!(json["helper"]["standard"]["inspectorThreadSetState"].is_object());
+    assert!(json["helper"]["research"]["inspectorThreadSetState"].is_object());
     assert!(json["decisions"][0]["evidenceSources"].is_array());
 }
 
@@ -776,7 +986,7 @@ fn proposal0005_signed_executable_with_no_entitlements_has_known_absence() {
         state(
             &report.target,
             &report.host,
-            &report.helper,
+            &report.helper.standard,
             AccessMode::Launch,
             AccessProfile::Standard
         ),

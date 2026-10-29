@@ -6,13 +6,14 @@
 //! resolves uncertainty only through authenticated bootstrap state or a confirmed process exit.
 
 use std::path::Path;
+use std::time::Instant;
 
 use serde_json::{Map, Value};
 
 use super::error::{InspectionError, InspectionErrorCode, Stage};
 use super::identity::{AccessProfile, AcquisitionMode, Capability, Incarnation, SessionId};
 use super::store::{SessionRecord, SessionState, SessionStore, now_unix};
-use super::transport::{Connection, Op, current_incarnation, current_uid};
+use super::transport::{Connection, LIFECYCLE_DEADLINE, Op, current_incarnation, current_uid};
 
 /// What a caller asks for when opening a session. Identity comes from the loader's verified
 /// binding; nothing here resolves a bundle or a pid.
@@ -76,6 +77,22 @@ pub fn open(
     store: &SessionStore,
     request: &OpenRequest<'_>,
 ) -> Result<OpenOutcome, InspectionError> {
+    open_until(store, request, Instant::now() + LIFECYCLE_DEADLINE)
+}
+
+/// Open within the caller's existing budget, including work before the helper handshake.
+pub fn open_until(
+    store: &SessionStore,
+    request: &OpenRequest<'_>,
+    deadline: Instant,
+) -> Result<OpenOutcome, InspectionError> {
+    if Instant::now() >= deadline {
+        return Err(InspectionError::new(
+            InspectionErrorCode::Timeout,
+            Stage::Handshake,
+            "the open deadline expired before the helper was contacted",
+        ));
+    }
     let live = store.live_record_for(request.incarnation)?;
     let mut reusable = None;
 
@@ -83,29 +100,45 @@ pub fn open(
         match record.state {
             // Revocation of the previous session is uncertain: resolve it before considering a
             // replacement, and refuse one while it stays uncertain.
-            SessionState::CloseUnconfirmed => match reconcile_record(store, record)? {
-                Reconciliation::Active => {
-                    return Err(InspectionError::new(
-                        InspectionErrorCode::Busy,
-                        Stage::Handshake,
-                        format!(
-                            "session {} is still active for {} after an unconfirmed close; close it again before opening another",
-                            record.session_id, record.incarnation
-                        ),
-                    ));
+            SessionState::CloseUnconfirmed => {
+                match reconcile_record(store, record, Some(deadline))? {
+                    Reconciliation::Active => {
+                        return Err(InspectionError::new(
+                            InspectionErrorCode::Busy,
+                            Stage::Handshake,
+                            format!(
+                                "session {} is still active for {} after an unconfirmed close; close it again before opening another",
+                                record.session_id, record.incarnation
+                            ),
+                        ));
+                    }
+                    Reconciliation::Revoked | Reconciliation::ProcessExited => {}
+                    Reconciliation::Unreachable(cause)
+                        if cause.code() == InspectionErrorCode::Timeout
+                            || Instant::now() >= deadline =>
+                    {
+                        return Err(InspectionError::new(
+                            InspectionErrorCode::Timeout,
+                            Stage::Reconcile,
+                            format!(
+                                "the open deadline expired while checking whether session {} was revoked ({cause}); its state is still unknown",
+                                record.session_id
+                            ),
+                        )
+                        .target_execution_may_continue());
+                    }
+                    Reconciliation::Unreachable(cause) => {
+                        return Err(InspectionError::new(
+                            InspectionErrorCode::Unavailable,
+                            Stage::Reconcile,
+                            format!(
+                                "whether session {} was revoked for {} is still unknown ({cause}); Recon will not open a replacement session",
+                                record.session_id, record.incarnation
+                            ),
+                        ));
+                    }
                 }
-                Reconciliation::Revoked | Reconciliation::ProcessExited => {}
-                Reconciliation::Unreachable(cause) => {
-                    return Err(InspectionError::new(
-                        InspectionErrorCode::Unavailable,
-                        Stage::Reconcile,
-                        format!(
-                            "whether session {} was revoked for {} is still unknown ({cause}); Recon will not open a replacement session",
-                            record.session_id, record.incarnation
-                        ),
-                    ));
-                }
-            },
+            }
             SessionState::Active => {
                 if record.helper_build != request.helper_build
                     || record.protocol != request.protocol
@@ -139,6 +172,13 @@ pub fn open(
         }
     }
 
+    if Instant::now() >= deadline {
+        return Err(InspectionError::new(
+            InspectionErrorCode::Timeout,
+            Stage::Connect,
+            "the open deadline expired before connecting to the helper",
+        ));
+    }
     let mut connection = Connection::connect(request.socket_path)?;
     connection.require_incarnation(request.incarnation)?;
 
@@ -157,7 +197,7 @@ pub fn open(
         body.insert("capability".to_owned(), Value::from(prior.capability.expose()));
     }
 
-    let mut response = connection.request(Op::Open, Value::Object(body))?;
+    let mut response = connection.request_until(Op::Open, Value::Object(body), deadline)?;
     require_compatible(&response, request.protocol, request.helper_build)?;
     require_incarnation(&response, request.incarnation)?;
 
@@ -235,7 +275,7 @@ pub fn open(
         // itself fails, the session may remain active until the target exits, so say so explicitly
         // rather than discard that outcome.
         if reusable.is_none()
-            && let Err(revoke_error) = revoke(&record)
+            && let Err(revoke_error) = revoke(&record, deadline)
         {
             return Err(InspectionError::new(
                 error.code(),
@@ -250,28 +290,64 @@ pub fn open(
         }
         return Err(error);
     }
+    if Instant::now() >= deadline {
+        return Err(InspectionError::new(
+            InspectionErrorCode::Timeout,
+            Stage::Store,
+            format!(
+                "the open deadline expired after session {} was recorded; the target session may remain active",
+                record.session_id
+            ),
+        )
+        .target_execution_may_continue());
+    }
     response.remove("capability");
     Ok(OpenOutcome { record, reused, response })
 }
 
 /// Ask authenticated bootstrap state what became of a session.
 pub fn reconcile(store: &SessionStore, id: &SessionId) -> Result<Reconciliation, InspectionError> {
+    let selected = require_record(store, id)?;
+    let _lifecycle = store.lock_lifecycle(selected.incarnation)?;
     let record = require_record(store, id)?;
+    if record.incarnation != selected.incarnation {
+        return Err(InspectionError::new(
+            InspectionErrorCode::StaleSession,
+            Stage::Store,
+            "the session changed its process incarnation while waiting to reconcile",
+        ));
+    }
     if record.state == SessionState::Closed {
         return Ok(Reconciliation::Revoked);
     }
-    reconcile_record(store, &record)
+    reconcile_record(store, &record, None)
 }
 
 /// Revoke a session's access, or record that revocation could not be confirmed.
 pub fn close(store: &SessionStore, id: &SessionId) -> Result<CloseOutcome, InspectionError> {
+    close_until(store, id, Instant::now() + LIFECYCLE_DEADLINE)
+}
+
+/// Close within one absolute budget, including reconciliation of an uncertain earlier close.
+pub fn close_until(
+    store: &SessionStore,
+    id: &SessionId,
+    deadline: Instant,
+) -> Result<CloseOutcome, InspectionError> {
+    if Instant::now() >= deadline {
+        return Err(InspectionError::new(
+            InspectionErrorCode::Timeout,
+            Stage::Close,
+            "the close deadline expired before the session could be checked",
+        ));
+    }
     let mut record = require_record(store, id)?;
     if record.state == SessionState::Closed {
         return Ok(CloseOutcome::AlreadyClosed);
     }
 
     if record.state == SessionState::CloseUnconfirmed {
-        match reconcile_record(store, &record)? {
+        match reconcile_record(store, &record, Some(deadline))? {
             Reconciliation::Revoked => {
                 return Ok(CloseOutcome::ReconciledClosed { process_exited: false });
             }
@@ -284,7 +360,7 @@ pub fn close(store: &SessionStore, id: &SessionId) -> Result<CloseOutcome, Inspe
         }
     }
 
-    match revoke(&record) {
+    match revoke(&record, deadline) {
         Ok(response) => {
             let was_active = response.get("wasActive").and_then(Value::as_bool).unwrap_or(true);
             mark(store, &mut record, SessionState::Closed)?;
@@ -384,14 +460,17 @@ fn dispatch_native(
     connection.request(op, Value::Object(body))
 }
 
-fn revoke(record: &SessionRecord) -> Result<Map<String, Value>, InspectionError> {
+fn revoke(
+    record: &SessionRecord,
+    deadline: Instant,
+) -> Result<Map<String, Value>, InspectionError> {
     let mut connection = Connection::connect(&record.socket_path)?;
     connection.require_incarnation(record.incarnation)?;
 
     let mut body = envelope(record.protocol, &record.helper_build)?;
     body.insert("sessionId".to_owned(), Value::from(record.session_id.as_str()));
     body.insert("capability".to_owned(), Value::from(record.capability.expose()));
-    connection.request(Op::Close, Value::Object(body))
+    connection.request_until(Op::Close, Value::Object(body), deadline)
 }
 
 /// Resolve a session's fate against bootstrap state, recording a confirmed outcome.
@@ -401,6 +480,7 @@ fn revoke(record: &SessionRecord) -> Result<Map<String, Value>, InspectionError>
 fn reconcile_record(
     store: &SessionStore,
     record: &SessionRecord,
+    deadline: Option<Instant>,
 ) -> Result<Reconciliation, InspectionError> {
     let mut working = record.clone();
     if process_absent(record.incarnation) {
@@ -434,7 +514,11 @@ fn reconcile_record(
     };
     body.insert("sessionId".to_owned(), Value::from(record.session_id.as_str()));
 
-    let response = match connection.request(Op::Reconcile, Value::Object(body)) {
+    let response = match deadline {
+        Some(deadline) => connection.request_until(Op::Reconcile, Value::Object(body), deadline),
+        None => connection.request(Op::Reconcile, Value::Object(body)),
+    };
+    let response = match response {
         Ok(response) => response,
         Err(error) => return Ok(Reconciliation::Unreachable(error)),
     };
