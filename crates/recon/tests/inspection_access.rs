@@ -330,10 +330,9 @@ fn proposal0005_prepare_host_is_the_only_command_that_can_invoke_sudo_nvram() {
         runner.invocations[1],
         ("/usr/sbin/nvram".into(), vec!["recon-added-boot-args".into()])
     );
-    // The delta Recon introduced is recorded before boot-args change, so revert is precise. The
-    // operator-set keepsyms is not part of it.
-    assert_eq!(runner.invocations[2], ("/usr/bin/sudo".into(), vec!["/usr/sbin/nvram".into(), "recon-added-boot-args=amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0".into()]));
-    assert_eq!(runner.invocations[3], ("/usr/bin/sudo".into(), vec!["/usr/sbin/nvram".into(), "boot-args=keepsyms=1 amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0".into()]));
+    // Record ownership only after the boot-args change succeeds.
+    assert_eq!(runner.invocations[2], ("/usr/bin/sudo".into(), vec!["/usr/sbin/nvram".into(), "boot-args=keepsyms=1 amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0".into()]));
+    assert_eq!(runner.invocations[3], ("/usr/bin/sudo".into(), vec!["/usr/sbin/nvram".into(), "recon-added-boot-args=amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0".into()]));
     assert!(plan.operator_steps.contains("csrutil disable"));
     assert!(plan.operator_steps.contains("Recovery"));
     assert!(plan.operator_steps.contains("reboot"));
@@ -352,52 +351,46 @@ fn proposal0005_prepare_host_is_the_only_command_that_can_invoke_sudo_nvram() {
     };
     let reverted = revert_host(&mut runner).unwrap();
     assert_eq!(reverted.boot_args, "keepsyms=1");
-    assert_eq!(runner.invocations[2].1, vec!["/usr/sbin/nvram", "boot-args=keepsyms=1"]);
-    assert_eq!(runner.invocations[3].1, vec!["/usr/sbin/nvram", "-d", "recon-added-boot-args"]);
+    assert_eq!(runner.invocations[2].1, vec!["/usr/sbin/nvram", "-d", "recon-added-boot-args"]);
+    assert_eq!(runner.invocations[3].1, vec!["/usr/sbin/nvram", "boot-args=keepsyms=1"]);
 }
 
 #[test]
-fn proposal0005_prepare_aborts_without_weakening_the_host_when_it_cannot_record_its_delta() {
-    // The record write fails; prepare must not go on to change boot-args, so a later revert can
-    // never fall back to removing an argument Recon did not set.
+fn proposal0005_prepare_reports_unrecorded_boot_args_without_claiming_revert_can_remove_them() {
     let mut runner = FakeRunner {
         responses: vec![
             ok("boot-args\tamfi_get_out_of_my_way=0x1\n"),
             absent(),
+            ok(""),
             Ok(CommandResult { success: false, stdout: String::new(), stderr: "denied".into() }),
         ],
         ..Default::default()
     };
-    assert!(prepare_host(&mut runner).is_err());
-    assert!(
-        runner
-            .invocations
-            .iter()
-            .all(|(_, args)| !args.iter().any(|arg| arg.starts_with("boot-args="))),
-        "boot-args must not be changed when the delta could not be recorded"
-    );
+    let failure = prepare_host(&mut runner).expect_err("unrecorded host change is not success");
+    assert!(failure.contains("manually"), "{failure}");
+    assert!(failure.contains("--revert"), "{failure}");
+    assert!(runner.invocations[2].1[1].starts_with("boot-args="));
+    assert!(runner.invocations[3].1[1].starts_with("recon-added-boot-args="));
+    assert_eq!(runner.invocations.len(), 4);
 }
 
 #[test]
-fn proposal0005_prepare_rolls_back_its_record_when_the_boot_args_write_fails() {
+fn proposal0005_prepare_failed_boot_arg_write_never_creates_an_ownership_record() {
     let mut runner = FakeRunner {
         responses: vec![
             ok("boot-args\tkeepsyms=1\n"),
             absent(),
-            ok(""),
             Ok(CommandResult { success: false, stdout: String::new(), stderr: "denied".into() }),
-            ok(""),
         ],
         ..Default::default()
     };
     assert!(prepare_host(&mut runner).is_err());
-    // The delta record this run wrote must be deleted, so a later revert cannot remove an argument
-    // Recon did not actually set.
+    assert_eq!(runner.invocations.len(), 3);
     assert!(
-        runner.invocations.iter().any(|(program, args)| program == "/usr/bin/sudo"
-            && args == &["/usr/sbin/nvram", "-d", "recon-added-boot-args"]),
-        "the stale record must be rolled back: {:?}",
-        runner.invocations
+        runner
+            .invocations
+            .iter()
+            .all(|(_, args)| { !args.iter().any(|arg| arg.starts_with("recon-added-boot-args=")) })
     );
 }
 
@@ -434,7 +427,7 @@ fn proposal0005_revert_preserves_a_boot_arg_recon_did_not_add() {
     let reverted = revert_host(&mut runner).unwrap();
     assert_eq!(reverted.boot_args, "amfi_get_out_of_my_way=0x1");
     assert_eq!(
-        runner.invocations[2].1,
+        runner.invocations[3].1,
         vec!["/usr/sbin/nvram", "boot-args=amfi_get_out_of_my_way=0x1"]
     );
 }
@@ -467,7 +460,28 @@ fn proposal0005_revert_deletes_boot_args_variable_only_when_no_unrelated_arg_rem
         ..Default::default()
     };
     assert_eq!(revert_host(&mut runner).unwrap().boot_args, "");
-    assert_eq!(runner.invocations[2].1, vec!["/usr/sbin/nvram", "-d", "boot-args"]);
+    assert_eq!(runner.invocations[3].1, vec!["/usr/sbin/nvram", "-d", "boot-args"]);
+}
+
+#[test]
+fn proposal0005_revert_does_not_change_boot_args_when_record_deletion_fails() {
+    let mut runner = FakeRunner {
+        responses: vec![
+            ok("boot-args\tkeepsyms=1 -arm64e_preview_abi\n"),
+            ok("recon-added-boot-args\t-arm64e_preview_abi\n"),
+            Ok(CommandResult { success: false, stdout: String::new(), stderr: "denied".into() }),
+        ],
+        ..Default::default()
+    };
+    let failure = revert_host(&mut runner).expect_err("unremoved record cannot yield success");
+    assert!(failure.contains("record"), "{failure}");
+    assert_eq!(runner.invocations.len(), 3);
+    assert!(
+        runner
+            .invocations
+            .iter()
+            .all(|(_, args)| { !args.iter().any(|arg| arg.starts_with("boot-args=")) })
+    );
 }
 
 #[test]

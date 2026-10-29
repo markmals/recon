@@ -339,45 +339,42 @@ pub(crate) fn prepare_host<R: CommandRunner>(runner: &mut R) -> Result<HostPrepa
     let prior = read_configured_boot_args(runner)?;
     let boot_args = add_research_boot_args(&prior);
 
-    // Record what this host's first prepare-host introduced, before changing boot-args, so revert is
-    // always precise. A pre-existing record is kept untouched: re-running prepare-host must not
-    // relabel an operator argument as one Recon added. An unreadable record aborts rather than
-    // overwriting ownership history, and a recording failure aborts before weakening the host.
-    let wrote_record = match read_recon_added(runner)? {
-        Some(_) => false,
-        None => {
-            let prior_tokens: Vec<&str> = prior.split_whitespace().collect();
-            let added: Vec<&str> = RESEARCH_BOOT_ARGS
-                .iter()
-                .copied()
-                .filter(|arg| !prior_tokens.contains(arg))
-                .collect();
-            let record = format!("{RECON_ADDED_VARIABLE}={}", added.join(" "));
-            let recorded = runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", &record])?;
-            if !recorded.success {
-                return Err(format!(
-                    "cannot record the research boot-arg delta, so preparation was not applied: {}",
-                    recorded.stderr.trim()
-                ));
-            }
-            true
-        }
-    };
+    // A pre-existing record is kept untouched: re-running prepare-host must not relabel an operator
+    // argument as one Recon added. An unreadable record aborts rather than overwriting ownership
+    // history. Whether a record needs writing is decided before the boot-args change.
+    let existing = read_recon_added(runner)?;
 
-    // Capture the boot-args write without `?`: whether it failed to start or returned non-success,
-    // a record this invocation wrote is now stale and must be rolled back before returning, so a
-    // later revert can never remove an argument Recon did not actually set.
+    // Record ownership only after the boot-args write succeeds. A failed write can never leave a
+    // new ownership record that a later revert might use to remove an operator's argument.
     let set = runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", &format!("boot-args={boot_args}")]);
-    let set_error = match &set {
-        Ok(result) if result.success => None,
-        Ok(result) => Some(format!("cannot set research boot-args: {}", result.stderr.trim())),
-        Err(error) => Some(format!("cannot set research boot-args: {error}")),
-    };
-    if let Some(error) = set_error {
-        if wrote_record {
-            let _ = runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", "-d", RECON_ADDED_VARIABLE]);
+    match &set {
+        Ok(result) if result.success => {}
+        Ok(result) => {
+            return Err(format!("cannot set research boot-args: {}", result.stderr.trim()));
         }
-        return Err(error);
+        Err(error) => return Err(format!("cannot set research boot-args: {error}")),
+    }
+
+    if existing.is_none() {
+        let prior_tokens: Vec<&str> = prior.split_whitespace().collect();
+        let added: Vec<&str> =
+            RESEARCH_BOOT_ARGS.iter().copied().filter(|arg| !prior_tokens.contains(arg)).collect();
+        let record = format!("{RECON_ADDED_VARIABLE}={}", added.join(" "));
+        let recorded = runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", &record]);
+        if !matches!(&recorded, Ok(result) if result.success) {
+            // A failed record write cannot be assumed absent (the command may have applied its
+            // effect before returning an error). A subsequent prepare cannot reconstruct which
+            // arguments belonged to the operator before this attempt.
+            let cause = match recorded {
+                Ok(result) => result.stderr,
+                Err(error) => error,
+            };
+            return Err(format!(
+                "Research boot-args were set, but Recon could not record ownership ({cause}). \
+                 `prepare-host --revert` cannot safely remove unrecorded arguments. Check \
+                 `prepare-host --status` and remove the arguments you authorized manually."
+            ));
+        }
     }
     Ok(HostPreparation { boot_args, operator_steps: OPERATOR_STEPS.into() })
 }
@@ -404,19 +401,35 @@ pub(crate) fn revert_host<R: CommandRunner>(runner: &mut R) -> Result<HostPrepar
         .join(" ");
     let removed_any = current.split_whitespace().any(|arg| to_remove.contains(&arg));
 
+    // Remove the ownership record first: a failed deletion must not leave a stale record after
+    // the boot-args have already been changed. If the subsequent write fails, no record remains
+    // and the operator must inspect the configured arguments rather than retrying a guessed revert.
+    let deleted = runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", "-d", RECON_ADDED_VARIABLE])?;
+    if !deleted.success {
+        return Err(format!("cannot remove research boot-arg record: {}", deleted.stderr.trim()));
+    }
+
     if removed_any {
-        let result = if boot_args.is_empty() {
-            runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", "-d", "boot-args"])?
+        let changed = if boot_args.is_empty() {
+            runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", "-d", "boot-args"])
         } else {
-            runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", &format!("boot-args={boot_args}")])?
+            runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", &format!("boot-args={boot_args}")])
         };
-        if !result.success {
-            return Err(format!("cannot revert research boot-args: {}", result.stderr.trim()));
+        match changed {
+            Ok(result) if result.success => {}
+            Ok(result) => {
+                return Err(format!(
+                    "The ownership record was removed, but the boot-args could not be reverted ({}). Inspect them and remove the arguments manually.",
+                    result.stderr.trim()
+                ));
+            }
+            Err(error) => {
+                return Err(format!(
+                    "The ownership record was removed, but the boot-args could not be reverted ({error}). Inspect them and remove the arguments manually."
+                ));
+            }
         }
     }
-    // Clear the delta record whether or not a boot-arg change was needed, so the host returns to an
-    // unrecorded state. Best-effort: the boot-args are already reverted.
-    let _ = runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", "-d", RECON_ADDED_VARIABLE]);
     Ok(HostPreparation { boot_args, operator_steps: "Reboot to apply the reverted boot-args. To re-enable SIP: shut down, enter macOS Recovery by holding the power button until startup options appear; choose Options > Continue; open Utilities > Terminal; run `csrutil enable`; reboot.".into() })
 }
 

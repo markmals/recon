@@ -129,7 +129,14 @@ pub(crate) fn open_session(
             Ok(outcome) => {
                 return session_value(outcome.record.session_id, outcome.response, outcome.reused);
             }
-            Err(error) if mode == AcquisitionMode::Attach && error.stage() == Stage::Connect => {}
+            // Only attach may fall through to loading a helper, and only when there is no recorded
+            // session to resolve first. A connection failure to a session Recon still has on record
+            // means that session is unresolved, not absent: reinjecting would risk a second helper
+            // while existing access is unaccounted for, so surface the error instead.
+            Err(error)
+                if mode == AcquisitionMode::Attach
+                    && error.stage() == Stage::Connect
+                    && store.live_record_for(incarnation)?.is_none() => {}
             Err(error) => return Err(error),
         }
     }

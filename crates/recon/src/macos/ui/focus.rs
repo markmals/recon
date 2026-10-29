@@ -195,7 +195,22 @@ impl Observation {
             )));
         }
         if self.scope.setup_prompts_expected {
-            return None;
+            // A setup dialog may change the frontmost process and window order. It does not
+            // authorize target activation, Space switches, pointer motion, or input redirection.
+            return trace
+                .disturbances
+                .iter()
+                .filter(|disturbance| {
+                    disturbance.attribution.reportable()
+                        && (disturbance.attribution == Attribution::Target
+                            || !matches!(
+                                disturbance.evidence,
+                                InterferenceEvidence::ForegroundApplication
+                                    | InterferenceEvidence::KeyWindow
+                            ))
+                })
+                .min_by_key(|disturbance| (disturbance.attribution.rank(), disturbance.at))
+                .map(|disturbance| disturbance.failure(&self.scope));
         }
         // The most pointed evidence first, and the earliest of equals: a later disturbance is
         // usually a consequence of the first one.
@@ -1188,6 +1203,44 @@ mod tests {
         };
 
         assert!(observation.outcome().is_none());
+    }
+
+    #[test]
+    fn an_expected_prompt_does_not_excuse_the_target_taking_the_foreground() {
+        let before = snapshot(0);
+        let mut after = snapshot(10);
+        // The target itself comes forward: that is target activation, not the authorization dialog.
+        after.front = Some(FrontProcess { serial: 8, pid: Some(TARGET) });
+        let observation = Observation {
+            scope: Scope {
+                stage: InspectionStage::Attach,
+                target: Some(TARGET),
+                setup_prompts_expected: true,
+            },
+            trace: Some(Trace { samples: 2, disturbances: changes(&before, &after), gap: None }),
+        };
+
+        let failure = observation.outcome().expect("target activation is still reported");
+        assert_eq!(failure.code, ErrorCode::UiInterference);
+    }
+
+    #[test]
+    fn an_expected_prompt_does_not_excuse_a_space_switch() {
+        let before = snapshot(0);
+        let mut after = snapshot(10);
+        after.front = Some(FrontProcess { serial: 8, pid: Some(Pid(501)) });
+        after.space = Some(5);
+        let observation = Observation {
+            scope: Scope {
+                stage: InspectionStage::Attach,
+                target: Some(TARGET),
+                setup_prompts_expected: true,
+            },
+            trace: Some(Trace { samples: 2, disturbances: changes(&before, &after), gap: None }),
+        };
+        let failure = observation.outcome().expect("setup does not excuse a Space switch");
+        assert_eq!(failure.code, ErrorCode::UiInterference);
+        assert_eq!(failure.details.expect("details")["evidenceSource"], "space-change");
     }
 
     #[test]
