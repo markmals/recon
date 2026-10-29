@@ -568,3 +568,27 @@ fn peer_identity(_stream: &UnixStream) -> Result<PeerIdentity, InspectionError> 
         "kernel-backed peer identity is only available on macOS",
     ))
 }
+
+#[cfg(all(test, not(target_os = "macos")))]
+mod tests {
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+    use std::os::unix::net::UnixListener;
+
+    use super::*;
+
+    #[test]
+    fn proposal0005_an_owner_only_unix_endpoint_reaches_the_platform_peer_check() {
+        let root = tempfile::TempDir::new().expect("private transport test directory");
+        let endpoint = root.path().join("helper.sock");
+        let _listener = UnixListener::bind(&endpoint).expect("bind local helper endpoint");
+        fs::set_permissions(&endpoint, fs::Permissions::from_mode(0o600))
+            .expect("make the helper endpoint owner-only");
+
+        let failure = Connection::connect(&endpoint)
+            .expect_err("an unverifiable peer cannot establish native inspection");
+
+        assert_eq!(failure.code(), InspectionErrorCode::Unavailable);
+        assert_eq!(failure.stage(), Stage::Peer);
+    }
+}
