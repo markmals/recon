@@ -14,6 +14,11 @@ fn artifact(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target").join(name)
 }
 
+fn fixture_executable() -> PathBuf {
+    let binary = artifact("fixtures/inject-fixture");
+    std::fs::canonicalize(&binary).unwrap_or(binary)
+}
+
 struct Fixture(Child);
 
 impl Fixture {
@@ -45,6 +50,32 @@ impl Drop for Fixture {
 
 #[test]
 #[ignore = "requires signed loader and cooperative fixtures; run via `vp run test:inject`"]
+fn c_loader_rejects_a_mismatched_executable_before_loading() {
+    let mut fixture = Fixture::launch(true);
+    let incarnation = inject::bind(fixture.pid()).expect("bind the fixture").incarnation();
+    let report = std::env::temp_dir().join(format!("recon-c-loader-exec-{}.pid", fixture.pid()));
+    let _ = fs::remove_file(&report);
+
+    // The incarnation is correct, but the expected executable names a different binary: exec()
+    // keeps pid and pidversion, so only the executable check can catch a swapped image.
+    let output = Command::new("arch")
+        .arg("-arm64e")
+        .arg(artifact("recon-loader"))
+        .arg(fixture.pid().to_string())
+        .arg(incarnation.pidversion.to_string())
+        .arg(artifact("fixtures/inject-helper.dylib"))
+        .arg(&report)
+        .arg("/usr/bin/true")
+        .output()
+        .expect("run the signed C loader");
+    assert!(!output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    sleep(Duration::from_millis(100));
+    assert!(!report.exists(), "a mismatched executable loaded the helper");
+    assert!(fixture.0.try_wait().expect("query fixture").is_none());
+}
+
+#[test]
+#[ignore = "requires signed loader and cooperative fixtures; run via `vp run test:inject`"]
 fn c_loader_executes_inside_an_arm64_target() {
     assert_c_loader_executes(false);
 }
@@ -70,6 +101,7 @@ fn c_loader_rejects_a_reused_incarnation_before_loading() {
         .arg((incarnation.pidversion + 1).to_string())
         .arg(artifact("fixtures/inject-helper.dylib"))
         .arg(&report)
+        .arg(fixture_executable())
         .output()
         .expect("run the signed C loader");
     assert!(!output.status.success());
@@ -91,6 +123,7 @@ fn assert_c_loader_executes(arm64e: bool) {
         .arg(incarnation.pidversion.to_string())
         .arg(artifact("fixtures/inject-helper.dylib"))
         .arg(&report)
+        .arg(fixture_executable())
         .output()
         .expect("run the signed C loader");
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));

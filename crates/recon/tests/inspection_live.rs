@@ -66,6 +66,10 @@ fn opens_and_closes_a_real_helper_session() {
         .arg(incarnation.pidversion.to_string())
         .arg(helper)
         .arg(&socket)
+        .arg(
+            std::fs::canonicalize(artifact("fixtures/inject-fixture"))
+                .unwrap_or(artifact("fixtures/inject-fixture")),
+        )
         .output()
         .expect("run loader");
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));

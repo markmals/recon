@@ -303,8 +303,10 @@ fn proposal0005_preflight_collects_unknowns_without_sudo_or_host_effects() {
 
 #[test]
 fn proposal0005_prepare_host_is_the_only_command_that_can_invoke_sudo_nvram() {
-    let mut runner =
-        FakeRunner { responses: vec![ok("boot-args\tkeepsyms=1\n"), ok("")], ..Default::default() };
+    let mut runner = FakeRunner {
+        responses: vec![ok("boot-args\tkeepsyms=1\n"), ok(""), ok("")],
+        ..Default::default()
+    };
     let plan = prepare_host(&mut runner).unwrap();
     assert_eq!(
         plan.boot_args,
@@ -312,6 +314,9 @@ fn proposal0005_prepare_host_is_the_only_command_that_can_invoke_sudo_nvram() {
     );
     assert_eq!(runner.invocations[0].0, "/usr/sbin/nvram");
     assert_eq!(runner.invocations[1], ("/usr/bin/sudo".into(), vec!["/usr/sbin/nvram".into(), "boot-args=keepsyms=1 amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0".into()]));
+    // The delta Recon introduced is recorded so revert can be precise. The operator-set keepsyms is
+    // not part of it.
+    assert_eq!(runner.invocations[2], ("/usr/bin/sudo".into(), vec!["/usr/sbin/nvram".into(), "recon-added-boot-args=amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0".into()]));
     assert!(plan.operator_steps.contains("csrutil disable"));
     assert!(plan.operator_steps.contains("Recovery"));
     assert!(plan.operator_steps.contains("reboot"));
@@ -320,13 +325,38 @@ fn proposal0005_prepare_host_is_the_only_command_that_can_invoke_sudo_nvram() {
             ok(
                 "boot-args\tkeepsyms=1 amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0\n",
             ),
+            ok(
+                "recon-added-boot-args\tamfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0\n",
+            ),
+            ok(""),
             ok(""),
         ],
         ..Default::default()
     };
     let reverted = revert_host(&mut runner).unwrap();
     assert_eq!(reverted.boot_args, "keepsyms=1");
-    assert_eq!(runner.invocations[1].1, vec!["/usr/sbin/nvram", "boot-args=keepsyms=1"]);
+    assert_eq!(runner.invocations[2].1, vec!["/usr/sbin/nvram", "boot-args=keepsyms=1"]);
+    assert_eq!(runner.invocations[3].1, vec!["/usr/sbin/nvram", "-d", "recon-added-boot-args"]);
+}
+
+#[test]
+fn proposal0005_revert_preserves_a_boot_arg_recon_did_not_add() {
+    // The operator set amfi independently; prepare-host recorded that it added only the other two.
+    let mut runner = FakeRunner {
+        responses: vec![
+            ok("boot-args\tamfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0\n"),
+            ok("recon-added-boot-args\t-arm64e_preview_abi tss_should_crash=0\n"),
+            ok(""),
+            ok(""),
+        ],
+        ..Default::default()
+    };
+    let reverted = revert_host(&mut runner).unwrap();
+    assert_eq!(reverted.boot_args, "amfi_get_out_of_my_way=0x1");
+    assert_eq!(
+        runner.invocations[2].1,
+        vec!["/usr/sbin/nvram", "boot-args=amfi_get_out_of_my_way=0x1"]
+    );
 }
 
 #[test]
@@ -340,27 +370,38 @@ fn proposal0005_unexpected_nvram_output_cannot_authorize_boot_arg_write() {
 #[test]
 fn proposal0005_revert_with_no_recon_boot_args_does_not_request_authorization() {
     let mut runner = FakeRunner {
-        responses: vec![Ok(CommandResult {
-            success: false,
-            stdout: String::new(),
-            stderr: "nvram: data was not found".into(),
-        })],
+        responses: vec![
+            Ok(CommandResult {
+                success: false,
+                stdout: String::new(),
+                stderr: "nvram: data was not found".into(),
+            }),
+            Ok(CommandResult {
+                success: false,
+                stdout: String::new(),
+                stderr: "nvram: data was not found".into(),
+            }),
+        ],
         ..Default::default()
     };
     assert_eq!(revert_host(&mut runner).unwrap().boot_args, "");
-    assert_eq!(runner.invocations.len(), 1);
+    assert!(runner.invocations.iter().all(|(program, _)| program != "/usr/bin/sudo"));
 }
 #[test]
 fn proposal0005_revert_deletes_boot_args_variable_only_when_no_unrelated_arg_remains() {
     let mut runner = FakeRunner {
         responses: vec![
             ok("boot-args\tamfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0"),
+            ok(
+                "recon-added-boot-args\tamfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0",
+            ),
+            ok(""),
             ok(""),
         ],
         ..Default::default()
     };
     assert_eq!(revert_host(&mut runner).unwrap().boot_args, "");
-    assert_eq!(runner.invocations[1].1, vec!["/usr/sbin/nvram", "-d", "boot-args"]);
+    assert_eq!(runner.invocations[2].1, vec!["/usr/sbin/nvram", "-d", "boot-args"]);
 }
 
 #[test]

@@ -33,7 +33,7 @@ impl Drop for Fixture {
 #[ignore = "requires the AppKit fixture, signed loader, and production helper"]
 fn resolves_a_window_server_id_to_a_live_native_window() {
     let executable = artifact("fixtures/ReconFixture.app/Contents/MacOS/ReconFixture");
-    let mut fixture = Fixture(Command::new(executable).spawn().expect("launch AppKit fixture"));
+    let mut fixture = Fixture(Command::new(&executable).spawn().expect("launch AppKit fixture"));
     let deadline = Instant::now() + Duration::from_secs(10);
     let target = loop {
         match inject::bind_target(fixture.0.id() as i32) {
@@ -57,6 +57,7 @@ fn resolves_a_window_server_id_to_a_live_native_window() {
         .arg(incarnation.pidversion.to_string())
         .arg(artifact("recon-helper.dylib"))
         .arg(&socket)
+        .arg(std::fs::canonicalize(&executable).unwrap_or_else(|_| executable.clone()))
         .output()
         .expect("load helper");
     assert!(loaded.status.success(), "{}", String::from_utf8_lossy(&loaded.stderr));

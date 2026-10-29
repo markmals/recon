@@ -69,12 +69,14 @@ pub(super) fn load(
     artifacts: &Artifacts,
     incarnation: Incarnation,
     socket: &Path,
+    expected_executable: &Path,
 ) -> Result<(), InspectionError> {
     let mut child = Command::new(&artifacts.loader)
         .arg(incarnation.pid.to_string())
         .arg(incarnation.pidversion.to_string())
         .arg(&artifacts.helper)
         .arg(socket)
+        .arg(expected_executable)
         .stdout(Stdio::null())
         .stderr(Stdio::piped())
         .spawn()

@@ -314,20 +314,68 @@ pub(crate) fn prepare_host_status<R: CommandRunner>(runner: &mut R) -> HostPrepa
     }
 }
 
+/// The nvram variable that records exactly which research tokens this host's `prepare-host` added,
+/// so `--revert` removes only those and leaves a pre-existing argument (an operator-set
+/// `amfi_get_out_of_my_way=0x1`, for instance) in place.
+const RECON_ADDED_VARIABLE: &str = "recon-added-boot-args";
+
+fn read_recon_added<R: CommandRunner>(runner: &mut R) -> Vec<String> {
+    let Ok(output) = runner.run("/usr/sbin/nvram", &[RECON_ADDED_VARIABLE]) else {
+        return Vec::new();
+    };
+    if !output.success {
+        return Vec::new();
+    }
+    output
+        .stdout
+        .trim()
+        .strip_prefix(RECON_ADDED_VARIABLE)
+        .map(|rest| rest.split_whitespace().map(str::to_owned).collect())
+        .unwrap_or_default()
+}
+
 pub(crate) fn prepare_host<R: CommandRunner>(runner: &mut R) -> Result<HostPreparation, String> {
-    let boot_args = add_research_boot_args(&read_configured_boot_args(runner)?);
-    let assignment = format!("boot-args={boot_args}");
-    let result = runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", &assignment])?;
+    let prior = read_configured_boot_args(runner)?;
+    let boot_args = add_research_boot_args(&prior);
+    // What this invocation actually introduces, so revert can undo exactly this and nothing the
+    // operator set independently.
+    let prior_tokens: Vec<&str> = prior.split_whitespace().collect();
+    let added: Vec<&str> =
+        RESEARCH_BOOT_ARGS.iter().copied().filter(|arg| !prior_tokens.contains(arg)).collect();
+
+    let result =
+        runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", &format!("boot-args={boot_args}")])?;
     if !result.success {
         return Err(format!("cannot set research boot-args: {}", result.stderr.trim()));
     }
+    // Record the delta so a later revert in another process can be precise. A failure to record is
+    // not fatal: revert falls back to removing the full research set.
+    let record = format!("{RECON_ADDED_VARIABLE}={}", added.join(" "));
+    let _ = runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", &record]);
     Ok(HostPreparation { boot_args, operator_steps: OPERATOR_STEPS.into() })
 }
 
 pub(crate) fn revert_host<R: CommandRunner>(runner: &mut R) -> Result<HostPreparation, String> {
     let current = read_configured_boot_args(runner)?;
-    let boot_args = remove_research_boot_args(&current);
-    if !current.split_whitespace().any(|arg| RESEARCH_BOOT_ARGS.contains(&arg)) {
+    let recorded = read_recon_added(runner);
+    // Remove only what Recon added. Without a record, fall back to the full research set rather than
+    // leaving the host weakened.
+    let (boot_args, removed_any) = if recorded.is_empty() {
+        let boot_args = remove_research_boot_args(&current);
+        let removed = current.split_whitespace().any(|arg| RESEARCH_BOOT_ARGS.contains(&arg));
+        (boot_args, removed)
+    } else {
+        let to_remove: Vec<&str> = recorded.iter().map(String::as_str).collect();
+        let boot_args = current
+            .split_whitespace()
+            .filter(|arg| !to_remove.contains(arg))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let removed = current.split_whitespace().any(|arg| to_remove.contains(&arg));
+        (boot_args, removed)
+    };
+
+    if !removed_any {
         return Ok(HostPreparation {
             boot_args,
             operator_steps:
@@ -343,6 +391,8 @@ pub(crate) fn revert_host<R: CommandRunner>(runner: &mut R) -> Result<HostPrepar
     if !result.success {
         return Err(format!("cannot revert research boot-args: {}", result.stderr.trim()));
     }
+    // Clear the delta record; best-effort, since the host is reverted either way.
+    let _ = runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", "-d", RECON_ADDED_VARIABLE]);
     Ok(HostPreparation { boot_args, operator_steps: "Reboot to apply the reverted boot-args. To re-enable SIP: shut down, enter macOS Recovery by holding the power button until startup options appear; choose Options > Continue; open Utilities > Terminal; run `csrutil enable`; reboot.".into() })
 }
 

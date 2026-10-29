@@ -5,6 +5,7 @@
 #include <mach-o/dyld.h>
 #include <mach-o/dyld_images.h>
 #include <mach-o/loader.h>
+#include <libproc.h>
 #include <ptrauth.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -138,8 +139,8 @@ static void release_regions(mach_port_t task, mach_vm_address_t code,
 }
 
 int main(int argc, char **argv) {
-  if (argc != 5) {
-    fprintf(stderr, "usage: %s PID PIDVERSION HELPER_DYLIB SOCKET_PATH\n", argv[0]);
+  if (argc != 6) {
+    fprintf(stderr, "usage: %s PID PIDVERSION HELPER_DYLIB SOCKET_PATH EXPECTED_EXECUTABLE\n", argv[0]);
     return 64;
   }
   char *end = NULL;
@@ -147,7 +148,7 @@ int main(int argc, char **argv) {
   if (*argv[1] == '\0' || *end != '\0' || pid <= 0 || pid > INT32_MAX) return 64;
   long pidversion = strtol(argv[2], &end, 10);
   if (*argv[2] == '\0' || *end != '\0' || pidversion < 0 || pidversion > UINT32_MAX) return 64;
-  if (strlen(argv[3]) >= MAX_PATH || strlen(argv[4]) >= MAX_PATH) return 64;
+  if (strlen(argv[3]) >= MAX_PATH || strlen(argv[4]) >= MAX_PATH || strlen(argv[5]) >= MAX_PATH) return 64;
 
   mach_port_t task = MACH_PORT_NULL;
   kern_return_t status = task_for_pid(mach_task_self(), (pid_t)pid, &task);
@@ -166,6 +167,13 @@ int main(int argc, char **argv) {
   }
   if (!shared_cache_matches(task)) {
     fprintf(stderr, "target does not share the loader's dyld shared cache\n");
+    mach_port_deallocate(mach_task_self(), task);
+    return 1;
+  }
+  char observed_executable[MAX_PATH] = {0};
+  if (proc_pidpath((pid_t)pid, observed_executable, sizeof(observed_executable)) <= 0 ||
+      strcmp(observed_executable, argv[5]) != 0) {
+    fprintf(stderr, "the bound process is no longer running the selected executable\n");
     mach_port_deallocate(mach_task_self(), task);
     return 1;
   }

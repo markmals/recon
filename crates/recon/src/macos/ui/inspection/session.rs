@@ -1,6 +1,6 @@
 //! Session establishment against an exact application and process incarnation.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
@@ -14,7 +14,7 @@ use crate::inspection::{
 };
 use crate::macos::inject;
 use crate::macos::inspection_access::{
-    self, AccessMode, Eligibility, Fact, HelperFacts, SystemRunner, TargetSelection,
+    self, AccessMode, CommandRunner, Eligibility, Fact, HelperFacts, SystemRunner, TargetSelection,
 };
 use crate::macos::workspace;
 use crate::ui::request::Selection;
@@ -94,6 +94,7 @@ pub(crate) fn open_session(
         )
     })?;
     let incarnation = Incarnation::from(target.handle.incarnation());
+    let executable = selected_executable(application, pid)?;
     let store = default_store()?;
     if let Some(record) = store.live_record_for(incarnation)?
         && !same_bundle(&record, application)
@@ -134,7 +135,7 @@ pub(crate) fn open_session(
     }
 
     remove_refused_endpoint(&socket)?;
-    artifact::load(&artifacts, incarnation, &socket)?;
+    artifact::load(&artifacts, incarnation, &socket, &executable)?;
     let deadline = Instant::now() + Duration::from_secs(10);
     loop {
         match open(&store, &request) {
@@ -179,6 +180,35 @@ pub(crate) fn close_session(session: &SessionId) -> Result<Value, InspectionErro
         "helperResident": !process_exited,
         "bootstrapActive": !process_exited,
     }))
+}
+
+fn selected_executable(application: &Application, pid: Pid) -> Result<PathBuf, InspectionError> {
+    let mut runner = SystemRunner;
+    let observed = runner.process_executable(pid.0).map_err(|error| {
+        InspectionError::new(
+            InspectionErrorCode::Unavailable,
+            Stage::Attach,
+            format!("the selected process executable could not be read: {error}"),
+        )
+    })?;
+    let observed = std::fs::canonicalize(&observed).unwrap_or_else(|_| PathBuf::from(&observed));
+    if let Some(expected) = &application.executable_path {
+        let expected = std::fs::canonicalize(expected).unwrap_or_else(|_| expected.clone());
+        if expected != observed {
+            return Err(InspectionError::new(
+                InspectionErrorCode::StaleSession,
+                Stage::Attach,
+                "the selected process is no longer running the selected bundle's executable",
+            ));
+        }
+    } else if !observed.starts_with(&application.path) {
+        return Err(InspectionError::new(
+            InspectionErrorCode::StaleSession,
+            Stage::Attach,
+            "the selected process executable is outside the selected bundle",
+        ));
+    }
+    Ok(observed)
 }
 
 fn check_access(
