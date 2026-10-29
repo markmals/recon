@@ -226,10 +226,16 @@ pub fn open(
         }
     };
 
-    if reusable.is_some() {
-        store.save(&record)?;
-    } else {
-        store.insert(&record)?;
+    let persisted = if reusable.is_some() { store.save(&record) } else { store.insert(&record) };
+    if let Err(error) = persisted {
+        // The helper acknowledged a new session but the host could not record the means to revoke
+        // it. Rather than leave an orphaned active session the host can neither reuse nor close,
+        // revoke it on the helper before surfacing the failure. A newly established session is
+        // revoked; a reused one keeps the still-recorded prior session untouched.
+        if reusable.is_none() {
+            let _ = revoke(&record);
+        }
+        return Err(error);
     }
     response.remove("capability");
     Ok(OpenOutcome { record, reused, response })

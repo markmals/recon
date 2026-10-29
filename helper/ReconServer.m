@@ -160,12 +160,13 @@ static NSDictionary *handleRead(NSDictionary *request, uint64_t requestStart) {
         @autoreleasepool {
             // A read that was queued but has not begun must not start once its session is closed:
             // close revokes access, and a not-yet-started read has no in-flight target execution to
-            // protect. A read already executing is unaffected (this check is before it starts).
+            // protect. The session check and the commit to `started` happen together under the lock
+            // so a close cannot slip between them: either close wins and the read never begins, or
+            // the read commits first and runs as in-flight execution the close does not stop.
             [stateLock lock];
-            BOOL stillActive = [activeSession isEqual:session];
+            if ([activeSession isEqual:session] && nowNs() < work.deadline) atomic_store(&started, true);
             [stateLock unlock];
-            if (stillActive && nowNs() < work.deadline) {
-                atomic_store(&started, true);
+            if (atomic_load(&started)) {
                 @try { answer = ReconInspect(work); }
                 @catch (NSException *exception) {
                     answer = ReconError(@"INSPECTION_FAILED", @"target-execution", @"Native getter raised an exception");

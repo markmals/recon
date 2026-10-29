@@ -317,13 +317,22 @@ const RECON_ADDED_VARIABLE: &str = "recon-added-boot-args";
 /// A present-but-empty record (prepare-host ran when every research token was already set) is
 /// `Some(vec![])` and means revert removes nothing; an absent record is `None` and means revert
 /// must not touch the operator's configuration at all, because Recon has no evidence it set it.
-fn read_recon_added<R: CommandRunner>(runner: &mut R) -> Option<Vec<String>> {
-    let output = runner.run("/usr/sbin/nvram", &[RECON_ADDED_VARIABLE]).ok()?;
+fn read_recon_added<R: CommandRunner>(runner: &mut R) -> Result<Option<Vec<String>>, String> {
+    let output = runner.run("/usr/sbin/nvram", &[RECON_ADDED_VARIABLE])?;
     if !output.success {
-        return None;
+        // A genuinely absent variable is the only tolerated non-success: anything else is an
+        // unreadable record, which must not be mistaken for "Recon added nothing".
+        if output.stderr.contains("data was not found") {
+            return Ok(None);
+        }
+        return Err(format!("cannot read the research boot-arg record: {}", output.stderr.trim()));
     }
-    let rest = output.stdout.trim().strip_prefix(RECON_ADDED_VARIABLE)?;
-    Some(rest.split_whitespace().map(str::to_owned).collect())
+    let rest = output
+        .stdout
+        .trim()
+        .strip_prefix(RECON_ADDED_VARIABLE)
+        .ok_or_else(|| format!("unexpected nvram response: {}", output.stdout.trim()))?;
+    Ok(Some(rest.split_whitespace().map(str::to_owned).collect()))
 }
 
 pub(crate) fn prepare_host<R: CommandRunner>(runner: &mut R) -> Result<HostPreparation, String> {
@@ -332,25 +341,37 @@ pub(crate) fn prepare_host<R: CommandRunner>(runner: &mut R) -> Result<HostPrepa
 
     // Record what this host's first prepare-host introduced, before changing boot-args, so revert is
     // always precise. A pre-existing record is kept untouched: re-running prepare-host must not
-    // relabel an operator argument as one Recon added. If recording fails, abort before weakening
-    // the host, so revert can never fall back to removing an argument Recon did not set.
-    if read_recon_added(runner).is_none() {
-        let prior_tokens: Vec<&str> = prior.split_whitespace().collect();
-        let added: Vec<&str> =
-            RESEARCH_BOOT_ARGS.iter().copied().filter(|arg| !prior_tokens.contains(arg)).collect();
-        let record = format!("{RECON_ADDED_VARIABLE}={}", added.join(" "));
-        let recorded = runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", &record])?;
-        if !recorded.success {
-            return Err(format!(
-                "cannot record the research boot-arg delta, so preparation was not applied: {}",
-                recorded.stderr.trim()
-            ));
+    // relabel an operator argument as one Recon added. An unreadable record aborts rather than
+    // overwriting ownership history, and a recording failure aborts before weakening the host.
+    let wrote_record = match read_recon_added(runner)? {
+        Some(_) => false,
+        None => {
+            let prior_tokens: Vec<&str> = prior.split_whitespace().collect();
+            let added: Vec<&str> = RESEARCH_BOOT_ARGS
+                .iter()
+                .copied()
+                .filter(|arg| !prior_tokens.contains(arg))
+                .collect();
+            let record = format!("{RECON_ADDED_VARIABLE}={}", added.join(" "));
+            let recorded = runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", &record])?;
+            if !recorded.success {
+                return Err(format!(
+                    "cannot record the research boot-arg delta, so preparation was not applied: {}",
+                    recorded.stderr.trim()
+                ));
+            }
+            true
         }
-    }
+    };
 
     let result =
         runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", &format!("boot-args={boot_args}")])?;
     if !result.success {
+        // The boot-args were not changed, so a record this invocation wrote is now stale and would
+        // make a later revert remove an argument Recon never set. Roll it back.
+        if wrote_record {
+            let _ = runner.run("/usr/bin/sudo", &["/usr/sbin/nvram", "-d", RECON_ADDED_VARIABLE]);
+        }
         return Err(format!("cannot set research boot-args: {}", result.stderr.trim()));
     }
     Ok(HostPreparation { boot_args, operator_steps: OPERATOR_STEPS.into() })
@@ -359,12 +380,14 @@ pub(crate) fn prepare_host<R: CommandRunner>(runner: &mut R) -> Result<HostPrepa
 pub(crate) fn revert_host<R: CommandRunner>(runner: &mut R) -> Result<HostPreparation, String> {
     let current = read_configured_boot_args(runner)?;
     // Without a record of what Recon added, do nothing: removing arguments Recon cannot prove it set
-    // would clobber the operator's configuration. Recon never guesses here.
-    let Some(recorded) = read_recon_added(runner) else {
+    // would clobber the operator's configuration. An unreadable record aborts rather than guesses.
+    let Some(recorded) = read_recon_added(runner)? else {
         return Ok(HostPreparation {
             boot_args: current,
-            operator_steps: "No Recon research boot-arg record was found, so nothing was reverted.                              Remove any research boot-args manually if they are no longer wanted."
-                .into(),
+            operator_steps:
+                "No Recon research boot-arg record was found, so nothing was reverted. \
+                             Remove any research boot-args manually if they are no longer wanted."
+                    .into(),
         });
     };
 

@@ -573,6 +573,43 @@ fn a_mismatched_helper_build_fails_explicitly() {
 }
 
 #[test]
+fn a_session_the_host_cannot_record_is_revoked_rather_than_orphaned() {
+    let fixture = Fixture::new();
+    let incarnation = fixture.incarnation;
+    let helper = Helper::start(
+        &fixture.endpoint,
+        always(move |request| {
+            if request.get("op").and_then(Value::as_str) == Some("close") {
+                Reply::Json(json!({ "ok": true, "revoked": true, "wasActive": true }))
+            } else {
+                Reply::Json(open_reply(incarnation, SESSION_A, CAPABILITY_A, false))
+            }
+        }),
+    );
+
+    // The helper will acknowledge the open, but the host cannot write the descriptor: the sessions
+    // directory is read-only. Without a recorded session there is no capability to close with, so
+    // the open must revoke the just-established session on the helper instead of leaking it.
+    let sessions = fixture.store.root().join("sessions");
+    fs::set_permissions(&sessions, fs::Permissions::from_mode(0o500))
+        .expect("seal the sessions dir");
+
+    let failure = open(&fixture.store, &fixture.open_request(AcquisitionMode::Attach))
+        .expect_err("a session that cannot be recorded is not established");
+    assert_eq!(failure.stage(), Stage::Store);
+
+    fs::set_permissions(&sessions, fs::Permissions::from_mode(0o700)).expect("restore the dir");
+    assert!(fixture.store.records().unwrap().is_empty(), "no session was recorded");
+    assert!(
+        helper
+            .requests()
+            .iter()
+            .any(|request| request.get("op").and_then(Value::as_str) == Some("close")),
+        "the orphaned session must be revoked on the helper"
+    );
+}
+
+#[test]
 fn a_handshake_answering_for_another_process_cannot_establish_a_session() {
     let fixture = Fixture::new();
     let incarnation = fixture.incarnation;
