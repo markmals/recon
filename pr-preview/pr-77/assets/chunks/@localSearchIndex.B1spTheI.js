@@ -1,0 +1,1 @@
+import{t as e}from"./framework.DOeeIHC2.js";var t={root:()=>e(()=>import(`./@localSearchIndexroot.7FxdnQiz.js`),[])};export{t as default};
