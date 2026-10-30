@@ -68,13 +68,18 @@ fn head_names_package(package: &Path) -> bool {
         == Some(env!("CARGO_PKG_NAME"))
 }
 
+/// Every inherited `GIT_*` variable is dropped: `GIT_DIR`, `GIT_INDEX_FILE` and `GIT_WORK_TREE`
+/// override `current_dir`, and a build started from a Git hook — hk's `pre-push` runs the gate,
+/// which builds — would otherwise describe the hook's repository rather than this package's.
 fn git(package: &Path, arguments: &[&str]) -> Option<String> {
-    let output = Command::new("git")
-        .current_dir(package)
-        .env("GIT_NO_LAZY_FETCH", "1")
-        .args(arguments)
-        .output()
-        .ok()?;
+    let mut command = Command::new("git");
+    command.current_dir(package);
+    for (name, _) in std::env::vars_os() {
+        if name.to_string_lossy().starts_with("GIT_") {
+            command.env_remove(name);
+        }
+    }
+    let output = command.env("GIT_NO_LAZY_FETCH", "1").args(arguments).output().ok()?;
     output.status.success().then(|| String::from_utf8(output.stdout).ok())?.map(|mut text| {
         if text.ends_with('\n') {
             text.pop();
