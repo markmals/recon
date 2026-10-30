@@ -22,7 +22,7 @@ Recon's privacy identifier remains `me.malstrom.recon`. The bare executable embe
 
 Homebrew builds and bottles use the ad-hoc signatures produced by the build. The formula does not request a Developer ID credential, notarize a separate archive, or alter TCC state. Users grant Screen Recording and Accessibility to the installed `recon` executable and repeat the grants when an upgrade or reinstall changes its ad-hoc code hash or versioned Cellar path. `recon context` is the non-interactive way to inspect the current installation's grants and signing facts.
 
-A developer may still sign a stable local executable with a Developer ID Application identity and the identifier `me.malstrom.recon`, using `RECON_SIGNING_IDENTITY=… vp run recon:sign`, to preserve grants across in-place rebuilds at that path. This optional development arrangement is not a requirement for Homebrew installation.
+A developer may still sign a stable local executable with a Developer ID Application identity and the identifier `me.malstrom.recon`, using `RECON_SIGNING_IDENTITY=… mise run recon:sign`, to preserve grants across in-place rebuilds at that path. This optional development arrangement is not a requirement for Homebrew installation.
 
 ## Rationale
 

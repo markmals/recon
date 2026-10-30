@@ -30,7 +30,7 @@ Adding an error code is an ordinary contract change. Removing or renaming one ch
 ## Enforcement
 
 - Tier: check (Tier 0), with structural enforcement in the implementation.
-- Mechanism: `crates/recon/src/cli/registry.rs` supplies the parser, help, and schema metadata. `Failure` requires an `ErrorCode`; schema generation publishes the enumeration. `crates/recon/tests/cli_contract.rs` checks registry discovery, parser constraints, and declared error-code coverage. `crates/recon/tests/cli_schema.rs`, the shared error-validation helpers, and the opt-in observation tests validate actual response and error envelopes against their advertised schemas. CI runs the crate checks through `vp run check`.
+- Mechanism: `crates/recon/src/cli/registry.rs` supplies the parser, help, and schema metadata. `Failure` requires an `ErrorCode`; schema generation publishes the enumeration. `crates/recon/tests/cli_contract.rs` checks registry discovery, parser constraints, and declared error-code coverage. `crates/recon/tests/cli_schema.rs`, the shared error-validation helpers, and the opt-in observation tests validate actual response and error envelopes against their advertised schemas. CI runs the crate checks through `mise run check`.
 
 These mechanisms enforce the rule; this record identifies the contract they protect without introducing a second command or error catalogue.
 
@@ -38,7 +38,7 @@ These mechanisms enforce the rule; this record identifies the contract they prot
 
 1. Add or change commands through the existing registry and native typed parsers. Derive help and command metadata from that same source.
 2. Represent failures with the existing typed error contract and declare each command's possible codes. Keep the serialization schemas and behavioral coverage aligned.
-3. Run `vp run check`. For a changed permission-gated observation path, also exercise the existing signed UI checks with the required grants. Revise proposal intent before changing the public contract.
+3. Run `mise run check`. For a changed permission-gated observation path, also exercise the existing signed UI checks with the required grants. Revise proposal intent before changing the public contract.
 
 ## Revision history
 
