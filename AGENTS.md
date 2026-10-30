@@ -1,400 +1,179 @@
 # Agent Contract
 
-This project follows the development process described in [`PROCESS.md`](PROCESS.md); this file is the operative contract. Read it before doing anything substantial.
+This project uses the **Workbench** development process. A human approves intent in a proposal; agents implement it as tests, guides, and code; an independent review checks them against each other before the human reviews the result. [`PROCESS.md`](PROCESS.md) describes the whole loop and its artifacts for humans. The skills named below hold the procedures.
 
-The process has two governing principles:
+Run `mise run status` at the start of every session and whenever you are unsure where the work stands. It reads the branch, the pull request, and the active proposal, and prints the phase and the next step. The human is never expected to remember a command or skill name; "keep going" or a plain description of a problem is enough to orient from it.
 
-1. **Understanding precedes intent; intent precedes implementation.** Before deciding what to build, understand the problem on its own terms. Before writing code, make the intended behavior explicit.
-2. **No single artifact defines a feature by itself.** A proposal records intent, tests encode behavior, guides explain behavior, code implements behavior, and a preview exposes behavior. Each is an independent check on the others.
+## Does this change need a proposal?
 
-You do not move directly from a request to a solution, or from a solution to an implementation.
+Ask one question: **does this change decide something?**
 
-## Start here, every session
+- If intent already exists — an approved proposal promises the behavior, or the correct behavior is obvious (a typo, a dead link, a bug whose fix is unambiguous) — implement it directly. Say which case it is, in one line, before you start.
+- If the change decides something, ask the human whether they want a proposal for it. Only after an explicit yes: create a branch, push it, open a draft pull request, and write the proposal with `.agents/skills/writing-a-proposal/`. A request to "start a feature" or "write a proposal" is not that yes, and neither is `mise run status` output.
+- If a small fix turns out to need a design decision, stop and ask the proposal question then.
 
-```sh
-vp run status
-```
+Proposal status belongs to the human. They move a proposal from `draft` to `awaiting-implementation`, and from `active-review` to `accepted`, `returned-for-revisions`, or `rejected`. You move it to `active-review` when you hand finished work to them, and to `implemented` in the accepted pull request before merge (`.agents/skills/completing-a-feature/`).
 
-It reads the branch, the pull request, and the active proposal's status, then prints which phase the work is in and what happens next. Run it before asking the human where things stand, and run it again whenever you are unsure.
+## Implementing an approved proposal
 
-The human is never expected to remember a command, a skill name, or an argument. "Keep going", "start a feature for X", or a plain description of a problem is enough to orient from `vp run status`. Those phrases grant no new authority. Check whether a recorded, active build mandate already authorizes the work before asking for per-feature approval; the status command does not validate that authority.
+Use `.agents/skills/implementing-a-proposal/`. In short:
 
-## Reasoning order
+1. Read the proposal's Detailed design and the code it touches.
+2. Write failing tests for the behavior Detailed design specifies, and watch them fail for the right reason.
+3. When the change alters what a user does, sees, or must know, write or extend the guide in `guides/` from the proposal, not from the code, and check it against the tests.
+4. Write the code.
+5. Verify with `mise run check`. Report the commands you ran and what they printed.
+6. Get one independent review with `.agents/skills/reviewing-an-implementation/` and fix what it confirms. Then post the readiness report, move the proposal to `active-review`, and mark the pull request ready, together.
 
-For substantial work, reason in this order:
+Which of tests, guides, and code a change needs is a judgement; the order is not. A change with no user-facing surface needs no guide, and a change with nothing meaningfully testable needs no test, but say so rather than skipping quietly.
 
-```text
-reality → understanding → conceptual model → intent → implementation → verification
-```
+Work inline by default. Use subagents only when they buy something specific: slices that are independent, touch separate files, and save real time by running in parallel, or a fresh-context reviewer that has not seen your reasoning. A fixed batch of independent slices goes to the harness's `task` tool; for stages that depend on each other, finish the prerequisite and hand its verified result to the next agent.
 
-Do not collapse these stages.
+## Rules
 
-**Understanding** means learning the relevant problem domain well enough to reason using its concepts, constraints, prior knowledge, and standards of quality rather than generic software patterns.
-
-**Conceptual model** means deciding what kinds of things exist in the problem, what distinguishes them, how they relate, and which distinctions are fundamental rather than implementation conveniences.
-
-**Intent** is the approved decision about what this project should do. It is recorded in the proposal. The human approves intent directly or delegates bounded decisions through a build mandate.
-
-**Implementation** realizes that intent in tests, guides, and code.
-
-A plausible implementation plan is not evidence that the problem is understood.
-
-## Artifacts
-
-| Artifact | Lives in | What it is |
-| --- | --- | --- |
-| **Vision** | `VISION.md` | The project's purpose, MVP target, principles, and direction. Living document. |
-| **Policies** | `policies/` | Rules that future work must keep enforcing. |
-| **Decisions** | `decisions/` | Architectural choices, with the context that produced them. |
-| **Proposals** | `proposals/` | The specification for one change. Preserved as history after it ships. |
-| **Guides** | `guides/` | Human-facing prose explaining how a feature behaves and how it is used. |
-| **Previews** | CI | The cheapest real artifact through which a human can exercise the change. |
-| **Tests** | project-native | Executable specifications of the behavior a proposal describes. |
-| **Code** | project-native | The implementation. |
-
-Numbered artifacts use `<NNNN>-<slug>.md` and carry `id`, `status`, and `title` frontmatter. `.agents/templates/` holds the canonical shape of each. `vp run validate` enforces it.
-
-Every proposal is evaluated against the current vision, policies, and decisions. When they disagree with what you are about to build, stop and raise it — do not quietly deviate.
-
-## Agent roles
-
-The process distinguishes responsibilities even when one harness or model can technically perform all of them.
-
-### Strategist
-
-The primary agent is the strategist. It owns:
-
-- domain grounding;
-- synthesis of evidence;
-- problem formulation;
-- ontology and conceptual modeling;
-- product and architectural reasoning;
-- proposal development;
-- decomposition and delegation;
-- resolving strategic conflicts discovered during implementation;
-- the final excellence pass.
-
-The strategist must understand the problem well enough to judge the work it delegates. Delegation is not a substitute for understanding.
-
-### Implementer
-
-An implementer receives a bounded, already-understood piece of work and realizes it in tests, guides, and code.
-
-It may make local implementation decisions, but it does not silently redefine:
-
-- domain concepts;
-- product behavior;
-- proposal intent;
-- architecture owned by the strategist.
-
-If implementation evidence contradicts the supplied model of the problem, return that conflict to the strategist rather than encoding a new answer.
-
-### Reframer
-
-A reframer is an independent reasoning agent used when the current formulation of the problem appears wrong or repeated local work stops increasing confidence.
-
-It challenges premises, boundaries, abstractions, and diagnoses. It is not merely a more powerful implementer.
-
-### Adversary
-
-The adversary receives fresh context and attempts to falsify the finished work. It reports defects and proposal gaps; it does not fix them.
-
-## Orchestrating agents
-
-Oh My Pi's built-in task delegation handles independent implementation slices. Work inline for a small bounded task; dispatch a fixed batch of independent slices in parallel and keep integration ownership with the strategist. For dependent stages, complete the prerequisite first and pass its verified result to the next agent. Give every agent bounded ownership and separate edited files. Delegation does not approve proposals, replace the strategist, or bypass tests and review.
-
-## Bounded build mandates
-
-A human-approved build mandate delegates decisions for a bounded outcome to the strategist. Within its recorded authority, it replaces per-feature human consent, proposal approval, and acceptance or merge gates throughout this contract and the linked skills. Outside that authority, the individual human-approval path remains in force.
-
-Record the mandate in a `## Build mandate` section of an ordinary proposal. It must specify:
-
-- the outcome, observable completion criteria, scope, and non-goals;
-- fixed constraints, including trust boundaries and compatibility promises;
-- delegated decisions and actions, naming any permission to create PRs, push feature branches, accept work, and merge into a particular target branch;
-- resource and spending limits, with no new spending authorized by omission;
-- required verification, independent review, and preview evidence;
-- an expiry or completion condition;
-- dated human approval and retrievable evidence of the approved revision.
-
-The mandate proposal requires human approval and cannot authorize itself. Missing approval, unresolved boundaries, expiry, completion, or revocation means no delegated authority. The human alone may extend or renew the mandate, change its boundaries, or grant additional actions. Permission to establish this mechanism does not activate a runtime build mandate.
-
-Each governed proposal carries an `## Authorization` section linking the mandate and its approved revision, explaining why the change fits, and recording the strategist's approval decisions. Ordinary proposals record direct human consent instead. Workers receive that reference with their bounded brief; Beads task state and an agent's assertion of authority do not replace it.
-
-For covered work, the strategist is the approval owner. It may choose and revise in-scope behavior, settle technical tradeoffs, authorize proposals as `awaiting-implementation`, and record in-scope policies and decisions without another human round trip. It must update intent before deriving tests, guides, and code. Implementers still return strategic conflicts to the strategist.
-
-Delegated acceptance requires the readiness report, applicable fresh checks and smoke evidence, the required independent reviews, and an exercised preview. The strategist may then set `accepted` and perform an explicitly authorized PR merge. An implementer's own completion claim is insufficient. Unresolved defects, missing mandated outcomes, and disputed material review findings block autonomous acceptance. Serialize integration and verify the latest integration candidate before merging; earlier branch checks do not prove the combined result.
-
-An in-scope uncertainty belongs to the strategist. A change to the mandate's boundaries or an uncertainty about authority belongs to the human: block the affected slice, record the question and evidence in Beads and the PR, and continue unrelated authorized work. Agents must not weaken security, remove a promised outcome, relax verification, or edit the mandate to manufacture permission.
-
-Merge authority does not grant public publication, production deployment, credential or access changes, branch deletion, force-push, or other destructive operations. Those require explicit human authorization for the action. Direct pushes to the default branch remain prohibited. Set `implemented` in the accepted feature pull request before merge; it records completed implementation, not completed delivery. Track any required release separately until it is performed. A merge-only proposal needs no release.
-
-Human instructions override delegated authority immediately. Recheck the mandate before approval and integration decisions, and revert to individual human approval when it no longer applies.
-
-## The feature loop
-
-```text
-human consent or active mandate → branch → draft PR
-       → grounding → baseline study → proposal
-       → tests → guides → code → validation → ready PR
-       → excellence pass → inline reviews → cross-artifact review → adversarial review
-       → preview → readiness report
-       → approval-owner review → revision → vision update → implemented record in feature PR → authorized merge/delivery → cleanup
-```
-
-Grounding and baseline study are part of proposal development, not separate proposal statuses. Use them when the problem requires substantive conceptual understanding; do not manufacture research ceremony for a trivial or already-understood change.
-
-Numbered phases below follow [`PROCESS.md`](PROCESS.md). Agent review is the end of implementation, not a phase of its own.
-
-**Scale the process to the change.** What follows is written for substantial work — new or changed behavior, anything where a reasonable person could build it differently. Not every change is that. A typo, a dead link, or a bug whose correct behavior was never in question does not need a proposal, and often does not need a pull request either; fixing it is faster than describing it.
-
-Use judgement, and lean on one question: **does this change decide something?** If intent already exists because a proposal promised the behavior or the contract is obvious, correct the implementation directly. Say which you think it is and why, in a line, before you start. For substantial work, check the bounded build mandate first. If it authorizes the change, record that authority and proceed. Otherwise ask the human whether they want a proposal before opening a branch or draft PR; a request to "start a feature" or "write a proposal" alone does not grant consent.
-
-Individual consent applies to that proposed change, including its revisions. If the human declines, do not create its proposal or draft PR. Proceed directly when intent is unambiguous; clarify consequential choices with the approval owner before implementing. A small fix that reveals a design choice returns to this authority check.
-
-### 1. Preparation
-
-After establishing direct human consent or applicable mandate authority, create a branch, push it to `origin`, and open a **draft** pull request before writing the proposal. The PR is the durable workspace for the proposal, implementation, review discussion, and status reports. It stays draft while it contains only the proposal. Once the complete implementation passes the applicable checks and is pushed, mark the PR ready for maintainer review; the remaining agent reviews and readiness report continue on that PR.
-
-### 2. Grounding and Proposal
-
-A proposal records a decision. It should not be the place where an agent first discovers what the problem means.
-
-#### 2A. Ground the problem
-
-Before proposing a solution, determine whether the change depends on domain knowledge that cannot safely be inferred from the request alone.
-
-When it does, use `.agents/skills/grounding-a-problem/`.
-
-Learn enough of the relevant conceptual, technical, scientific, professional, protocol, product, or other domain to reason about the problem on its own terms.
-
-Prefer authoritative and primary evidence. Keep these categories distinct:
-
-- **Established knowledge** — supported by authoritative external evidence or direct observation.
-- **Repository evidence** — established by actual code, tests, behavior, interfaces, or history.
-- **Inference** — conclusions drawn from evidence but not directly established by it.
-- **Hypothesis** — ideas that remain to be tested.
-
-Agent-generated analysis never becomes established knowledge merely because another agent repeats it.
-
-Do not begin this stage by producing an implementation plan. The goal is to become capable of judging proposed solutions for domain-specific reasons.
-
-#### 2B. Review the ontology when the change is concept-heavy
-
-When the work introduces or changes important concepts, identities, relationships, states, classifications, ownership, or vocabulary, use `.agents/skills/ontology-review/`.
-
-Ask what kinds of things actually exist in the problem domain before deciding how software should represent them.
-
-An ontology review is not required for every proposal. Use it when a mistaken conceptual model would materially distort APIs, data, UI, behavior, or architecture.
-
-Material findings feed back into the proposal or, if the grounding itself was wrong, back into grounding.
-
-#### 2C. Study the existing baseline
-
-Only after grounding the problem, inspect the closest existing implementation, prototype, workflow, prior art, or earlier attempt.
-
-Treat it as a specimen:
-
-- identify what behavior or insight is valuable;
-- identify compromises, accidental complexity, and incorrect assumptions;
-- preserve what expresses the problem well;
-- do not mistake implementation details for properties of the domain.
-
-Existing code is evidence, not authority.
-
-#### 2D. Write the proposal
-
-Then write `proposals/<NNNN>-<slug>.md` and push it to the draft pull request as soon as it is coherent enough to react to.
-
-The proposal records:
-
-- the problem and motivation;
-- the grounded context required to evaluate it;
-- the relevant existing baseline;
-- the proposed solution;
-- detailed intended behavior;
-- scope and exclusions;
-- compatibility and adoption implications;
-- alternatives and unresolved questions.
-
-The approval owner settles the intended behavior: the human for individually approved work, or the strategist for decisions delegated by an active mandate.
-
-The proposal stays `status: draft` during that work. The approval owner records the authorization and moves it to `status: awaiting-implementation` only when the design has no unresolved clarification markers.
-
-Skills:
-
-- `.agents/skills/grounding-a-problem/`
-- `.agents/skills/ontology-review/` when applicable
-- `.agents/skills/writing-a-proposal/`
-
-### 3. Implementation
-
-The strategist retains responsibility for the meaning of the work. Implementers realize bounded parts of it.
-
-Strict artifact order remains:
-
-1. **Tests first.**
-2. **Guides next.**
-3. **Code last.**
-
-For each delegated slice, the strategist supplies enough context for an implementer with no prior conversation history to work correctly.
-
-The handoff includes, as applicable:
-
-- the bounded behavior to implement;
-- relevant Detailed design;
-- domain concepts necessary to understand it;
-- domain constraints and invariants;
-- the quality bar established during grounding;
-- the relevant baseline;
-- governing policies and decisions;
-- explicit scope and non-goals;
-- verification commands.
-
-An implementer must not infer missing product intent.
-
-Implementation may return:
-
-- `DONE` — the bounded work is complete and verified.
-- `DONE_WITH_CONCERNS` — complete, but observations deserve strategist review.
-- `NEEDS_CONTEXT` — execution requires missing information.
-- `NEEDS_STRATEGY` — implementation evidence contradicts or destabilizes the supplied conceptual model, intended behavior, or architecture.
-- `BLOCKED` — progress cannot continue under the current constraints.
-
-`NEEDS_STRATEGY` returns ownership to the strategist. Do not respond by telling the implementer to guess.
-
-Strictly ordered, and it ends with review. Each artifact is an independent representation of the same intent; writing them out of order lets the code decide what "correct" means.
-
-1. **Tests first.** Failing tests for the behavior the proposal's Detailed design specifies.
-2. **Guides next.** User-facing docs written from the proposal, not from the code. Then compare them against the tests and confirm they describe the same behavior.
-3. **Code last.** Implement against proposal, tests, and guides until `vp run check` passes.
-
-**Which of these a change needs is a judgement.** The order is not — when you write two of them, write them in this order. But a change with no user-visible surface needs no guide, and inventing one produces documentation nobody reads describing behavior nobody sees. A change with nothing meaningfully testable needs no test, though say so out loud rather than skipping quietly, because "hard to test" and "not worth testing" are different claims and only one of them is a reason.
-
-Ask what a reader or a future maintainer would actually need, not what the list contains.
-
-Once the complete implementation has passed the applicable checks and reached the pushed feature branch, mark the pull request ready for maintainer review. Continue the cross-artifact review, adversarial review, preview, and readiness report on the open PR. The proposal remains `awaiting-implementation` until the later `active-review` handoff.
-
-Passing the quality gates is necessary, never sufficient. Then, still within this phase:
-
-4. **Strategist excellence pass** — once the feature works, the strategist reviews the result against the grounded problem, conceptual model, proposal, and domain-specific quality bar.
-
-    Ask not only whether it works, but whether this is the implementation that should remain.
-
-    Look for:
-    - implementation structure that fights the domain model;
-    - concepts introduced for implementation convenience that leak into public behavior;
-    - false distinctions or conflations exposed by the working system;
-    - APIs or interactions that technically satisfy the proposal but express the idea poorly;
-    - accidental complexity inherited from the baseline;
-    - opportunities to make the realization simpler, more idiomatic, or more faithful to the underlying problem.
-
-    The strategist identifies the needed changes; implementers perform substantive coding changes.
-
-5. **Inline reviews** — review proposal compliance, then code quality. Resolve findings before advancing.
-6. **Cross-artifact review** — read proposal, tests, guides, and code together and find where they disagree.
-7. **Adversarial review** — an independent subagent with fresh context and preferably a different model tries to falsify the claim that the work is done.
-8. **Preview**
-9. **Readiness report**
-
-Skills: `.agents/skills/implementing-a-proposal/` owns steps 1–3 and the inline reviews; `.agents/skills/excellence-pass/` owns step 4; `.agents/skills/reviewing-an-implementation/` owns steps 6–9 and dispatches `.agents/skills/adversarial-review/` for step 7.
-
-A preview is keyed to what the repository _is_, not to a fixed mechanism:
-
-| Repository | Preview                                     |
-| ---------- | ------------------------------------------- |
-| Library    | prerelease package                          |
-| Web app    | preview deployment                          |
-| API        | preview endpoint deployment                 |
-| Docs       | deployed documentation site                 |
-| CLI        | installable executable                      |
-| Desktop    | installable build                           |
-| Mobile     | installable build (ad-hoc / internal track) |
-
-### 4. Acceptance review
-
-The approval owner reviews the report, diff, preview, and independent findings. Human comments and direct commits remain instructions under either path. When feedback changes intended behavior, **update the proposal first**, then repeat the affected implementation and review steps.
-
-The verdict sets `returned-for-revisions` or `accepted`. Under a mandate, the strategist may make this decision without waiting for the human only within the delegated acceptance authority and evidence requirements above.
-
-### 5. Completion and release
-
-Update `VISION.md` when completed work changes what the project is, set `implemented` on the accepted feature pull request before merge, verify that revision, perform the authorized merge and required delivery, update dependent projects where applicable, then perform authorized cleanup. Release and destructive cleanup require their own authority. Skill: `.agents/skills/completing-a-feature/`.
-
-## Reframing hard problems
-
-Do not confuse repeated activity with increasing understanding.
-
-Use `.agents/skills/reframing-a-problem/` when evidence suggests the current formulation itself may be wrong, including when:
-
-- repeated fixes expose new contradictions;
-- several locally reasonable approaches fail for apparently unrelated reasons;
-- implementation requires violating grounded domain constraints;
-- a supposedly simple concept requires persistent special cases;
-- the current abstraction makes the domain unnaturally difficult to express;
-- an implementer returns `NEEDS_STRATEGY`;
-- the strategist can describe symptoms but no coherent causal model.
-
-The breaker receives the grounding, proposal, evidence, attempted approaches, and concrete failures and independently challenges the premises.
-
-A breaker does not silently change product intent. Its result returns to the strategist, who decides whether to revise grounding, ontology, proposal, architecture, or implementation.
-
-Use systematic debugging when the intended behavior is sound and the implementation is failing. Use reframing when the model of the problem itself may be wrong.
-
-## Hard rules
-
-- **Never substitute planning for understanding.** A task list, architecture sketch, or plausible implementation strategy does not establish that the underlying problem is understood.
-- **Never let generated knowledge recursively become evidence.** Agent synthesis remains inference until supported by authoritative evidence, repository evidence, or direct verification.
-- **Never use an existing implementation as the sole source of domain truth when independent domain knowledge is available.** Ground the problem first; then inspect the implementation.
-- **Never silently encode an ontology decision.** If implementation changes what kinds of things exist, their identity, relationships, lifecycle, states, or vocabulary, route that decision upstream.
-- **Never let an implementer redefine product intent or architecture merely to make implementation easier.** Return strategic conflicts to the strategist.
-- **Never start a proposal workspace without authority.** Establish direct human consent for that change or an active, applicable human-approved build mandate. A request's size, a command's suggestion, and silence grant no authority.
-- **Never implement substantial work without an approved proposal.** Approval comes from the human or the strategist exercising recorded mandate authority. Corrections and fixes with unambiguous intent are not substantial work.
-- **Never write production code before its failing test.** If the behavior warrants a test at all and you wrote the code first, delete it and start over.
-- **Never write guides from the finished code.** When a change warrants a guide, it is derived from the proposal. Whether it warrants one is a judgement; the direction of derivation is not.
-- **Never claim work is done without running the verifying command this turn** and reading its output. See [`.agents/rules/verification.md`](.agents/rules/verification.md).
-- **Never fix a bug before finding its root cause.** Skill: `.agents/skills/systematic-debugging/`.
-- **Never let the adversarial reviewer edit code.** It reports; the implementer fixes.
-- **Never merge, publish, change access, or perform destructive operations without authority for that action.** A mandate may explicitly delegate PR merges; it does not implicitly authorize release, branch deletion, or force-push.
-- **Never expand approved scope silently.** Revise the proposal before behavior changes. The strategist may approve revisions within the mandate; only the human may change the mandate's boundaries. A discovered defect is not a licence to widen the work.
-- **Never file an issue to defer work the proposal already requires.** Fix it.
-
-## Policies and decisions
-
-When a feature establishes a rule future work must keep enforcing, record a **policy**. When it establishes an architectural choice future work must understand, record a **decision**. Establish approval with the human or under the mandate's delegated authority before writing them; neither is a substitute for a proposal, and neither may silently change the mandate's constraints.
-
-**Most features establish neither, and that is the normal case.** The test is whether the knowledge outlives the change: if it does not, it belongs in the proposal and nowhere else. Both directories being empty is a healthy state, not a gap to fill. A record written speculatively is one nobody follows and everybody has to read.
-
-A policy that can be enforced by a check should be — see [`.agents/rules/enforcement-hierarchy.md`](.agents/rules/enforcement-hierarchy.md). Prose is the tier most likely to be missed.
-
-Skill: `.agents/skills/completing-a-feature/`.
-
-## Defects
-
-You will find defects that are not this proposal's problem — pre-existing on the default branch, belonging to another feature, or simply outside scope. Those are recorded as GitHub issues so they outlive the pull request.
-
-A defect that stops the current implementation from satisfying its proposal is **not** one of these. It is the current work, and it gets fixed.
-
-Search open and closed issues before filing. Write the issue so a reader who was never in this conversation can reproduce it. Link it from the PR when it was deliberately deferred, so the decision is visible. Close it if later work fixes it incidentally.
-
-Skill: `.agents/skills/tracking-defects/`.
+- **Stay inside the proposal.** Behavior it does not describe does not get built; if it should exist, revise the proposal with the human. A defect outside its scope becomes a Beads item ([Work tracking](#work-tracking), `.agents/skills/tracking-work/`); a defect that stops the proposal from working is your work.
+- **Raise ambiguity.** When the proposal, vision, a policy, or a decision is ambiguous or conflicts with the work in a way that changes behavior, stop and raise it rather than choosing silently.
+- **Never write production code before its failing test**, when the behavior warrants a test at all.
+- **Never write a guide from finished code.**
+- **Never claim work is done without running the verifying command this turn** and reading its output ([`.agents/rules/verification.md`](.agents/rules/verification.md)).
+- **Find a bug's root cause before fixing it** ([`.agents/skills/systematic-debugging/`](.agents/skills/systematic-debugging/)).
+- **The adversarial reviewer reports; it never edits.**
+- **Never delete a branch, force-push, publish a release, or deploy without explicit human confirmation.**
+- **Record a policy or decision only after discussing it with the human.** Most features establish neither; a record belongs there only when its knowledge outlives the change.
 
 ## Quality gates
 
-[Vite+](https://viteplus.dev) runs the toolchain. `.node-version` pins Node, which runs the TypeScript in `tools/` directly; `package.json#devEngines` pins pnpm.
-
 ```sh
-vp install           # dependencies, with the pinned pnpm
-vp run check         # full gate: vp check, validate, test, docs:build, rust
-vp fmt               # format
-vp check             # format check, lint, and type-check
-vp run validate      # artifact frontmatter, IDs, and cross-references
-vp run test          # the record tooling tests
-vp run docs:build    # the documentation site builds
-vp run rust          # rejects unregistered crates; checks registered crates with fmt, clippy, tests, rustdoc
+mise run setup       # idempotent first-run bootstrap after a clone
+mise run check       # the single blocking gate; CI and the pre-push hook both call it
+mise run fmt         # format in place; accepts file paths
+mise run lint        # lint, applying the safe fixes
+mise run typecheck   # type-check both TypeScript projects
+mise run test        # the tools' tests and the Rust test suite
+mise run doc         # rustdoc over the workspace, warnings denied
+mise run build       # build every target in the workspace
+mise run crates      # every directory under crates/ is a workspace member
+mise run validate    # record frontmatter, IDs, and cross-references
+mise run docs:build  # the documentation site builds
+mise run status      # phase, next action, who acts
+mise run changeset   # add a changeset for this change
 ```
 
-Run project-specific gates (unit, integration, end-to-end) as they exist. `vp run` with no task lists everything available.
+`mise run check` is the gate: formatting, lint, types, crate membership, tests, rustdoc, the record rules, and the documentation site, in one task. Nothing is done until it passes in this turn. `mise tasks` lists everything available, including the native inspection tasks the gate deliberately leaves out ([Platform](#platform-macos-inspection-cli)).
+
+## Work tracking
+
+Beads (`bd`) is the work tracker, the ready-work queue, and durable agent memory. It replaces GitHub-issue defect tracking, markdown TODO lists, and MEMORY files. Proposals and Beads answer different questions: the proposal is the record of **intent**, reviewed by a human and preserved as history; Beads is the **work graph** — what is ready, what is blocked, what was discovered and deferred, and what a future session needs to remember.
+
+```sh
+bd ready                 # what can be worked on now
+bd show <id>             # read one item before touching it
+bd update <id> --claim   # claim atomically before starting
+bd create "Title" --description="why this exists" --type=task --priority=2
+bd close <id> --reason="Completed"
+bd remember "<fact>"     # durable project memory
+```
+
+Rules that matter:
+
+- Never run `bd edit`; it opens an interactive editor and will hang a non-interactive agent. Use `bd update` flags.
+- Priorities are `0`–`4`, `0` highest. Default `2`. Do not invent a scale.
+- Claim before starting and close only when the work is actually done.
+- Never run `bd hooks install`; hk owns the git hooks and runs `bd hooks run <hook>` as a step.
+- `.beads/issues.jsonl` is a passive export that is committed; the database is the source of truth.
+
+A defect that stops the current implementation from satisfying its proposal is **not** a new work item. It is the current work, and it gets fixed. Skill: [`.agents/skills/tracking-work/`](.agents/skills/tracking-work/).
+
+## Tooling
+
+**Mise** owns toolchains, environment, and the task graph. Every command an agent runs routinely is a `mise run <task>`; `mise install` provisions the pinned toolchains from `mise.toml` and `mise.lock`. Rust is pinned twice on purpose: `mise.toml` for everything that goes through mise, and `rust-toolchain.toml` for rustup, which is what the Homebrew formula's source build and rust-analyzer use. Add a task rather than documenting a bare command: a task is an enforceable tier, prose is not.
+
+**hk** owns every git hook. `mise run setup` installs them with `hk install --mise`. Never install hooks any other way, and never bypass them with `--no-verify`. The `commit-msg` hook holds every commit to [Scoped Commits](https://scopedcommits.com/) with `tools/check-scoped-commit.ts`, whose allowed scopes live in `.agents/commit-scopes`; `pre-push` runs the gate.
+
+**Fnox** owns secrets. A task that needs a secret declares it with `secrets = [...]` in `mise.toml`, and Fnox resolves it from 1Password or the macOS Keychain at task time. Never put a secret in `[env]`, in a file, or in a commit. The code-signing identity `mise run recon:sign` reads is not a secret: it names a certificate already in the developer's keychain.
+
+**Beads (`bd`)** owns the work graph and agent memory. See [Work tracking](#work-tracking).
+
+**Changesets** owns the changelog and versioning. `mise run changeset` adds one; `mise run version` applies it and syncs the Cargo workspace version. Every pull request carries a changeset.
+
+**Worktrunk (`wt`)** owns worktrees. `wt switch --create <name>` creates a parallel worktree that trusts and installs its own toolchain and copies the ignored files listed in `.worktreeinclude`. Run parallel feature work in a worktree rather than stashing.
+
+**GitHub Actions** runs the same `mise run check` the pre-push hook runs. If it passes locally and fails in CI, the difference is environmental — find it, do not special-case the workflow.
+
+TypeScript is covered by Oxfmt, Oxlint, and `tsrs`; Rust by `cargo fmt`, Clippy, and rustdoc. There is no bundler and no Bun: Node runs `tools/*.ts` directly through native type stripping.
+
+## Platform: macOS inspection CLI
+
+A macOS command-line program that investigates running applications for an agent. One Cargo workspace with one binary, plus two native artifacts Cargo does not build — an Objective-C helper that runs inside the inspected process and a C loader that gets it there. It ships through a Homebrew tap.
+
+| Piece | Where |
+| --- | --- |
+| Workspace metadata, shared version, lint policy | `Cargo.toml` — `members = ["crates/recon"]` |
+| The binary | `crates/recon/src/main.rs` — parse, render the error, exit |
+| Everything the binary does | `crates/recon/src/lib.rs` and the modules beneath it: `application`, `cli`, `context`, `error`, `inspection`, `macos`, `output`, `request`, `ui` |
+| Tests that need a process, a fixture, or a live Mac | `crates/recon/tests/` |
+| Embedded `Info.plist` and build revision | `crates/recon/build.rs` — macOS records a privacy grant against the executable's signing identity, so the bare binary carries a plist |
+| Injected helper, Objective-C | `helper/` — `ReconCore`, `ReconInspect`, `ReconServer`, `ReconFacets`, `ReconFields`, with its own tests in `helper/tests/` |
+| Injector, C | `loader/` — `recon_loader.c` and the entitlements it is signed with |
+| Fixture application | `crates/recon/tests/fixtures/ReconFixture` — a Swift AppKit app the native tasks build into `target/fixtures/` |
+| Documentation site | `docs/` — VitePress; `docs/.vitepress/config.ts` renders the records from the repository root |
+| Repository tooling | `tools/*.ts` — TypeScript run directly by Node, no bundler |
+| Formatting | `rustfmt.toml` and `.oxfmtrc.jsonc` — the same 100 columns and 4 spaces on both sides |
+| Toolchain | `mise.toml` for everything that goes through mise; `rust-toolchain.toml` for rustup |
+
+### Commands
+
+| Command | What it does |
+| --- | --- |
+| `mise run dev -- app list` | Run the CLI from source |
+| `mise run build` | `cargo build --workspace --all-targets` |
+| `mise run build:release` | The optimized `recon` a release ships |
+| `mise run test` | The `tools/` tests and `cargo test --workspace` |
+| `mise run fmt [paths…]` | Oxfmt and rustfmt; with no arguments, the whole tree |
+| `mise run lint` | `oxlint --fix` and `cargo clippy --workspace --all-targets -- -D warnings` |
+| `mise run doc` | `cargo doc --workspace --no-deps` with `RUSTDOCFLAGS=-D warnings` |
+| `mise run crates` | Fails when a directory under `crates/` is not a workspace member |
+| `mise run docs:dev` · `docs:build` · `docs:preview` | The documentation site |
+
+`lint`, `test`, and `doc` are the house Rust verification set, alongside the formatting check `mise run check` runs. Never substitute a command that checks a weaker property, and never report a check as passing unless it ran. Use `cargo` directly for anything without a task (`cargo add`, `cargo tree`, `cargo test -p recon --test cli_contract`).
+
+### Native inspection tasks
+
+These build the native artifacts and exercise them against a live Mac — the signing keychain, a running fixture application, an injected process, the accessibility permission grant:
+
+| Command | What it does |
+| --- | --- |
+| `mise run helper:build` · `loader:build` | Compile the helper dylib and the loader with the Xcode command-line tools |
+| `mise run fixture:build` · `fixture:inject` | Build the fixture app bundle, and the injectable variant |
+| `mise run recon:sign` | Code-sign the debug `recon` with `RECON_SIGNING_IDENTITY` |
+| `mise run test:ui` · `test:focus` | UI observation against the live fixture, and the evidence that reading never steals focus |
+| `mise run test:helper` · `test:inject` · `test:inspection` | The helper's own tests, loader injection, and live inspection end to end |
+
+They observe a Mac rather than a repository, so they are **not** part of `mise run check` and cannot run in the Linux CI gate. Run them on a macOS host when a change touches the native path, and report what they printed. On any other platform they refuse to run rather than pretending to pass.
+
+### Hard rules
+
+- **Never `#[allow]`.** Silence a lint on the item with `#[expect(…, reason = "…")]`, which fails the build once the lint stops firing.
+- **Never hand-edit the version in `crates/recon/Cargo.toml`, `package.json`, or `CHANGELOG.md`.** Changesets owns them; `mise run version` writes the Cargo side, and `node tools/sync-version.ts --check` fails CI when they drift.
+- **Every directory under `crates/` is a workspace member.** Add it to `Cargo.toml` in the same change; `mise run crates` fails the gate on an unregistered crate.
+- **Keep the two Rust pins equal**: `rust` in `mise.toml` and `channel` in `rust-toolchain.toml`. Nothing checks the pair, and a mismatch surfaces first in someone else's `brew install`.
+- `Cargo.lock` is committed and is part of the release contract. Dependency changes belong in their own changeset.
+
+## Harness setup
+
+The process lives harness-neutral in `AGENTS.md` and `.agents/`, which stay the source of truth and which no harness forks. Lifecycle wiring is the only harness-specific part, and this repository ships it for [Oh My Pi](https://omp.sh):
+
+| What | How Oh My Pi gets it |
+| --- | --- |
+| This contract | Loads `AGENTS.md` from the repository root |
+| Skills | Discovers `.agents/skills/` |
+| Before the first turn | `.omp/extensions/prime-beads.ts` runs `bd prime` and injects the work graph and durable memories into the session |
+| After every edit | `.omp/extensions/format-after-edit.ts` runs `mise run fmt -- <files>` on each file the `edit` or `write` tool changed and reports a reformat or a parse failure |
+| Before the turn ends | `.omp/extensions/check-before-stop.ts` is present but disabled on purpose |
+
+The pre-stop gate is intentionally inert — its own comment records the decision — so running `mise run check` and reading its output is the agent's own job, every turn, before claiming anything is done. A harness without extensions loses only the convenience, not the rule: `bd prime` and `mise run check` are commands the agent runs itself, and hk's `pre-push` hook and CI run the gate regardless. Another harness wires the same events into its own configuration and commits the result rather than forking `.agents/`.
+
+Git hooks belong to hk, not to a harness: `mise run setup` installs them, and they run for every commit regardless of who or what made it.
 
 ## Also binding
 
@@ -408,100 +187,4 @@ Run project-specific gates (unit, integration, end-to-end) as they exist. `vp ru
 - [`.agents/skills/ontology-review/`](.agents/skills/ontology-review/) — review the conceptual model when important domain concepts change.
 - [`.agents/skills/reframing-a-problem/`](.agents/skills/reframing-a-problem/) — challenge the problem formulation when the current model stops explaining reality.
 - [`.agents/skills/systematic-debugging/`](.agents/skills/systematic-debugging/) — find root cause when the intended behavior is sound but implementation is wrong.
-
-## Harness setup
-
-The process lives harness-neutral in `.agents/`, which stays the source of truth. This repository wires it into [Oh My Pi](https://omp.sh):
-
-| What | How Oh My Pi gets it |
-| --- | --- |
-| This contract | Loads `AGENTS.md` from the repository root |
-| Skills | Discovers `.agents/skills/` |
-| Parallel agent delegation | Use the harness's built-in `task` tool for independent bounded slices |
-| Format after every edit | `.omp/extensions/format-after-edit.ts` runs `vp fmt` on each file the `edit` or `write` tool changed and reports a reformat or a parse failure |
-| Gate before the turn ends | `.omp/extensions/check-before-stop.ts` runs `vp run check`; a failure sends the agent back once with the output |
-
-Another harness wires the same lifecycle events, listed in [`.agents/hooks/README.md`](.agents/hooks/README.md), into its own configuration; do not fork `.agents/` for it. The commit-message hook is a Git hook that `vp install` installs. It checks only commits made from Oh My Pi, which it recognizes by the `OMPCODE=1` that Oh My Pi exports to every command; another harness needs its own marker added there.
-
-<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:1105d646 -->
-
-## Beads Issue Tracker
-
-This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
-
-### Quick Reference
-
-```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --claim  # Claim work
-bd close <id>         # Complete work
-```
-
-### Rules
-
-- Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
-- Run `bd prime` for detailed command reference and session close protocol
-- Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
-
-**Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See https://github.com/gastownhall/beads/blob/main/docs/core-concepts/sync-concepts.md for details and anti-patterns.
-
-## Agent Context Profiles
-
-The managed Beads block is task-tracking guidance, not permission to override repository, user, or orchestrator instructions.
-
-- **Conservative (default)**: Use `bd` for task tracking. Do not run git commits, git pushes, or Dolt remote sync unless explicitly asked. At handoff, report changed files, validation, and suggested next commands.
-- **Minimal**: Keep tool instruction files as pointers to `bd prime`; use the same conservative git policy unless active instructions say otherwise.
-- **Team-maintainer**: Only when the repository explicitly opts in, agents may close beads, run quality gates, commit, and push as part of session close. A current "do not commit" or "do not push" instruction still wins.
-
-## Session Completion
-
-This protocol applies when ending a Beads implementation workflow. It is subordinate to explicit user, repository, and orchestrator instructions.
-
-1. **File issues for remaining work** - Create beads for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **Handle git/sync by active profile**:
-    ```bash
-    # Conservative/minimal/default: report status and proposed commands; wait for approval.
-    git status
-
-    # Team-maintainer opt-in only, unless current instructions forbid it:
-    git pull --rebase
-    git push
-    git status
-    ```
-5. **Hand off** - Summarize changes, validation, issue status, and any blocked sync/commit/push step
-
-**Critical rules:**
-
-- Explicit user or orchestrator instructions override this Beads block.
-- Do not commit or push without clear authority from the active profile or the current user request.
-- If a required sync or push is blocked, stop and report the exact command and error.
-
-<!-- END BEADS INTEGRATION -->
-
-<!-- BEGIN BEADS CODEX SETUP: generated by bd setup codex -->
-
-## Beads Issue Tracker
-
-Use Beads (`bd`) for durable task tracking in repositories that include it. Use the `beads` skill at `.agents/skills/beads/SKILL.md` (project install) or `~/.agents/skills/beads/SKILL.md` (global install) for Beads workflow guidance, then use the `bd` CLI for issue operations.
-
-### Quick Reference
-
-```bash
-bd ready                # Find available work
-bd show <id>            # View issue details
-bd update <id> --claim  # Claim work
-bd close <id>           # Complete work
-bd prime                # Refresh Beads context
-```
-
-### Rules
-
-- Use `bd` for all task tracking; do not create markdown TODO lists.
-- Run `bd prime` when Beads context is missing or stale. Codex 0.129.0+ can load Beads context automatically through native hooks; use `/hooks` to inspect or toggle them.
-- Keep persistent project memory in Beads via `bd remember`; do not create ad hoc memory files.
-
-**Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See https://github.com/gastownhall/beads/blob/main/docs/core-concepts/sync-concepts.md for details and anti-patterns.
-<!-- END BEADS CODEX SETUP -->
+- [`.agents/skills/using-intellisense/`](.agents/skills/using-intellisense/) — ask the language servers for symbols, references, and diagnostics instead of grepping.
