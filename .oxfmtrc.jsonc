@@ -1,0 +1,41 @@
+{
+    "$schema": "node_modules/oxfmt/configuration_schema.json",
+    "ignorePatterns": [
+        // Built and cached by `mise run docs:build`.
+        "docs/.vitepress/dist/**",
+        "docs/.vitepress/cache/**",
+        // Cargo's build directory.
+        "target/**",
+        "*-lock.yaml",
+        // Cargo owns this file's layout, and it is part of the release contract.
+        "Cargo.lock",
+        // pnpm rewrites this itself, so oxfmt would only fight it.
+        "pnpm-workspace.yaml"
+    ],
+    "printWidth": 100,
+    "tabWidth": 4,
+    "arrowParens": "avoid",
+    "sortPackageJson": true,
+    "sortImports": {
+        "groups": [
+            "type-import",
+            ["value-builtin", "value-external"],
+            "type-internal",
+            "value-internal",
+            ["type-parent", "type-sibling", "type-index"],
+            ["value-parent", "value-sibling", "value-index"],
+            "unknown"
+        ],
+        "partitionByComment": true
+    },
+    "overrides": [
+        {
+            "files": ["**/*.md", "**/*.mdx"],
+            "options": { "proseWrap": "never" }
+        },
+        {
+            "files": ["**/*.jsonc"],
+            "options": { "trailingComma": "none" }
+        }
+    ]
+}

@@ -1,0 +1,166 @@
+/// hk owns every git hook in this repository.
+///
+/// Install them with `mise run setup` (which runs `hk install --mise`). Never run
+/// `bd hooks install`: it points `core.hooksPath` at `.beads/hooks`, which disables
+/// every hook hk installed. Beads instead runs as hk steps below, calling the same
+/// `bd hooks run <hook>` entry point beads' own shims call.
+///
+/// A checkout that predates this file may still have `core.hooksPath` set from the
+/// old beads install. `git config --unset core.hooksPath` once per checkout, then
+/// `mise run setup`; until that is done git ignores every hook hk writes.
+///
+/// The hk version here must match the `hk` pin in mise.toml. Bump both together.
+amends "package://github.com/jdx/hk/releases/download/v2.8.1/hk@2.8.1#/Config.pkl"
+
+import "package://github.com/jdx/hk/releases/download/v2.8.1/hk@2.8.1#/Builtins.pkl"
+
+/// Files another tool owns and rewrites. `bd` regenerates `.beads/metadata.json`
+/// and `.beads/issues.jsonl`, and it writes `metadata.json` with no trailing
+/// newline, which `newlines` would otherwise fail on after every `mise run setup`.
+exclude = List(".beads/**")
+
+/// Formatters and linters. `check`, `fix` and `pre-commit` all share this set, so a
+/// clean `hk check --all` in CI means a clean pre-commit locally.
+local linters = new Mapping<String, Step> {
+    ["trailing_whitespace"] = Builtins.trailing_whitespace
+    ["newlines"] = Builtins.newlines
+    ["check_merge_conflict"] = Builtins.check_merge_conflict
+
+    // The workflows are part of the gate: `actionlint` is pinned in mise.toml, so
+    // the hook, `mise run check` and CI all check them with the same version. The
+    // builtin globs `.github/workflows/*.yml` and `*.yaml`.
+    ["actionlint"] = Builtins.actionlint
+
+    // BEGIN PLATFORM STEPS
+    // Oxfmt formats far more than TypeScript — it also owns JSON, JSONC, YAML,
+    // TOML, Markdown and CSS in this repository, including fenced code blocks
+    // inside Markdown. Settings live in .oxfmtrc.jsonc.
+    ["oxfmt"] = (Builtins.oxfmt) {
+        exclude = List(
+            "**/pnpm-lock.yaml",
+            "**/package-lock.json",
+            "Cargo.lock",
+            // Built by `mise run docs:build`.
+            "docs/.vitepress/dist/**",
+            "docs/.vitepress/cache/**"
+        )
+    }
+
+    // `--deny-warnings` is the builtin's default, so a rule set to "warn" in
+    // .oxlintrc.jsonc still blocks a commit. If you add a rule you only want
+    // advisory, make it advisory for the hook too rather than leaving the hook red.
+    ["oxlint"] = (Builtins.ox_lint) {
+        exclude = List("docs/.vitepress/dist/**", "docs/.vitepress/cache/**")
+    }
+
+    // Type checking runs through the mise task rather than `tsrs` directly, so there
+    // is one definition of how to type-check this project, used by the hook, CI, and
+    // a person at a terminal.
+    ["tsrs"] {
+        glob = List("**/*.ts", "**/*.tsx", "tsconfig.json")
+        exclude = List("docs/.vitepress/dist/**", "docs/.vitepress/cache/**")
+        check = "mise run typecheck"
+        exclusive = true
+    }
+
+    // Both cargo builtins invoke `cargo`, which mise has already put on PATH, so
+    // neither needs a `prefix`. Keep the `Builtins` import at the same version as the
+    // `amends` URL — hk's docs are explicit that mismatched versions drift.
+    ["cargo-fmt"] = (Builtins.cargo_fmt) {
+        // The builtin omits `--all`. The root manifest here is virtual, so `cargo fmt`
+        // already covers the one member, but the house verification command is
+        // `cargo fmt --all --check`; spelling it out keeps them the same command.
+        check {
+            command = "cargo fmt --all --check --manifest-path {{workspace_indicator}}"
+        }
+        check_list_files {
+            command = "cargo fmt --all --check --manifest-path {{workspace_indicator}} -- --files-with-diff"
+        }
+        fix {
+            command = "cargo fmt --all --manifest-path {{workspace_indicator}}"
+        }
+    }
+
+    ["cargo-clippy"] = (Builtins.cargo_clippy) {
+        // The builtin checks the default lint level over the default targets. This
+        // repository gates on `cargo clippy --workspace --all-targets -- -D warnings`,
+        // so the hook runs the same command; a pre-commit that passes where
+        // `mise run lint` fails is worse than no hook at all.
+        check {
+            command = "cargo clippy --manifest-path {{workspace_indicator}} --workspace --all-targets --quiet -- -D warnings"
+        }
+        fix {
+            command = "cargo clippy --manifest-path {{workspace_indicator}} --workspace --all-targets --fix --allow-dirty --allow-staged --quiet -- -D warnings"
+        }
+    }
+    // END PLATFORM STEPS
+}
+
+/// `bd hooks run` exits 3 when the beads database is not initialized. Beads' own
+/// shims treat that as success so a fresh clone can commit before `mise run setup`
+/// has run; these steps do the same.
+hooks {
+    ["check"] {
+        steps = linters
+    }
+
+    ["fix"] {
+        fix = true
+        steps = linters
+    }
+
+    ["pre-commit"] {
+        fix = true
+        stage = true
+        stash = "git"
+        steps = (linters) {
+            ["beads"] {
+                check = "bd hooks run pre-commit || [ $? -eq 3 ]"
+                exclusive = true
+            }
+        }
+    }
+
+    ["commit-msg"] {
+        steps {
+            ["scoped-commit"] {
+                check = "node tools/check-scoped-commit.ts {{commit_msg_file}}"
+            }
+        }
+    }
+
+    ["prepare-commit-msg"] {
+        steps {
+            ["beads"] {
+                check = "bd hooks run prepare-commit-msg {{hook_args}} || [ $? -eq 3 ]"
+            }
+        }
+    }
+
+    ["pre-push"] {
+        steps {
+            ["check"] {
+                check = "mise run check"
+            }
+            ["beads"] {
+                check = "bd hooks run pre-push {{hook_args}} || [ $? -eq 3 ]"
+            }
+        }
+    }
+
+    ["post-checkout"] {
+        steps {
+            ["beads"] {
+                check = "bd hooks run post-checkout {{hook_args}} || [ $? -eq 3 ]"
+            }
+        }
+    }
+
+    ["post-merge"] {
+        steps {
+            ["beads"] {
+                check = "bd hooks run post-merge {{hook_args}} || [ $? -eq 3 ]"
+            }
+        }
+    }
+}

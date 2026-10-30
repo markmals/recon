@@ -3,6 +3,10 @@ resolver = "3"
 members = ["crates/recon"]
 
 [workspace.package]
+# Changesets owns this version: `mise run version` copies it here from package.json
+# (tools/sync-version.ts), and `node tools/sync-version.ts --check` fails CI when the
+# two drift. Never edit it by hand.
+version = "0.1.2"
 edition = "2024"
 license = "MIT"
 publish = false

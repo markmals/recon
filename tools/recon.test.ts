@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
     chmodSync,
@@ -10,18 +11,19 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { beforeAll, expect, onTestFinished, test } from "vite-plus/test";
+import { before, test } from "node:test";
 
 import { buildRecon, recon } from "./recon-cli.ts";
 import { registerLaunchTests } from "./recon-launch-cases.ts";
 
-beforeAll(buildRecon, 600_000);
+before(buildRecon, { timeout: 600_000 });
 
-test.skipIf(process.platform !== "darwin")(
+test(
     "proposal.0001 inspects a selected bundle without launching it",
-    () => {
+    { skip: process.platform !== "darwin" },
+    t => {
         let root = mkdtempSync(path.join(tmpdir(), "recon-app-"));
-        onTestFinished(() => rmSync(root, { force: true, recursive: true }));
+        t.after(() => rmSync(root, { force: true, recursive: true }));
         let bundle = path.join(root, "Recon Fixture.app");
         let macOS = path.join(bundle, "Contents", "MacOS");
         let marker = path.join(root, "launched");
@@ -42,8 +44,8 @@ test.skipIf(process.platform !== "darwin")(
         chmodSync(path.join(macOS, "fixture"), 0o755);
 
         let inspection = recon(["app", "inspect", bundle]);
-        expect(inspection.status, inspection.stderr).toBe(0);
-        expect(JSON.parse(inspection.stdout)).toEqual({
+        assert.equal(inspection.status, 0, inspection.stderr);
+        assert.deepEqual(JSON.parse(inspection.stdout), {
             application: {
                 name: "Recon Fixture",
                 bundleId: "example.recon.fixture",
@@ -54,15 +56,16 @@ test.skipIf(process.platform !== "darwin")(
                 runningPids: [],
             },
         });
-        expect(existsSync(marker)).toBe(false);
+        assert.equal(existsSync(marker), false);
     },
 );
 
-test.skipIf(process.platform !== "darwin")(
+test(
     "proposal.0001 reports absent optional bundle metadata instead of inventing it",
-    () => {
+    { skip: process.platform !== "darwin" },
+    t => {
         let root = mkdtempSync(path.join(tmpdir(), "recon-app-"));
-        onTestFinished(() => rmSync(root, { force: true, recursive: true }));
+        t.after(() => rmSync(root, { force: true, recursive: true }));
         let bundle = path.join(root, "Bare App.app");
         mkdirSync(path.join(bundle, "Contents"), { recursive: true });
         writeFileSync(
@@ -71,8 +74,8 @@ test.skipIf(process.platform !== "darwin")(
         );
 
         let inspection = recon(["app", "inspect", bundle]);
-        expect(inspection.status, inspection.stderr).toBe(0);
-        expect(JSON.parse(inspection.stdout)).toEqual({
+        assert.equal(inspection.status, 0, inspection.stderr);
+        assert.deepEqual(JSON.parse(inspection.stdout), {
             application: {
                 name: "Bare App",
                 bundleId: null,
@@ -86,48 +89,51 @@ test.skipIf(process.platform !== "darwin")(
     },
 );
 
-test.skipIf(process.platform !== "darwin")(
+test(
     "proposal.0001 rejects a directory that is not an application",
-    () => {
+    { skip: process.platform !== "darwin" },
+    t => {
         let root = mkdtempSync(path.join(tmpdir(), "recon-app-"));
-        onTestFinished(() => rmSync(root, { force: true, recursive: true }));
+        t.after(() => rmSync(root, { force: true, recursive: true }));
         let directory = path.join(root, "Not An App.app");
         mkdirSync(directory);
         let inspection = recon(["app", "inspect", directory]);
-        expect(inspection.status).not.toBe(0);
-        expect(inspection.stdout).toBe("");
-        expect(JSON.parse(inspection.stderr).error).toMatchObject({
-            code: "NOT_AN_APPLICATION",
-            details: { reason: "unreadable-info-plist", path: realpathSync(directory) },
-        });
+        assert.notEqual(inspection.status, 0);
+        assert.equal(inspection.stdout, "");
+        let { error } = JSON.parse(inspection.stderr);
+        assert.equal(error.code, "NOT_AN_APPLICATION");
+        assert.equal(error.details.reason, "unreadable-info-plist");
+        assert.equal(error.details.path, realpathSync(directory));
     },
 );
 
-test.skipIf(process.platform !== "darwin")(
+test(
     "proposal.0001 lists indexed bundles and resolves an identifier to its path",
+    { skip: process.platform !== "darwin", timeout: 20_000 },
     () => {
         let listing = recon(["app", "list"]);
-        expect(listing.status, listing.stderr).toBe(0);
+        assert.equal(listing.status, 0, listing.stderr);
         let inventory = JSON.parse(listing.stdout);
-        expect(inventory.discovery).toBe("indexed-and-running");
+        assert.equal(inventory.discovery, "indexed-and-running");
         let calculator = inventory.applications.find(
             (app: { bundleId: string }) => app.bundleId === "com.apple.calculator",
         );
-        expect(calculator).toEqual({
+        assert.ok(Array.isArray(calculator?.runningPids));
+        assert.deepEqual(calculator, {
             name: "Calculator",
             bundleId: "com.apple.calculator",
             path: "/System/Applications/Calculator.app",
-            runningPids: expect.any(Array),
+            runningPids: calculator.runningPids,
         });
         let inspection = recon(["app", "inspect", "COM.APPLE.CALCULATOR"]);
-        expect(inspection.status, inspection.stderr).toBe(0);
-        expect(JSON.parse(inspection.stdout).application.path).toBe(calculator.path);
+        assert.equal(inspection.status, 0, inspection.stderr);
+        assert.equal(JSON.parse(inspection.stdout).application.path, calculator.path);
     },
-    20_000,
 );
 
-test.skipIf(process.platform !== "darwin")(
+test(
     "proposal.0001 leaves foreground focus unchanged during list and inspect",
+    { skip: process.platform !== "darwin", timeout: 20_000 },
     () => {
         let foreground = () => {
             let observation = spawnSync(
@@ -138,28 +144,28 @@ test.skipIf(process.platform !== "darwin")(
                 ],
                 { encoding: "utf8" },
             );
-            expect(observation.status, observation.stderr).toBe(0);
+            assert.equal(observation.status, 0, observation.stderr);
             return observation.stdout.trim();
         };
-        let before = foreground();
-        expect(before).not.toBe("-1");
+        let frontmost = foreground();
+        assert.notEqual(frontmost, "-1");
         for (let args of [
             ["app", "list"],
             ["app", "inspect", "/System/Applications/Calculator.app"],
         ]) {
             let command = recon(args);
-            expect(command.status, command.stderr).toBe(0);
-            expect(foreground()).toBe(before);
+            assert.equal(command.status, 0, command.stderr);
+            assert.equal(foreground(), frontmost);
         }
     },
-    20_000,
 );
 
-test.skipIf(process.platform !== "darwin")(
+test(
     "proposal.0001 uses the host display name when a bundle is renamed",
-    () => {
+    { skip: process.platform !== "darwin" },
+    t => {
         let root = mkdtempSync(path.join(tmpdir(), "recon-app-"));
-        onTestFinished(() => rmSync(root, { force: true, recursive: true }));
+        t.after(() => rmSync(root, { force: true, recursive: true }));
         let bundle = path.join(root, "Renamed App.app");
         mkdirSync(path.join(bundle, "Contents"), { recursive: true });
         writeFileSync(
@@ -167,24 +173,25 @@ test.skipIf(process.platform !== "darwin")(
             '<?xml version="1.0"?><plist version="1.0"><dict><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleDisplayName</key><string>Original Name</string></dict></plist>',
         );
         let inspection = recon(["app", "inspect", bundle]);
-        expect(inspection.status, inspection.stderr).toBe(0);
-        expect(JSON.parse(inspection.stdout).application.name).toBe("Renamed App");
+        assert.equal(inspection.status, 0, inspection.stderr);
+        assert.equal(JSON.parse(inspection.stdout).application.name, "Renamed App");
     },
 );
 
-test.skipIf(process.platform === "darwin")(
+test(
     "proposal.0001 reports unsupported hosts instead of a successful empty list",
+    { skip: process.platform === "darwin" },
     () => {
         let listing = recon(["app", "list"]);
-        expect(listing.status).not.toBe(0);
-        expect(listing.stdout).toBe("");
-        expect(JSON.parse(listing.stderr).error).toMatchObject({
-            code: "UNSUPPORTED_HOST",
-            details: {
-                host: process.platform === "win32" ? "windows" : process.platform,
-                supportedHosts: ["macos"],
-            },
-        });
+        assert.notEqual(listing.status, 0);
+        assert.equal(listing.stdout, "");
+        let { error } = JSON.parse(listing.stderr);
+        assert.equal(error.code, "UNSUPPORTED_HOST");
+        assert.equal(
+            error.details.host,
+            process.platform === "win32" ? "windows" : process.platform,
+        );
+        assert.deepEqual(error.details.supportedHosts, ["macos"]);
     },
 );
 

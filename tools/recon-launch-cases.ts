@@ -1,17 +1,19 @@
+import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { cpSync, mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { expect, onTestFinished, test } from "vite-plus/test";
+import { test } from "node:test";
 
 import { recon } from "./recon-cli.ts";
 
 export function registerLaunchTests(): void {
-    test.skipIf(process.platform !== "darwin")(
+    test(
         "proposal.0001 reports an unlaunchable selected bundle without claiming success",
-        () => {
+        { skip: process.platform !== "darwin" },
+        t => {
             let root = mkdtempSync(path.join(tmpdir(), "recon-app-"));
-            onTestFinished(() => rmSync(root, { force: true, recursive: true }));
+            t.after(() => rmSync(root, { force: true, recursive: true }));
             let bundle = path.join(root, "Broken App.app");
             mkdirSync(path.join(bundle, "Contents"), { recursive: true });
             writeFileSync(
@@ -19,25 +21,26 @@ export function registerLaunchTests(): void {
                 '<?xml version="1.0"?><plist version="1.0"><dict><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleExecutable</key><string>missing</string></dict></plist>',
             );
             let launch = recon(["app", "launch", bundle], { timeout: 20_000 });
-            expect(launch.status).not.toBe(0);
-            expect(launch.stdout).toBe("");
-            expect(JSON.parse(launch.stderr).error).toMatchObject({
-                code: "LAUNCH_FAILED",
-                retryable: false,
-                details: { application: realpathSync(bundle), reason: "executable-missing" },
-            });
+            assert.notEqual(launch.status, 0);
+            assert.equal(launch.stdout, "");
+            let { error } = JSON.parse(launch.stderr);
+            assert.equal(error.code, "LAUNCH_FAILED");
+            assert.equal(error.retryable, false);
+            assert.equal(error.details.application, realpathSync(bundle));
+            assert.equal(error.details.reason, "executable-missing");
         },
     );
 
-    test.skipIf(process.platform !== "darwin")(
+    test(
         "proposal.0001 launches one selected bundle and reports its actual process",
-        () => {
+        { skip: process.platform !== "darwin", timeout: 60_000 },
+        t => {
             let root = mkdtempSync(path.join(tmpdir(), "recon-app-"));
             let bundle = path.join(root, "Background App.app");
             let executable = path.join(bundle, "Contents", "MacOS", "background");
             let pid: number | undefined;
             let copyPid: number | undefined;
-            onTestFinished(() => {
+            t.after(() => {
                 if (pid) {
                     try {
                         process.kill(pid);
@@ -67,26 +70,26 @@ export function registerLaunchTests(): void {
                     encoding: "utf8",
                 },
             );
-            expect(compiled.status, compiled.stderr).toBe(0);
+            assert.equal(compiled.status, 0, compiled.stderr);
 
             let first = recon(["app", "launch", bundle], { timeout: 20_000 });
-            expect(first.status, first.stderr).toBe(0);
+            assert.equal(first.status, 0, first.stderr);
             let opened = JSON.parse(first.stdout);
             pid = opened.pid;
-            expect(opened.path).toBe(realpathSync(bundle));
-            expect(pid).toBeGreaterThan(0);
+            assert.equal(opened.path, realpathSync(bundle));
+            assert.ok(pid !== undefined && pid > 0, `expected a launched pid, got ${pid}`);
             let second = recon(["app", "launch", bundle], { timeout: 20_000 });
-            expect(second.status, second.stderr).toBe(0);
-            expect(JSON.parse(second.stdout)).toEqual(opened);
+            assert.equal(second.status, 0, second.stderr);
+            assert.deepEqual(JSON.parse(second.stdout), opened);
             let inspection = recon(["app", "inspect", bundle]);
-            expect(inspection.status, inspection.stderr).toBe(0);
-            expect(JSON.parse(inspection.stdout).application.runningPids).toContain(pid);
+            assert.equal(inspection.status, 0, inspection.stderr);
+            assert.ok(JSON.parse(inspection.stdout).application.runningPids.includes(pid));
             let listing = recon(["app", "list"]);
-            expect(listing.status, listing.stderr).toBe(0);
+            assert.equal(listing.status, 0, listing.stderr);
             let listed = JSON.parse(listing.stdout).applications.find(
                 (app: { path: string }) => app.path === realpathSync(bundle),
             );
-            expect(listed).toEqual({
+            assert.deepEqual(listed, {
                 name: "Background App",
                 bundleId: "example.recon.background",
                 path: realpathSync(bundle),
@@ -98,19 +101,17 @@ export function registerLaunchTests(): void {
             if (another.status === 0) {
                 let selected = JSON.parse(another.stdout);
                 copyPid = selected.pid;
-                expect(selected.path).toBe(realpathSync(copy));
-                expect(copyPid).not.toBe(pid);
+                assert.equal(selected.path, realpathSync(copy));
+                assert.notEqual(copyPid, pid);
             } else {
-                expect(another.stdout).toBe("");
-                expect(JSON.parse(another.stderr).error).toMatchObject({
-                    code: "LAUNCH_FAILED",
-                    details: { application: realpathSync(copy) },
-                });
+                assert.equal(another.stdout, "");
+                let { error } = JSON.parse(another.stderr);
+                assert.equal(error.code, "LAUNCH_FAILED");
+                assert.equal(error.details.application, realpathSync(copy));
             }
             let original = recon(["app", "inspect", bundle]);
-            expect(original.status, original.stderr).toBe(0);
-            expect(JSON.parse(original.stdout).application.runningPids).toContain(pid);
+            assert.equal(original.status, 0, original.stderr);
+            assert.ok(JSON.parse(original.stdout).application.runningPids.includes(pid));
         },
-        60_000,
     );
 }

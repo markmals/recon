@@ -10,7 +10,7 @@ function refuse(reason: string): void {
         "Recon's Screen Recording and Accessibility grants belong to a stable Developer ID signature, so this task never produces an ad-hoc binary.",
     );
     console.error(
-        "Set the identity, for example: RECON_SIGNING_IDENTITY='Developer ID Application: Your Name (TEAMID)' vp run recon:sign",
+        "Set the identity, for example: RECON_SIGNING_IDENTITY='Developer ID Application: Your Name (TEAMID)' mise run recon:sign",
     );
     process.exitCode = 1;
 }
