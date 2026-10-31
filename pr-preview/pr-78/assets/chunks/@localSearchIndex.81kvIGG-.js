@@ -1,0 +1,1 @@
+import{t as e}from"./framework.DnHCoobp.js";var t={root:()=>e(()=>import(`./@localSearchIndexroot.7FxdnQiz.js`),[])};export{t as default};
