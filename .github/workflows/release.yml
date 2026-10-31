@@ -15,21 +15,38 @@ jobs:
     # Keeps the "Version Packages" pull request in sync with the changesets on main.
     # Merging that pull request runs this workflow again, this time with a bumped
     # version in package.json, which is what the `tag` job below keys off.
+    #
+    # The pull request is opened and pushed with a token for the release GitHub App,
+    # not GITHUB_TOKEN. GitHub holds CI on a pull request that GITHUB_TOKEN created or
+    # updated until someone approves the runs; an app token's events start CI
+    # normally, so the release pull request is checked like any other. The app's
+    # client ID is the RELEASE_APP_CLIENT_ID variable and its private key the
+    # RELEASE_APP_PRIVATE_KEY secret; .changeset/README.md describes the app.
     version:
         name: Version
         runs-on: ubuntu-latest
+        # Every write below goes through the app token.
         permissions:
-            contents: write
-            pull-requests: write
+            contents: read
         outputs:
             has-changesets: ${{ steps.changesets.outputs.has-changesets }}
             published: ${{ steps.changesets.outputs.published }}
             published-packages: ${{ steps.changesets.outputs.published-packages }}
             pr-number: ${{ steps.changesets.outputs.pr-number }}
         steps:
+            - id: app-token
+              uses: actions/create-github-app-token@v3
+              with:
+                  client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+                  private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+                  permission-contents: write
+                  permission-pull-requests: write
+            # Checking out with the app token is what makes changesets/action's
+            # `git push` of the release branch an app event rather than a GITHUB_TOKEN one.
             - uses: actions/checkout@v7
               with:
                   fetch-depth: 0
+                  token: ${{ steps.app-token.outputs.token }}
             - uses: jdx/mise-action@v5
               with:
                   # A release workflow must not restore a cache: a lower-trust workflow
@@ -42,11 +59,11 @@ jobs:
                   # The version script runs `@changesets/changelog-github`, which looks
                   # up the pull request behind each changeset and fails without a token.
                   # The `github-token` input does not reach the script's environment.
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
               with:
                   # v2 ignores the GITHUB_TOKEN environment variable for its own calls;
                   # pass the token here as well.
-                  github-token: ${{ secrets.GITHUB_TOKEN }}
+                  github-token: ${{ steps.app-token.outputs.token }}
                   version-script: mise run version
                   commit-message: "release: version packages"
                   pr-title: "release: version packages"
