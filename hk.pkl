@@ -14,9 +14,9 @@ amends "package://github.com/jdx/hk/releases/download/v2.8.1/hk@2.8.1#/Config.pk
 
 import "package://github.com/jdx/hk/releases/download/v2.8.1/hk@2.8.1#/Builtins.pkl"
 
-/// Files another tool owns and rewrites. `bd` regenerates `.beads/metadata.json`
-/// and `.beads/issues.jsonl`, and it writes `metadata.json` with no trailing
-/// newline, which `newlines` would otherwise fail on after every `mise run setup`.
+/// Files another tool owns and rewrites. `bd` rewrites `.beads/config.yaml` and
+/// `.beads/metadata.json` in its own layout, `metadata.json` with no trailing
+/// newline, which `newlines` and Oxfmt would otherwise fight after every `bd bootstrap`.
 exclude = List(".beads/**")
 
 /// Formatters and linters. `check`, `fix` and `pre-commit` all share this set, so a
