@@ -14,9 +14,9 @@ amends "package://github.com/jdx/hk/releases/download/v2.8.1/hk@2.8.1#/Config.pk
 
 import "package://github.com/jdx/hk/releases/download/v2.8.1/hk@2.8.1#/Builtins.pkl"
 
-/// Files another tool owns and rewrites. `bd` regenerates `.beads/metadata.json`
-/// and `.beads/issues.jsonl`, and it writes `metadata.json` with no trailing
-/// newline, which `newlines` would otherwise fail on after every `mise run setup`.
+/// Files another tool owns and rewrites. `bd` rewrites `.beads/config.yaml` and
+/// `.beads/metadata.json` in its own layout, `metadata.json` with no trailing
+/// newline, which `newlines` and Oxfmt would otherwise fight after every `bd bootstrap`.
 exclude = List(".beads/**")
 
 /// Formatters and linters. `check`, `fix` and `pre-commit` all share this set, so a
@@ -144,6 +144,12 @@ hooks {
             }
             ["beads"] {
                 check = "bd hooks run pre-push {{hook_args}} || [ $? -eq 3 ]"
+            }
+            // Auto-push is throttled and never retries, so the last writes before a
+            // quiet spell can sit only on this machine. Pushing code is the sync point
+            // that cannot be skipped, and a failure here is worth stopping for.
+            ["beads-sync"] {
+                check = "bd dolt push"
             }
         }
     }
