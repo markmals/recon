@@ -1,6 +1,8 @@
 # Recon
 
-Recon aims to give coding agents a repeatable way to investigate applications and compare independent implementations with the originals, starting with native, Electron, and web applications on macOS. The [vision](VISION.md) describes the intended investigation loop. On macOS, the `recon` CLI can list application bundles, inspect their metadata and running process IDs, and launch a selected bundle.
+Recon is an agent-facing reverse-engineering workbench for understanding software from the evidence available: binaries and recovered code, live object and view hierarchies, web documents and styles, network activity, packaged resources, and platform APIs. Controlled experiments and comparison with independent implementations are workflows within that scope. The [vision and capability map](VISION.md) separate that direction from what works today.
+
+The `recon` CLI runs on macOS. It discovers, inspects, and launches application bundles; lists a running application's windows, reads its accessibility tree, and captures window screenshots without taking focus; and, on Apple silicon with macOS 27, opens an explicit, process-bound inspection session to read AppKit windows, views, cells, layers, layout, and fonts, then correlate them with the accessibility tree. Built-in help, per-command schemas, typed JSON errors, and execution-context reports make each operation discoverable. Binary analysis, runtime object inspection, web and Electron inspection, network capture, resource extraction, private-API discovery, iOS targets, and the experiment and verification loop are future work.
 
 ## Install Recon
 
