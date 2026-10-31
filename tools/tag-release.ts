@@ -9,18 +9,27 @@
 // The tag is not what starts the release — a tag pushed with GITHUB_TOKEN
 // does not trigger another workflow. It exists so the GitHub Release, the
 // changelog, and `git describe` all point at the same commit.
+//
+// A release without a CHANGELOG.md entry is refused, not skipped: the job fails
+// before anything is tagged, whether the version came from Changesets or by hand.
 
 import { spawnSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 
+import { repositoryChangelogEntry } from "./changelog.ts";
 import { projectVersion, repoRoot } from "./project-version.ts";
 
 export type Decision = { tag: string; release: boolean; reason: string };
 
-export function decide(version: string, tagExists: boolean): Decision {
+export function decide(version: string, tagExists: boolean, entry: string | undefined): Decision {
     let tag = `v${version}`;
     if (tagExists) {
         return { tag, release: false, reason: `${tag} already exists; no version bump landed.` };
+    }
+    if (entry === undefined) {
+        throw new Error(
+            `CHANGELOG.md has no entry for ${version}; refusing to release ${tag} without one.`,
+        );
     }
     return { tag, release: true, reason: `Tagging ${tag}.` };
 }
@@ -35,7 +44,7 @@ function main(): number {
     let probe = spawnSync("git", ["rev-parse", "-q", "--verify", `refs/tags/v${version}`], {
         cwd: root,
     });
-    let decision = decide(version, probe.status === 0);
+    let decision = decide(version, probe.status === 0, repositoryChangelogEntry(version));
 
     console.log(decision.reason);
     let output = process.env.GITHUB_OUTPUT;
