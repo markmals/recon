@@ -4,12 +4,7 @@
         "docs/.vitepress/dist/**",
         "docs/.vitepress/cache/**",
         // Cargo's build directory.
-        "target/**",
-        // The VitePress theme imports Vue single-file components by name, plus CSS and image
-        // assets Vite resolves at build time. Only `vue-tsc` can type that graph, so it is
-        // outside this project's type program (see tsconfig.json) and the type-aware rules
-        // below would have nothing to resolve it against. `mise run docs:build` checks it.
-        "docs/.vitepress/theme/**"
+        "target/**"
     ],
     "options": {
         // Type-aware rules run through oxlint-tsgolint (a devDependency).

@@ -16,10 +16,10 @@
         "docs/.vitepress/cache",
         "docs/.vitepress/dist",
         "node_modules",
-        // The VitePress theme is Vue single-file components and a `.ts` entry that imports them
-        // by name. Only `vue-tsc` can resolve a named export out of an SFC; `tsrs` sees the
-        // `declare module "*.vue"` shim in env.d.ts and reports an error for correct code.
-        // `mise run docs:build` is what type-checks this directory, and it is in the gate.
+        // Type-checked by Oxlint's type-aware pass through docs/.vitepress/theme/tsconfig.json
+        // instead. Its entry imports @voidzero-dev/vitepress-theme, which ships `.ts` sources that
+        // take named exports out of Vue single-file components; `tsrs` checks those sources and
+        // fails on them, while Oxlint reports only the files it lints.
         "docs/.vitepress/theme",
         // Checked as its own project: tools/tsconfig.json adds `erasableSyntaxOnly`, because
         // Node runs those files by stripping types rather than compiling them.

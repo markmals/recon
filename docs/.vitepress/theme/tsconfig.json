@@ -1,0 +1,12 @@
+{
+    // The project Oxlint's type-aware pass uses for the theme; see the root tsconfig.json for
+    // why `tsrs` leaves this directory out. Vite resolves the theme's imports, so resolve them
+    // the way a bundler does.
+    "extends": "../../../tsconfig.json",
+    "compilerOptions": {
+        "module": "ESNext",
+        "moduleResolution": "bundler"
+    },
+    "exclude": [],
+    "include": ["**/*.ts", "../env.d.ts"]
+}
