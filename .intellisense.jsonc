@@ -1,25 +1,9 @@
 {
     "$schema": "./.intellisense.schema.json",
     "servers": {
-        "bash-language-server": {
-            "command": ["mise", "exec", "--", "bash-language-server", "start"],
-            "filetypes": {
-                "bash": "shellscript",
-                "sh": "shellscript",
-                "check-scoped-commit": "shellscript",
-                "commit-msg": "shellscript",
-                "post-checkout": "shellscript",
-                "post-merge": "shellscript",
-                "pre-commit": "shellscript",
-                "pre-push": "shellscript",
-                "prepare-commit-msg": "shellscript"
-            },
-            "settings": {
-                "bashIde": {
-                    "globPattern": "{**/*.sh,**/*.bash,.agents/hooks/check-scoped-commit,.beads/hooks/*}"
-                }
-            }
-        },
+        // bash-language-server is gone with the last tracked shell script: hk owns every git
+        // hook and writes them into .git/hooks, and `tools/check-scoped-commit.ts` replaced the
+        // shell hook. Add it back when a tracked script needs it.
         "rust-analyzer": {
             "command": ["mise", "exec", "--", "rust-analyzer"]
         },

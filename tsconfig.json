@@ -12,13 +12,18 @@
         "target": "ES2022",
         "verbatimModuleSyntax": true
     },
-    "exclude": ["docs/.vitepress/cache", "docs/.vitepress/dist", "node_modules"],
-    "include": [
-        "vite.config.ts",
-        "docs/.vitepress/**/*.ts",
-        "docs/.vitepress/**/*.vue",
-        "docs/.vitepress/**/*.tsx",
-        ".omp/extensions/**/*.ts",
-        ".omp/tools/**/*.ts"
-    ]
+    "exclude": [
+        "docs/.vitepress/cache",
+        "docs/.vitepress/dist",
+        "node_modules",
+        // Type-checked by Oxlint's type-aware pass through docs/.vitepress/theme/tsconfig.json
+        // instead. Its entry imports @voidzero-dev/vitepress-theme, which ships `.ts` sources that
+        // take named exports out of Vue single-file components; `tsrs` checks those sources and
+        // fails on them, while Oxlint reports only the files it lints.
+        "docs/.vitepress/theme",
+        // Checked as its own project: tools/tsconfig.json adds `erasableSyntaxOnly`, because
+        // Node runs those files by stripping types rather than compiling them.
+        "tools"
+    ],
+    "include": ["docs/.vitepress/**/*.ts", ".omp/extensions/**/*.ts"]
 }

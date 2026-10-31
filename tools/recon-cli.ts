@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 
 let manifest = fileURLToPath(new URL("../crates/recon/Cargo.toml", import.meta.url));
 
-// `vp run check` runs these tests alongside `cargo test`, which executes target/debug/recon.
+// `mise run check` runs these tests alongside `cargo test`, which executes target/debug/recon.
 // Every cargo build re-links that file, even when nothing changed, and a recon that re-executes
 // itself in that moment finds no executable; builds also wait on each other's lock. A target
 // directory of their own keeps the two suites apart.

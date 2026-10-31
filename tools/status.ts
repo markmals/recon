@@ -4,8 +4,7 @@ import path from "node:path";
 
 import { parseFrontmatter, withoutCode, type FrontmatterValue } from "./validate.ts";
 
-// Status cannot establish whether approval belongs to the human or a delegated strategist.
-type Actor = "agent" | "you" | "approval owner";
+type Actor = "agent" | "you";
 
 export interface Step {
     phase: string;
@@ -19,6 +18,7 @@ export interface Step {
 export interface PullRequest {
     number: number;
     state: "OPEN" | "CLOSED" | "MERGED";
+    baseRefName: string;
     isDraft: boolean;
     url: string;
     title: string;
@@ -37,6 +37,7 @@ type ProposalSummary = Pick<Proposal, "id" | "title">;
 
 export interface Facts {
     branch: string | null;
+    defaultBranch: string | null;
     isDefaultBranch: boolean | null;
     hasUpstream: boolean;
     unpushedCommits: number;
@@ -79,7 +80,8 @@ const NON_TERMINAL_STATUSES = new Set([
     "returned-for-revisions",
     "accepted",
 ]);
-const CONVENTIONAL_DEFAULT_BRANCHES = new Set(["main", "master"]);
+// Ordered: `main` wins when a repository somehow carries both.
+const CONVENTIONAL_DEFAULT_BRANCHES: readonly string[] = ["main", "master"];
 const SKILLS = {
     proposal: ".agents/skills/writing-a-proposal/",
     implementation: ".agents/skills/implementing-a-proposal/",
@@ -102,21 +104,21 @@ const STEPS = {
         "1",
         "Preparation",
         "You are on the default branch.",
-        "If considering a proposal, check whether an active build mandate covers this change: under one, record that authority and open the workspace; otherwise ask the human before creating a branch or draft pull request. Handle an unambiguous correction directly.",
+        "If considering a proposal, ask the human whether they want a proposal for this change before creating a branch or draft pull request; otherwise handle the correction directly.",
         "agent",
     ),
     noPullRequest: step(
         "1",
         "Preparation",
         "This branch has no pull request.",
-        "If considering a proposal, settle the authority first — an active build mandate covering this change, or the human's answer — then push the branch and open a draft pull request.",
+        "If considering a proposal, ask the human whether they want a proposal for this change before pushing the branch or opening a draft pull request.",
         "agent",
     ),
     noProposal: step(
         "2",
         "Proposal",
         "The pull request has no proposal.",
-        "Settle the authority — an active build mandate covering this change, or the human's consent unless they already answered for it — then draft and publish the proposal, recording that authority in its Authorization section.",
+        "Ask the human whether they want a proposal for this change before writing one, unless they already answered for this change. If yes, draft and publish it.",
         "agent",
         SKILLS.proposal,
     ),
@@ -124,37 +126,29 @@ const STEPS = {
         "2",
         "Proposal",
         "The proposal is published and being iterated on.",
-        "Iterate the proposal in the pull request. The approval owner moves it to awaiting-implementation once the design is settled and no clarification marker remains.",
-        "approval owner",
+        "Edit the proposal directly, or tell the agent what to change. Move it to awaiting-implementation when you are satisfied.",
+        "you",
     ),
     "awaiting-implementation": step(
         "3",
         "Implementation",
         "The proposal is approved for implementation.",
-        "Write failing tests, then guides, code, and applicable checks. When the complete implementation is pushed, mark the pull request ready for maintainer review. Continue independent reviews, preview, and the later readiness report.",
-        "agent",
-        SKILLS.implementation,
-    ),
-    awaitingImplementationReady: step(
-        "3",
-        "Implementation",
-        "The proposal is approved for implementation; its pull request is already ready for human inspection.",
-        "Complete independent reviews, preview, and the readiness report before moving the proposal to active-review. Address any review revisions with fresh checks.",
+        "Write failing tests, then guides, then code until `mise run check` passes. Self-check against the proposal, get one independent review, then post the readiness report and mark the pull request ready.",
         "agent",
         SKILLS.implementation,
     ),
     "active-review": step(
         "4",
-        "Acceptance review",
+        "Human review",
         "A first full pass at tests, guides, and code is up for review.",
-        "Review the diff, the preview, and the independent findings, then return the work for revisions or accept it. The strategist may accept only within an active mandate's delegated acceptance and its evidence requirements.",
-        "approval owner",
+        "Review the diff and the preview. Comment on the pull request, or accept the work.",
+        "you",
     ),
     "returned-for-revisions": step(
         "4 → 3",
-        "Acceptance review → Implementation",
-        "The pull request was returned for revisions.",
-        "Process the feedback; update the proposal first if the design changed.",
+        "Human review → Implementation",
+        "The human returned the pull request for revisions.",
+        "Process the feedback; update the proposal first if the design changed. Rerun `mise run check` before reporting.",
         "agent",
         SKILLS.implementation,
     ),
@@ -162,7 +156,7 @@ const STEPS = {
         "5",
         "Completion",
         "The feature has been accepted and awaits completion.",
-        "Update the vision, record the accepted implementation in this feature pull request, verify that revision, then perform the authorized merge and required delivery. Release only where separately authorized; clean up after delivery.",
+        "Update the vision, record the accepted implementation in this feature pull request, verify that revision, then merge and complete any separately authorized required delivery; clean up afterward.",
         "agent",
         SKILLS.completion,
     ),
@@ -170,7 +164,7 @@ const STEPS = {
         "5",
         "Completion",
         "The feature has been accepted, but its pull request remains draft.",
-        "Update the vision, record the accepted implementation and confirm its status in the feature pull request, then mark the PR ready. Verify the latest integration candidate before requesting an authorized merge.",
+        "Update the vision, record the accepted implementation and confirm its status in the feature pull request, then mark the PR ready. Verify the latest integration candidate before requesting a merge.",
         "agent",
         SKILLS.completion,
     ),
@@ -178,7 +172,7 @@ const STEPS = {
         "5",
         "Completion review",
         "The feature pull request merged, but the local proposal still says accepted; the merged record has not been checked.",
-        "Confirm whether the implemented record is in the merged pull request; if absent, ask the approval owner how to reconcile without a status-only PR. Track any required delivery separately; do not try to edit the merged PR.",
+        "Confirm whether the implemented record is in the merged pull request; if absent, ask the human how to reconcile without a status-only PR. Track any required delivery separately; do not try to edit the merged PR.",
         "agent",
         SKILLS.completion,
     ),
@@ -207,7 +201,7 @@ const STEPS = {
         "5",
         "Completion",
         "The local proposal is implemented, but the feature pull request remains draft.",
-        "Confirm the implemented record is in the feature pull request, then mark it ready for review and verify the latest integration candidate before seeking authorization to merge.",
+        "Confirm the implemented record is in the feature pull request, then mark it ready for review and verify the latest integration candidate before seeking a merge.",
         "agent",
         SKILLS.completion,
     ),
@@ -215,7 +209,7 @@ const STEPS = {
         "5",
         "Completion",
         "The local proposal says implemented; its status in the feature pull request has not been verified.",
-        "Confirm the implemented record is in this feature pull request before the authorized merge. Verify the latest integration candidate, then merge and complete any separately authorized delivery; clean up afterward.",
+        "Confirm the implemented record is in this feature pull request before the merge. Verify the latest integration candidate, then merge and complete any separately authorized delivery; clean up afterward.",
         "agent",
         SKILLS.completion,
     ),
@@ -231,8 +225,8 @@ const STEPS = {
         "5",
         "Completion blocked",
         "The feature pull request closed without merging.",
-        "Ask the approval owner whether to reopen the pull request or withdraw the proposal; do not attempt to merge a closed pull request.",
-        "approval owner",
+        "Ask the human whether to reopen the pull request or withdraw the proposal; do not attempt to merge a closed pull request.",
+        "you",
     ),
     unknown: step(
         "2",
@@ -251,7 +245,7 @@ function unknownPullRequestStep(reason: string): Step & { reason: string } {
             "1",
             "Preparation",
             `The pull request state is unknown because ${reason}.`,
-            "Restore access to gh, then check the pull request state.",
+            "Check gh access and the branch's pull request association before continuing.",
             "agent",
         ),
         reason,
@@ -279,17 +273,29 @@ function supersededStep(successor: ProposalSummary | null | undefined): Step {
     );
 }
 
-function defaultBranchFacts(
+/**
+ * Which branch this repository treats as its default, and whether HEAD is on it.
+ *
+ * The sources are tried in descending order of authority: `origin/HEAD`, then
+ * `gh repo view`, then a conventional branch that exists locally, then the name of
+ * the current branch. The last two keep a repository that has no remote yet — a
+ * fresh `git init -b main` — from reading as "role unknown": the local probe covers
+ * a feature branch cut from `main`, and the current-branch case covers `main`
+ * itself before its first commit creates `refs/heads/main`.
+ */
+export function defaultBranchFacts(
     branch: string | null,
     defaultReference: string | null,
     ghDefaultBranch: string | null,
-): { defaultReference: string | null; isDefaultBranch: boolean | null } {
+    localDefaultBranch: string | null,
+): { defaultBranch: string | null; isDefaultBranch: boolean | null } {
     let defaultBranch =
         defaultReference?.split("/").at(-1) ??
         ghDefaultBranch ??
-        (branch !== null && CONVENTIONAL_DEFAULT_BRANCHES.has(branch) ? branch : null);
+        localDefaultBranch ??
+        (branch !== null && CONVENTIONAL_DEFAULT_BRANCHES.includes(branch) ? branch : null);
     return {
-        defaultReference: defaultReference ?? (defaultBranch ? `origin/${defaultBranch}` : null),
+        defaultBranch,
         isDefaultBranch: defaultBranch ? branch === defaultBranch : null,
     };
 }
@@ -315,6 +321,15 @@ function commandSucceeds(command: string, arguments_: string[], root: string): b
     }
 }
 
+/** A conventional default branch that exists in this repository, `main` first. */
+function localDefaultBranch(root: string): string | null {
+    return (
+        CONVENTIONAL_DEFAULT_BRANCHES.find(candidate =>
+            commandSucceeds("git", ["rev-parse", "--verify", `refs/heads/${candidate}`], root),
+        ) ?? null
+    );
+}
+
 function collectBranch(root: string) {
     let branch = commandOutput("git", ["rev-parse", "--abbrev-ref", "HEAD"], root);
     let defaultReference = commandOutput("git", ["symbolic-ref", "refs/remotes/origin/HEAD"], root);
@@ -325,9 +340,11 @@ function collectBranch(root: string) {
               ["repo", "view", "--json", "defaultBranchRef", "--jq", ".defaultBranchRef.name"],
               root,
           );
+    let localDefault =
+        defaultReference === null && ghDefaultBranch === null ? localDefaultBranch(root) : null;
     return {
         branch,
-        ...defaultBranchFacts(branch, defaultReference, ghDefaultBranch),
+        ...defaultBranchFacts(branch, defaultReference, ghDefaultBranch, localDefault),
     };
 }
 
@@ -346,22 +363,45 @@ function collectUpstream(root: string): { hasUpstream: boolean; unpushedCommits:
     };
 }
 
-function collectPullRequest(root: string): PullRequestFacts {
+function collectPullRequest(root: string, branch: string | null): PullRequestFacts {
     if (commandOutput("gh", ["--version"], root) === null) {
         return { pullRequest: null, state: "unknown", reason: "gh is unavailable" };
     }
     if (!commandSucceeds("gh", ["auth", "status"], root)) {
         return { pullRequest: null, state: "unknown", reason: "gh is not authenticated" };
     }
+    if (!branch) return { pullRequest: null, state: "unknown", reason: "branch is unknown" };
     let source = commandOutput(
         "gh",
-        ["pr", "view", "--json", "number,isDraft,url,title,state"],
+        [
+            "pr",
+            "list",
+            "--state",
+            "all",
+            "--head",
+            branch,
+            "--limit",
+            "2",
+            "--json",
+            "number,isDraft,url,title,state,baseRefName",
+        ],
         root,
     );
-    if (source === null) return { pullRequest: null, state: "known", reason: null };
+    if (source === null)
+        return { pullRequest: null, state: "unknown", reason: "gh could not list pull requests" };
     try {
-        let pullRequest = JSON.parse(source) as PullRequest;
+        let pullRequests = JSON.parse(source) as PullRequest[];
+        if (!Array.isArray(pullRequests)) throw new Error("Invalid pull request list");
+        if (pullRequests.length > 1)
+            return {
+                pullRequest: null,
+                state: "unknown",
+                reason: `Multiple pull requests found for branch ${branch}; inspect their proposal links`,
+            };
+        let pullRequest = pullRequests[0];
+        if (!pullRequest) return { pullRequest: null, state: "known", reason: null };
         return Number.isInteger(pullRequest.number) &&
+            typeof pullRequest.baseRefName === "string" &&
             (pullRequest.state === "OPEN" ||
                 pullRequest.state === "CLOSED" ||
                 pullRequest.state === "MERGED")
@@ -462,7 +502,7 @@ function successorFor(proposals: Proposal[], proposal: Proposal): Proposal | und
 export function gatherFacts(root = process.cwd()): Facts {
     let branch = collectBranch(root);
     let upstream = collectUpstream(root);
-    let pullRequestFacts = collectPullRequest(root);
+    let pullRequestFacts = collectPullRequest(root, branch.branch);
     let proposals = collectProposals(root);
     let selection = selectProposal(proposals, pullRequestFacts.pullRequest);
     let proposalSuccessor =
@@ -472,6 +512,7 @@ export function gatherFacts(root = process.cwd()): Facts {
     return {
         branch: branch.branch,
         isDefaultBranch: branch.isDefaultBranch,
+        defaultBranch: branch.defaultBranch,
         hasUpstream: upstream.hasUpstream,
         unpushedCommits: upstream.unpushedCommits,
         pullRequest: pullRequestFacts.pullRequest,
@@ -528,8 +569,25 @@ export function deriveStatus(facts: Facts): DerivedStatus {
     if (!facts.pullRequest) return result(facts, STEPS.noPullRequest);
     if (!facts.proposal) return result(facts, STEPS.noProposal);
     let { status } = facts.proposal;
-    if (status === "awaiting-implementation" && !facts.pullRequest.isDraft)
-        return result(facts, STEPS.awaitingImplementationReady);
+    if (
+        (status === "accepted" || status === "implemented") &&
+        facts.pullRequest.state === "MERGED" &&
+        (!facts.defaultBranch || facts.pullRequest.baseRefName !== facts.defaultBranch)
+    ) {
+        let destination = facts.defaultBranch;
+        return result(
+            facts,
+            step(
+                "5",
+                "Integration incomplete",
+                "The feature pull request is merged, but integration into the default branch is not established.",
+                destination
+                    ? `The pull request merged into ${facts.pullRequest.baseRefName}, not ${destination}. Ask the human how to integrate the accepted change into ${destination}; do not claim delivery.`
+                    : "Confirm the default branch before deciding whether the pull request merged into it; do not claim delivery.",
+                "you",
+            ),
+        );
+    }
     if (status === "implemented") {
         let completionStep =
             facts.pullRequest.state === "MERGED"

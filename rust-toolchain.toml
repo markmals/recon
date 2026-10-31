@@ -1,3 +1,13 @@
+# rustup reads this; mise does not.
+#
+# It exists because two consumers never go through mise: the Homebrew formula's
+# source build in markmals/homebrew-tap, which compiles Recon from the release tag
+# with the host's rustup, and rust-analyzer, which reads it to pick a toolchain.
+#
+# Keep `channel` equal to the `rust` version in mise.toml. They pin the same
+# toolchain for different consumers, and a disagreement means released bottles are
+# built with a toolchain nothing else tested.
 [toolchain]
 channel = "1.99.0"
+profile = "minimal"
 components = ["rustfmt", "clippy"]

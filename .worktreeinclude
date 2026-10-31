@@ -1,0 +1,11 @@
+# What `wt step copy-ignored` carries into a new worktree. A path is copied only if
+# it is both gitignored and listed here, so this file is an allowlist of build caches
+# that are expensive to recreate and safe to share.
+
+node_modules
+
+# BEGIN PLATFORM INCLUDES
+# Cargo's build directory. A cold `cargo build --workspace --all-targets` over
+# objc2 and clap takes minutes; the reflink copy on APFS costs nothing.
+target
+# END PLATFORM INCLUDES

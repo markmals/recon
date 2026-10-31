@@ -15,9 +15,19 @@ const COMMITTED: &str = "2021-03-04T05:06:07+00:00";
 
 /// Runs Git in a fixture with the ambient user's configuration excluded, so that a global
 /// `commit.gpgsign`, `core.hooksPath`, or template directory cannot reach these repositories.
+///
+/// Every inherited `GIT_*` variable is dropped first. A Git hook exports `GIT_DIR`,
+/// `GIT_INDEX_FILE` and `GIT_WORK_TREE`, and they override `current_dir`, so a suite run from
+/// hk's `pre-push` hook would otherwise commit into the repository being pushed.
 fn git(directory: &Path, arguments: &[&str]) -> String {
-    let output = Command::new("git")
-        .current_dir(directory)
+    let mut command = Command::new("git");
+    command.current_dir(directory);
+    for (name, _) in std::env::vars_os() {
+        if name.to_string_lossy().starts_with("GIT_") {
+            command.env_remove(name);
+        }
+    }
+    let output = command
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .env("GIT_AUTHOR_DATE", AUTHORED)

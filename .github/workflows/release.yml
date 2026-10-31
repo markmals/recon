@@ -1,0 +1,118 @@
+name: Release
+
+on:
+    push:
+        branches: [main]
+
+permissions:
+    contents: read
+
+concurrency:
+    group: release-${{ github.ref }}
+    cancel-in-progress: false
+
+jobs:
+    # Keeps the "Version Packages" pull request in sync with the changesets on main.
+    # Merging that pull request runs this workflow again, this time with a bumped
+    # version in package.json, which is what the `tag` job below keys off.
+    version:
+        name: Version
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            pull-requests: write
+        outputs:
+            has-changesets: ${{ steps.changesets.outputs.has-changesets }}
+            published: ${{ steps.changesets.outputs.published }}
+            published-packages: ${{ steps.changesets.outputs.published-packages }}
+            pr-number: ${{ steps.changesets.outputs.pr-number }}
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  fetch-depth: 0
+            - uses: jdx/mise-action@v5
+              with:
+                  # A release workflow must not restore a cache: a lower-trust workflow
+                  # that can write to the default branch could otherwise plant files in it.
+                  cache: false
+            - run: mise run deps:install
+            - id: changesets
+              uses: changesets/action@v2
+              env:
+                  # The version script runs `@changesets/changelog-github`, which looks
+                  # up the pull request behind each changeset and fails without a token.
+                  # The `github-token` input does not reach the script's environment.
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                  # v2 ignores the GITHUB_TOKEN environment variable for its own calls;
+                  # pass the token here as well.
+                  github-token: ${{ secrets.GITHUB_TOKEN }}
+                  version-script: mise run version
+                  commit-message: "release: version packages"
+                  pr-title: "release: version packages"
+
+    # How a release happens:
+    #
+    #   1. A pull request merges with a changeset. The `version` job above opens or
+    #      updates the "Version Packages" pull request.
+    #   2. That pull request runs `mise run version`, which bumps package.json, writes
+    #      CHANGELOG.md, and copies the version onto the Cargo workspace.
+    #   3. Merging it runs this workflow again. `tools/tag-release.ts` sees a version
+    #      with no tag, pushes `v<version>`, and `github-release` publishes it.
+    #
+    # The decision belongs to the script, not to a workflow expression: a push with no
+    # changesets at all must publish nothing.
+    #
+    # This is the release Recon already cut by hand — the crate version, the `v<version>`
+    # tag, and a GitHub Release for it (decision.0004). Nothing new is published: Recon
+    # ships no prebuilt archive or installer, because `markmals/homebrew-tap` builds and
+    # bottles the formula from this tag. Updating that formula's tag and revision, and
+    # re-running its bottle validation, stays a deliberate human step in the tap
+    # repository after this workflow publishes the release.
+    tag:
+        name: Tag the released version
+        needs: version
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        outputs:
+            tag: ${{ steps.tag.outputs.tag }}
+            release: ${{ steps.tag.outputs.release }}
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  # Tags are the signal for "already released"; a shallow clone has none.
+                  fetch-depth: 0
+            # The script needs the Node version this project pins, not the runner's.
+            - uses: jdx/mise-action@v5
+              with:
+                  cache: false
+            # The tap builds from this tag, so a hand edit that moved package.json without the
+            # Cargo workspace must not be released; CI's version-sync job does not gate this run.
+            - run: node tools/sync-version.ts --check
+            - id: tag
+              run: node tools/tag-release.ts
+
+    github-release:
+        name: Publish the GitHub Release
+        needs: tag
+        if: ${{ needs.tag.outputs.release == 'true' }}
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  fetch-depth: 0
+            - uses: jdx/mise-action@v5
+              with:
+                  cache: false
+            # `--notes-from-tag` would publish the bare tag message. The changelog entry
+            # Changesets just wrote is the release note a reader wants, and
+            # `--generate-notes` adds the merged pull requests underneath it. The title
+            # keeps the form the earlier hand-cut releases used: `Recon <version>`.
+            - name: Create the release
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  TAG: ${{ needs.tag.outputs.tag }}
+              run: gh release create "$TAG" --title "Recon ${TAG#v}" --generate-notes
