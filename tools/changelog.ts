@@ -13,7 +13,11 @@ import { join } from "node:path";
 import { repoRoot } from "./project-version.ts";
 
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
-const HEADING = /^#{1,6} /;
+// Any ATX heading, which CommonMark allows up to three spaces in. Only the column-0
+// `#`/`##` headings Changesets writes end an entry: an indented one belongs to a
+// summary's list item.
+const HEADING = /^ {0,3}#{1,6}(\s|$)/;
+const SECTION = /^#{1,2}(\s|$)/;
 
 /**
  * The body under `## <version>`, the heading `changeset version` writes, up to the
@@ -30,7 +34,7 @@ export function changelogEntry(changelog: string, version: string): string | und
     if (heading === -1) return undefined;
 
     let end = lines.findIndex(
-        (line, index) => index > heading && structural[index] && /^#{1,2} /.test(line),
+        (line, index) => index > heading && structural[index] && SECTION.test(line),
     );
     let stop = end === -1 ? lines.length : end;
     let body = lines.slice(heading + 1, stop);

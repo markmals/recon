@@ -64,9 +64,10 @@ test("does not read a version mentioned in prose as its heading", () => {
 });
 
 test("reports no entry when the version has only subheadings and no changes", () => {
-    let changelog =
-        "# recon\n\n## 0.1.4\n\n### Patch Changes\n\n## 0.1.3\n\n- Fix the menu-bar filter.\n";
-    assert.equal(changelogEntry(changelog, "0.1.4"), undefined);
+    for (let subheading of ["### Patch Changes", "  ### Patch Changes", "###"]) {
+        let changelog = `# recon\n\n## 0.1.4\n\n${subheading}\n\n## 0.1.3\n\n- Fix the menu-bar filter.\n`;
+        assert.equal(changelogEntry(changelog, "0.1.4"), undefined, JSON.stringify(subheading));
+    }
 });
 
 // Changesets indents a summary's continuation lines under its list item, but a
