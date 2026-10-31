@@ -12,22 +12,48 @@ import { join } from "node:path";
 
 import { repoRoot } from "./project-version.ts";
 
+const FENCE = /^ {0,3}(`{3,}|~{3,})/;
+const HEADING = /^#{1,6} /;
+
 /**
  * The body under `## <version>`, the heading `changeset version` writes, up to the
- * next heading of the same or a higher level. `undefined` when the version has no
- * heading or nothing under it.
+ * next heading of the same or a higher level. Headings inside fenced code blocks are
+ * example text, not structure. `undefined` when the version has no heading, or
+ * nothing under it but subheadings.
  */
 export function changelogEntry(changelog: string, version: string): string | undefined {
     let lines = changelog.split("\n");
-    let heading = lines.findIndex(line => line.trimEnd() === `## ${version}`);
+    let structural = outsideFences(lines);
+    let heading = lines.findIndex(
+        (line, index) => structural[index] && line.trimEnd() === `## ${version}`,
+    );
     if (heading === -1) return undefined;
 
-    let end = lines.findIndex((line, index) => index > heading && /^#{1,2} /.test(line));
-    let body = lines
-        .slice(heading + 1, end === -1 ? undefined : end)
-        .join("\n")
-        .trim();
-    return body === "" ? undefined : body;
+    let end = lines.findIndex(
+        (line, index) => index > heading && structural[index] && /^#{1,2} /.test(line),
+    );
+    let stop = end === -1 ? lines.length : end;
+    let body = lines.slice(heading + 1, stop);
+    let hasChanges = body.some(
+        (line, offset) =>
+            line.trim() !== "" && !(structural[heading + 1 + offset] && HEADING.test(line)),
+    );
+    return hasChanges ? body.join("\n").trim() : undefined;
+}
+
+/** For each line, whether it lies outside every fenced code block, fences included. */
+function outsideFences(lines: readonly string[]): boolean[] {
+    let open: string | undefined;
+    return lines.map(line => {
+        let run = FENCE.exec(line)?.[1];
+        if (open === undefined) {
+            if (run !== undefined) open = run;
+            return run === undefined;
+        }
+        let closes = run !== undefined && run[0] === open[0] && run.length >= open.length;
+        if (closes && line.trim() === run) open = undefined;
+        return false;
+    });
 }
 
 /** The entry for `version` in this repository's CHANGELOG.md, if the file and entry exist. */
