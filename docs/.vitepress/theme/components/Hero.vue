@@ -5,15 +5,20 @@
                 <h1>Recon</h1>
                 <p class="recon-hero__lead">Evidence-led reverse engineering for apps.</p>
                 <p class="recon-hero__description">
-                    An agent-facing workbench for investigating reference applications, starting
-                    with native, Electron, and web apps on macOS. The aim is to turn controlled
-                    observations into behavioral specifications that can be checked against an
-                    independent implementation.
+                    An agent-facing workbench for understanding software through binaries, runtime
+                    objects, native views, web documents and styles, network activity, resources,
+                    and platform APIs, with macOS as the first host.
+                </p>
+                <p class="recon-hero__description">
+                    Available today: macOS app discovery, metadata, and launch; window listing,
+                    accessibility trees, and screenshots; and native AppKit view, layer, layout, and
+                    font inspection through an explicit session. Other inspectors and the behavioral
+                    investigation loop remain future work.
                 </p>
                 <a :href="visionLink" class="recon-hero__action">Read the vision</a>
             </div>
             <section class="recon-hero__loop" aria-labelledby="investigation-loop">
-                <h2 id="investigation-loop">The intended investigation loop</h2>
+                <h2 id="investigation-loop">A planned workflow: behavioral investigation</h2>
                 <ol>
                     <li>
                         <h3>Discover</h3>
