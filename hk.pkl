@@ -145,6 +145,12 @@ hooks {
             ["beads"] {
                 check = "bd hooks run pre-push {{hook_args}} || [ $? -eq 3 ]"
             }
+            // Auto-push is throttled and never retries, so the last writes before a
+            // quiet spell can sit only on this machine. Pushing code is the sync point
+            // that cannot be skipped, and a failure here is worth stopping for.
+            ["beads-sync"] {
+                check = "bd dolt push"
+            }
         }
     }
 

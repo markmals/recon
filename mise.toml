@@ -55,13 +55,13 @@ CARGO_TERM_COLOR = "always"
 description = "Idempotent first-run bootstrap: dependencies, work tracker, git hooks"
 depends = ["deps:install"]
 run = [
-    # bd warns on every command while .beads is group- or world-readable, and a clone
-    # creates it 0755.
-    "chmod 700 .beads",
     # Clones the work graph from `refs/dolt/data` on origin in a fresh clone, and does
     # nothing where a database already exists; linked worktrees share the main checkout's.
     # Unlike `bd init`, it neither installs hooks nor writes agent-instruction files.
     "bd bootstrap --yes",
+    # bd warns on every command while .beads is group- or world-readable, and a clone
+    # creates it 0755. After bootstrap, which creates it when a checkout lacks it.
+    "chmod 700 .beads",
     # hk owns every git hook, beads included (see hk.pkl). Never run `bd hooks install`.
     "hk install --mise",
 ]
