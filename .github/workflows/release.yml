@@ -87,6 +87,9 @@ jobs:
             - uses: jdx/mise-action@v5
               with:
                   cache: false
+            # The tap builds from this tag, so a hand edit that moved package.json without the
+            # Cargo workspace must not be released; CI's version-sync job does not gate this run.
+            - run: node tools/sync-version.ts --check
             - id: tag
               run: node tools/tag-release.ts
 
