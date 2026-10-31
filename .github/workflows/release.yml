@@ -34,6 +34,18 @@ jobs:
             published-packages: ${{ steps.changesets.outputs.published-packages }}
             pr-number: ${{ steps.changesets.outputs.pr-number }}
         steps:
+            - uses: actions/checkout@v7
+              with:
+                  fetch-depth: 0
+            - uses: jdx/mise-action@v5
+              with:
+                  # A release workflow must not restore a cache: a lower-trust workflow
+                  # that can write to the default branch could otherwise plant files in it.
+                  cache: false
+            - run: mise run deps:install
+            # changesets/action@v2 commits and opens the pull request through the API with
+            # its `github-token` input, so checkout's credentials never write. Minting here
+            # keeps setup time out of the token's one-hour lifetime.
             - id: app-token
               uses: actions/create-github-app-token@v3
               with:
@@ -41,18 +53,6 @@ jobs:
                   private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
                   permission-contents: write
                   permission-pull-requests: write
-            # Checking out with the app token is what makes changesets/action's
-            # `git push` of the release branch an app event rather than a GITHUB_TOKEN one.
-            - uses: actions/checkout@v7
-              with:
-                  fetch-depth: 0
-                  token: ${{ steps.app-token.outputs.token }}
-            - uses: jdx/mise-action@v5
-              with:
-                  # A release workflow must not restore a cache: a lower-trust workflow
-                  # that can write to the default branch could otherwise plant files in it.
-                  cache: false
-            - run: mise run deps:install
             - id: changesets
               uses: changesets/action@v2
               env:
