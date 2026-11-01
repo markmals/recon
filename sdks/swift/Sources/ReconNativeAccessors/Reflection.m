@@ -32,15 +32,25 @@ NSArray<NSString *> *ReconSuperclassNames(id object, NSUInteger limit) {
     return names;
 }
 
+// Classification walks the runtime's class chain instead of sending -isKindOfClass:, which an
+// application may override and which may raise. No message reaches the target, so no Objective-C
+// exception can start here, and every Swift caller can classify an object outside an accessor.
+static BOOL inherits(id object, Class ancestor) {
+    for (Class cls = object_getClass(object); cls; cls = class_getSuperclass(cls)) {
+        if (cls == ancestor) return YES;
+    }
+    return NO;
+}
+
 ReconObjectKind ReconKindOf(id object) {
-    if ([object isKindOfClass:NSWindow.class]) return ReconObjectKindWindow;
-    if ([object isKindOfClass:NSView.class]) return ReconObjectKindView;
-    if ([object isKindOfClass:CALayer.class]) return ReconObjectKindLayer;
-    if ([object isKindOfClass:NSCell.class]) return ReconObjectKindCell;
-    if ([object isKindOfClass:NSLayoutGuide.class]) return ReconObjectKindLayoutGuide;
+    if (inherits(object, NSWindow.class)) return ReconObjectKindWindow;
+    if (inherits(object, NSView.class)) return ReconObjectKindView;
+    if (inherits(object, CALayer.class)) return ReconObjectKindLayer;
+    if (inherits(object, NSCell.class)) return ReconObjectKindCell;
+    if (inherits(object, NSLayoutGuide.class)) return ReconObjectKindLayoutGuide;
     return ReconObjectKindUnsupported;
 }
 
 BOOL ReconIsKindOf(id object, ReconNativeClass nativeClass) {
-    return [object isKindOfClass:classForNative(nativeClass)];
+    return inherits(object, classForNative(nativeClass));
 }

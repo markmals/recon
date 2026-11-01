@@ -33,18 +33,26 @@ static NSString *operatingSystemBuild(void) {
 }
 
 ReconProcessIdentityFacts *ReconReadProcessIdentity(void) {
-    NSBundle *bundle = NSBundle.mainBundle;
-    NSString *path = bundle.bundlePath;
     ReconProcessIdentityFacts *facts = [ReconProcessIdentityFacts new];
     facts.pid = getpid();
     facts.pidversion = processPidversion();
     facts.uid = geteuid();
-    facts.bundleId = bundle.bundleIdentifier;
-    facts.bundlePath = [path.pathExtension isEqualToString:@"app"] ? path : nil;
-    facts.executablePath = bundle.executablePath;
     facts.architecture = processArchitecture();
     facts.osBuild = operatingSystemBuild();
     facts.osVersion = NSProcessInfo.processInfo.operatingSystemVersionString;
+    // The bundle belongs to the target and Swift callers reach this outside an accessor, so a
+    // raising override leaves the bundle facts absent instead of unwinding through Swift.
+    @try {
+        NSBundle *bundle = NSBundle.mainBundle;
+        NSString *path = bundle.bundlePath;
+        facts.bundleId = bundle.bundleIdentifier;
+        facts.bundlePath = [path.pathExtension isEqualToString:@"app"] ? path : nil;
+        facts.executablePath = bundle.executablePath;
+    } @catch (id exception) {
+        facts.bundleId = nil;
+        facts.bundlePath = nil;
+        facts.executablePath = nil;
+    }
     return facts;
 }
 

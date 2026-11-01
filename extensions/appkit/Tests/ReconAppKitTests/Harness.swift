@@ -81,6 +81,19 @@ final class RaisingView: NSView {
     }
 }
 
+/// A view whose type check raises once armed, as an application's own override may. AppKit
+/// itself asks views their kind while building them, so it raises only around the read under test.
+final class RaisingKindView: NSView {
+    nonisolated(unsafe) static var armed = false
+
+    override func isKind(of aClass: AnyClass) -> Bool {
+        if Self.armed {
+            NSException(name: .genericException, reason: "unclassifiable", userInfo: nil).raise()
+        }
+        return super.isKind(of: aClass)
+    }
+}
+
 /// A cell whose attributed value alternates fonts every character, so a read of it is bounded
 /// by how many runs it will examine rather than by the string's length.
 final class AlternatingFontCell: NSCell {

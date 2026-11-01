@@ -62,6 +62,21 @@ extension AppKitInspection {
             #expect(intact.basic?.status == .value)
         }
 
+        @Test func aTypeCheckIsNeverSentToTheTargetsOwnOverride() throws {
+            let inspector = try Inspector()
+            let parent = onMain { NSView() }
+            let raising = onMain { RaisingKindView() }
+            onMain { parent.addSubview(raising) }
+            let root = inspector.handle(for: parent)
+            let child = inspector.handle(for: raising)
+            RaisingKindView.armed = true
+            defer { RaisingKindView.armed = false }
+            let tree = try inspector.read(
+                "tree", ["root": root, "depth": 1, "fields": ["basic"]], as: NodesResponse.self)
+            let node = try #require(tree.nodes.first { $0.handle == child })
+            #expect(node.kind == "view")
+        }
+
         @Test func onlyTheRequestedFieldsAreRead() throws {
             let inspector = try Inspector()
             let parent = onMain { NSView() }
