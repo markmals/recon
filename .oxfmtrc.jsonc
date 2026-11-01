@@ -10,7 +10,9 @@
         // Cargo owns this file's layout, and it is part of the release contract.
         "Cargo.lock",
         // pnpm rewrites this itself, so oxfmt would only fight it.
-        "pnpm-workspace.yaml"
+        "pnpm-workspace.yaml",
+        // bd rewrites its config and metadata in its own layout (see hk.pkl).
+        ".beads/**"
     ],
     "printWidth": 100,
     "tabWidth": 4,
