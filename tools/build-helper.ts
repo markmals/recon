@@ -69,17 +69,21 @@ function buildIdentity(compiler: string): string {
     return hash.digest("hex");
 }
 
-/// Replaces every slice's image UUID with the build identity's own first bytes.
+/// Replaces every slice's image UUID with one derived from the build identity and the slice's
+/// architecture.
 ///
 /// The linker gives each link a fresh UUID rather than one derived from what it linked, so two
 /// builds of the same inputs would otherwise differ in those sixteen bytes and in the signature
-/// over them. Stamping the identity there makes the artifact a function of its inputs again,
-/// and makes the UUID say which build this is. It runs before signing, so the signature covers
-/// what ships.
+/// over them. Deriving the UUID from the identity makes the artifact a function of its inputs
+/// again; including the architecture keeps the arm64 and arm64e slices distinct, as tools that
+/// key images by UUID expect. It runs before signing, so the signature covers what ships.
 function stampIdentity(dylib: string, buildId: string): void {
     let image = readFileSync(dylib);
-    let stamp = Buffer.from(buildId.slice(0, 32), "hex");
-    for (let slice of slices(image)) stampSlice(image, slice, stamp);
+    for (let slice of slices(image)) {
+        let architecture = `${image.readUInt32LE(slice + 4)}:${image.readUInt32LE(slice + 8)}`;
+        let stamp = createHash("sha256").update(`${buildId}|${architecture}`).digest();
+        stampSlice(image, slice, stamp.subarray(0, 16));
+    }
     writeFileSync(dylib, image);
 }
 
@@ -163,6 +167,10 @@ function buildHelper(): void {
             "__recon_build",
             "-Xlinker",
             section,
+            // clang's selector stubs make the linker synthesize __objc_stubs, whose order varies
+            // from link to link; plain objc_msgSend calls keep the image a function of its inputs.
+            "-Xcc",
+            "-fno-objc-msgsend-selector-stubs",
             // Without this the linker's debug map embeds absolute source and object paths, and
             // two checkouts of the same sources produce different bytes.
             "-Xlinker",
