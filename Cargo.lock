@@ -989,24 +989,131 @@ dependencies = [
 name = "recon"
 version = "0.1.2"
 dependencies = [
- "block2",
  "clap",
  "jsonschema",
  "libc",
  "objc2-app-kit",
- "objc2-application-services",
  "objc2-core-foundation",
  "objc2-core-graphics",
  "objc2-foundation",
- "objc2-image-io",
- "objc2-security",
- "plist",
  "proptest",
+ "recon-accessibility-macos",
+ "recon-applications-macos",
+ "recon-core",
+ "recon-native-access-macos",
+ "recon-privacy-macos",
+ "recon-ui-guard-macos",
+ "recon-window-server-macos",
  "schemars",
  "serde",
  "serde_json",
  "tempfile",
  "toml_edit",
+]
+
+[[package]]
+name = "recon-accessibility-macos"
+version = "0.1.2"
+dependencies = [
+ "jsonschema",
+ "libc",
+ "objc2-application-services",
+ "objc2-core-foundation",
+ "objc2-core-graphics",
+ "proptest",
+ "recon-core",
+ "recon-window-server-macos",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "recon-applications-macos"
+version = "0.1.2"
+dependencies = [
+ "block2",
+ "jsonschema",
+ "objc2-app-kit",
+ "objc2-foundation",
+ "plist",
+ "proptest",
+ "recon-core",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "recon-core"
+version = "0.1.2"
+dependencies = [
+ "jsonschema",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "recon-native-access-macos"
+version = "0.1.2"
+dependencies = [
+ "libc",
+ "objc2-core-foundation",
+ "objc2-core-graphics",
+ "plist",
+ "proptest",
+ "recon-applications-macos",
+ "recon-core",
+ "recon-window-server-macos",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
+name = "recon-privacy-macos"
+version = "0.1.2"
+dependencies = [
+ "jsonschema",
+ "libc",
+ "objc2-application-services",
+ "objc2-core-foundation",
+ "objc2-core-graphics",
+ "objc2-security",
+ "recon-core",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "recon-ui-guard-macos"
+version = "0.1.2"
+dependencies = [
+ "libc",
+ "objc2-core-foundation",
+ "objc2-core-graphics",
+ "recon-core",
+ "recon-window-server-macos",
+ "serde_json",
+]
+
+[[package]]
+name = "recon-window-server-macos"
+version = "0.1.2"
+dependencies = [
+ "jsonschema",
+ "libc",
+ "objc2-core-foundation",
+ "objc2-core-graphics",
+ "objc2-image-io",
+ "proptest",
+ "recon-core",
+ "schemars",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -6,13 +6,15 @@
 //! nothing it does can put a dialog on a screen.
 
 use std::env;
-use std::path::PathBuf;
+
+#[cfg(target_os = "macos")]
+mod macos;
 
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::error::Failure;
-use crate::ui::permission::Permission;
+use recon_core::error::Failure;
+use recon_privacy_macos::identity::{CodeSigningFacts, PermissionState, ResponsibilityFacts};
 
 /// The execution context of one `recon` installation.
 #[derive(Clone, Debug, Serialize, JsonSchema)]
@@ -67,43 +69,6 @@ pub struct MacosFacts {
     pub application_discovery: ApplicationDiscovery,
 }
 
-/// Running-process signing facts, bound to its kernel hash without a validity or trust check.
-#[derive(Clone, Debug, Serialize, JsonSchema)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct CodeSigningFacts {
-    /// Whether the kernel reports a signature, even if that signature is invalid or untrusted.
-    pub signed: bool,
-    /// The code-signing identifier, or null when the code is unsigned.
-    pub identifier: Option<String>,
-    /// The signing team, or null when the signature names none.
-    pub team_identifier: Option<String>,
-    /// Whether the signature is ad-hoc. An ad-hoc designated requirement is the code hash
-    /// itself, so macOS forgets every grant when the executable is rebuilt.
-    pub ad_hoc: bool,
-}
-
-/// Whether macOS attributes Recon's privacy requests to Recon itself.
-#[derive(Clone, Debug, Serialize, JsonSchema)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ResponsibilityFacts {
-    pub responsible_for_self: bool,
-    /// Why Recon is not responsible for itself, and null when it is.
-    pub detail: Option<String>,
-}
-
-/// One privacy permission, as a preflight check answered it.
-#[derive(Clone, Debug, Serialize, JsonSchema)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct PermissionState {
-    pub permission: Permission,
-    /// Whether macOS has granted the permission, and null — never false — whenever Recon is not
-    /// responsible for itself, because a preflight run under the launcher's identity answers a
-    /// different question.
-    pub granted: Option<bool>,
-    /// Where in System Settings a person grants it.
-    pub settings_pane: String,
-}
-
 /// One private interface Recon depends on, and whether this macOS still has it.
 #[derive(Clone, Debug, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -143,7 +108,7 @@ pub fn report() -> Result<Context, Failure> {
     // Becoming responsible for Recon's own privacy requests comes first, because doing so may
     // re-execute Recon: anything read before that would be discarded with the parent process.
     let macos = macos()?;
-    let executable = executable_path()?;
+    let executable = recon_privacy_macos::identity::executable_path()?;
     let executable_path = executable
         .to_str()
         .ok_or_else(|| {
@@ -177,23 +142,9 @@ pub fn context() -> Result<String, Failure> {
         .map_err(|error| Failure::internal(format!("cannot encode response: {error}")))
 }
 
-/// The canonicalized absolute path of the running executable, which is the path macOS records a
-/// privacy grant against.
-pub fn executable_path() -> Result<PathBuf, Failure> {
-    let executable = env::current_exe().map_err(|error| {
-        Failure::internal(format!("cannot find the running recon executable: {error}"))
-    })?;
-    executable.canonicalize().map_err(|error| {
-        Failure::internal(format!(
-            "cannot resolve the running recon executable {}: {error}",
-            executable.display()
-        ))
-    })
-}
-
 #[cfg(target_os = "macos")]
 fn macos() -> Result<Option<MacosFacts>, Failure> {
-    crate::macos::macos_facts().map(Some)
+    macos::facts().map(Some)
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -203,7 +154,7 @@ fn macos() -> Result<Option<MacosFacts>, Failure> {
 
 #[cfg(target_os = "macos")]
 fn host_version() -> Option<String> {
-    Some(crate::macos::product_version())
+    Some(macos::product_version())
 }
 
 #[cfg(not(target_os = "macos"))]

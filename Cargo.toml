@@ -1,6 +1,15 @@
 [workspace]
 resolver = "3"
-members = ["crates/recon"]
+members = [
+    "crates/recon",
+    "crates/recon-accessibility-macos",
+    "crates/recon-applications-macos",
+    "crates/recon-core",
+    "crates/recon-native-access-macos",
+    "crates/recon-privacy-macos",
+    "crates/recon-ui-guard-macos",
+    "crates/recon-window-server-macos",
+]
 
 [workspace.package]
 # Changesets owns this version: `mise run version` copies it here from package.json

@@ -1,8 +1,8 @@
 use std::fs;
 use std::path::Path;
 
-use recon::error::{ErrorCode, Failure};
 use recon::ui::output::{prepare_output, write_new};
+use recon_core::error::{ErrorCode, Failure};
 use serde_json::{Value, json};
 use tempfile::TempDir;
 

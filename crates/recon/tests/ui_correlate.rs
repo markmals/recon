@@ -8,10 +8,7 @@
 //! matching rules, what happens when the evidence is ambiguous or one-sided, and the independence
 //! of each source's own observation, coverage, and coordinate transform.
 
-#[path = "../src/macos/ui/correlate.rs"]
-mod correlate;
-
-use correlate::{Correlation, MatchBasis, ScreenTransform};
+use recon::correlate::{self, Correlation, MatchBasis, ScreenTransform};
 use serde_json::{Value, json};
 
 /// The height of the fixture's primary display in logical points: AppKit's bottom-left global

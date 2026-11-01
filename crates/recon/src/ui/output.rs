@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::json;
 
-use crate::error::{ErrorCode, Failure};
+use recon_core::error::{ErrorCode, Failure};
 
 /// Resolves `--out` to an absolute path Recon may create, without creating it.
 ///

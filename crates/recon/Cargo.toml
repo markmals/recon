@@ -16,75 +16,28 @@ toml_edit = { version = "0.25", default-features = false, features = ["parse"] }
 
 [dependencies]
 clap = { version = "4", features = ["string"] }
+recon-accessibility-macos = { path = "../recon-accessibility-macos" }
+recon-applications-macos = { path = "../recon-applications-macos" }
+recon-core = { path = "../recon-core" }
+recon-native-access-macos = { path = "../recon-native-access-macos" }
+recon-privacy-macos = { path = "../recon-privacy-macos" }
+recon-window-server-macos = { path = "../recon-window-server-macos" }
 schemars = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-[target.'cfg(unix)'.dependencies]
-libc = "0.2"
-
 [target.'cfg(target_os = "macos")'.dependencies]
-block2 = "0.6"
-objc2-app-kit = { version = "0.3", features = [
-    "NSRunningApplication",
-    "NSWorkspace",
-    "block2",
-    "libc",
-], default-features = false }
-objc2-application-services = { version = "0.3", features = [
-    "AXError",
-    "AXUIElement",
-    "AXValue",
-    "HIServices",
-    "libc",
-    "std",
-], default-features = false }
-objc2-core-foundation = { version = "0.3", features = [
-    "CFArray",
-    "CFCGTypes",
-    "CFData",
-    "CFDictionary",
-    "CFNumber",
-    "CFString",
-    "std",
-], default-features = false }
-objc2-core-graphics = { version = "0.3", features = [
-    "CGDataProvider",
-    "CGEvent",
-    "CGEventSource",
-    "CGEventTypes",
-    "CGGeometry",
-    "CGImage",
-    "CGWindow",
-    "std",
-], default-features = false }
-objc2-foundation = { version = "0.3", features = [
-    "NSArray",
-    "NSError",
-    "NSFileManager",
-    "NSEnumerator",
-    "NSProcessInfo",
-    "NSString",
-    "NSURL",
-], default-features = false }
-objc2-image-io = { version = "0.3", features = [
-    "CGImageDestination",
-    "objc2-core-graphics",
-    "std",
-], default-features = false }
-objc2-security = { version = "0.3", default-features = false, features = [
-    "CSCommon",
-    "SecCode",
-    "SecBase",
-    "std",
-] }
-plist = "1"
+objc2-foundation = { version = "0.3", features = ["NSProcessInfo"], default-features = false }
+recon-ui-guard-macos = { path = "../recon-ui-guard-macos" }
 
 [dev-dependencies]
 jsonschema = { version = "0.46", default-features = false }
 proptest = "1"
 tempfile = "3"
 toml_edit = { version = "0.25", default-features = false, features = ["parse"] }
+
+[target.'cfg(unix)'.dev-dependencies]
+libc = "0.2"
 
 [target.'cfg(target_os = "macos")'.dev-dependencies]
 objc2-app-kit = { version = "0.3", features = [

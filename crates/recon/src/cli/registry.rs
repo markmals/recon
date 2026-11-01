@@ -1,20 +1,23 @@
 use clap::{Arg, ArgAction, Command};
+use recon_core::action::ActionId;
+use recon_native_access_macos::appkit;
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::application::response::{InspectResponse, LaunchResponse, ListResponse};
 use crate::context::Context;
-use crate::error::ErrorCode;
-use crate::ui::request::{
-    AccessMode, AccessProfile, DEFAULT_NATIVE_DEPTH, DEFAULT_NATIVE_LIMIT, FieldGroup,
-    MAX_NATIVE_DEPTH, MAX_NATIVE_LIMIT, TraversalKind,
-};
 use crate::ui::response::{
     ConfirmedClose, CorrelateResponse, NativeFontsResponse, NativeNodeResponse,
     NativeNodesResponse, OpenResponse, PreflightResponse, PrepareHostResponse, ScreenshotResponse,
     TreeResponse, WindowsResponse,
 };
-use crate::ui::tree::MAX_DEPTH;
+use recon_accessibility_macos::tree::MAX_DEPTH;
+use recon_applications_macos::response::{InspectResponse, LaunchResponse, ListResponse};
+use recon_core::error::ErrorCode;
+use recon_native_access_macos::identity::{AccessMode, AccessProfile};
+use recon_native_access_macos::request::{
+    DEFAULT_NATIVE_DEPTH, DEFAULT_NATIVE_LIMIT, FieldGroup, MAX_NATIVE_DEPTH, MAX_NATIVE_LIMIT,
+    TraversalKind,
+};
 
 use super::decimal::Decimal;
 use super::native;
@@ -56,6 +59,10 @@ pub struct UsageRule {
 
 pub struct CommandSpec {
     pub path: &'static [&'static str],
+    /// The exported action this command runs, for the commands that route to an extension. The
+    /// registry stays the one catalogue: an action identity is a destination a command maps to,
+    /// never a second source of grammar, help, schemas, effects, or published errors.
+    pub action: Option<ActionId>,
     pub summary: &'static str,
     pub description: &'static str,
     pub arguments: Vec<Arg>,
@@ -227,6 +234,7 @@ fn specification(
 ) -> CommandSpec {
     CommandSpec {
         path,
+        action: None,
         summary,
         description,
         arguments,
@@ -511,6 +519,9 @@ pub fn registry() -> Vec<CommandSpec> {
                 command.errors.push(LaunchFailed);
             }
             ["ui", "windows"] => {
+                // Without `--session` this is a window server read alone; the session is what
+                // adds the target's own native window inventory beside it.
+                command.action = Some(appkit::WINDOWS);
                 command.permissions = &[("screen-recording", None)];
                 command.errors.extend(SESSION_BINDING);
             }
@@ -561,11 +572,17 @@ pub fn registry() -> Vec<CommandSpec> {
                 command.errors.extend(SESSION_BINDING);
             }
             ["ui", "view", "node"] => {
+                command.action = Some(appkit::NODE);
                 command.effects = &["executes-target-code"];
                 command.errors.extend(SESSION_BINDING);
                 command.errors.extend(NATIVE_READ);
             }
             ["ui", "view", "tree"] | ["ui", "view", "find"] | ["ui", "view", "fonts"] => {
+                command.action = Some(match command.path {
+                    ["ui", "view", "tree"] => appkit::TREE,
+                    ["ui", "view", "find"] => appkit::FIND,
+                    _ => appkit::FONTS,
+                });
                 command.effects = &["executes-target-code"];
                 command.permissions = &[("screen-recording", Some("when --window is supplied"))];
                 command.errors.extend(SESSION_BINDING);
@@ -607,4 +624,44 @@ pub fn registry() -> Vec<CommandSpec> {
         }
     }
     commands
+}
+
+/// The exported action the command at `path` runs, and `None` for a command that routes to no
+/// extension.
+#[must_use]
+pub fn action(path: &[&str]) -> Option<ActionId> {
+    registry().into_iter().find(|command| command.path == path)?.action
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_native_view_command_declares_the_action_it_runs() {
+        for command in [
+            ["ui", "view", "tree"],
+            ["ui", "view", "node"],
+            ["ui", "view", "find"],
+            ["ui", "view", "fonts"],
+        ] {
+            let action = action(&command).unwrap_or_else(|| panic!("{command:?} declares one"));
+            assert_eq!(action.extension(), appkit::APPKIT, "{command:?}");
+            assert_eq!(action.name().as_str(), command[2], "{command:?}");
+        }
+        assert_eq!(action(&["ui", "windows"]), Some(appkit::WINDOWS));
+    }
+
+    #[test]
+    fn a_command_that_routes_to_no_extension_declares_no_action() {
+        for command in [
+            vec!["ui", "ax", "tree"],
+            vec!["ui", "screenshot"],
+            vec!["ui", "correlate"],
+            vec!["app", "list"],
+            vec!["context"],
+        ] {
+            assert_eq!(action(&command), None, "{command:?}");
+        }
+    }
 }

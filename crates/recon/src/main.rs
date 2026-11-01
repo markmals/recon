@@ -1,14 +1,16 @@
 //! The executable keeps successful output and the single structured error stream separate.
 
-use recon::error::{ErrorCode, Failure};
-use serde_json::json;
 use std::env;
 use std::io::{self, Write};
 
+use recon_core::error::{ErrorCode, Failure};
+use serde_json::json;
+
 #[cfg(target_os = "macos")]
-use recon::macos::{investigate, observe};
-use recon::request::AppRequest;
-use recon::request::{Request, parse_arguments};
+use recon::investigate::investigate;
+#[cfg(target_os = "macos")]
+use recon::observe::observe;
+use recon::request::{AppRequest, Request, parse_arguments};
 use recon::ui::request::{SessionRequest, UiRequest, ViewRequest};
 
 fn main() {

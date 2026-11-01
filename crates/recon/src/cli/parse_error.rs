@@ -3,7 +3,7 @@ use clap::{Arg, Command};
 use serde_json::json;
 
 use super::registry::CommandSpec;
-use crate::error::{ErrorCode, Failure};
+use recon_core::error::{ErrorCode, Failure};
 
 fn invalid(
     message: impl Into<String>,

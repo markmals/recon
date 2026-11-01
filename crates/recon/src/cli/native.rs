@@ -10,8 +10,8 @@ use std::any::TypeId;
 use clap::builder::ValueParser;
 use serde_json::{Value, json};
 
-use crate::inspection::SessionId;
-use crate::ui::request::{FieldGroup, FieldSet, HANDLE_DIGITS, NodeHandle};
+use recon_native_access_macos::identity::SessionId;
+use recon_native_access_macos::request::{FieldGroup, FieldSet, HANDLE_DIGITS, NodeHandle};
 
 /// Digits in a session identifier's published spelling, as [`SessionId::parse`] accepts it.
 const SESSION_DIGITS: usize = 32;
