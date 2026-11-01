@@ -80,7 +80,7 @@ Rules that matter:
 - Priorities are `0`–`4`, `0` highest. Default `2`. Do not invent a scale.
 - Claim before starting and close only when the work is actually done.
 - Never run `bd hooks install`; hk owns the git hooks and runs `bd hooks run <hook>` as a step.
-- `.beads/issues.jsonl` is a passive export that is committed; the database is the source of truth.
+- The Dolt database is the source of truth. It syncs through `refs/dolt/data` on `origin`: writes auto-push (`dolt.auto-push` in `.beads/config.yaml`), throttled to one push per five minutes with no retry, and `pre-push` runs `bd dolt push` so every code push carries the work graph too. `mise run setup` runs `bd bootstrap` to clone it into a fresh checkout. Every worktree on one Mac shares one database. Once a second machine writes, run `bd dolt pull` before writing on any machine. There is no JSONL export.
 
 A defect that stops the current implementation from satisfying its proposal is **not** a new work item. It is the current work, and it gets fixed. Skill: [`.agents/skills/tracking-work/`](.agents/skills/tracking-work/).
 
