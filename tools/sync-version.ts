@@ -66,7 +66,8 @@ function main(args: string[]): number {
     console.log(`Cargo workspace ${current} -> ${version}.`);
 
     // `--workspace` touches only the member entries, so a version bump never
-    // silently upgrades a dependency. `--offline` keeps it off the registry.
+    // silently upgrades a dependency. `--offline` keeps it off the registry; the
+    // `version` task fetches the locked crates first so the cache it reads exists.
     execFileSync("cargo", ["update", "--workspace", "--offline", "--quiet"], {
         cwd: root,
         stdio: "inherit",
