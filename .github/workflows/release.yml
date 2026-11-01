@@ -107,12 +107,16 @@ jobs:
             - uses: jdx/mise-action@v5
               with:
                   cache: false
-            # `--notes-from-tag` would publish the bare tag message. The changelog entry
-            # Changesets just wrote is the release note a reader wants, and
-            # `--generate-notes` adds the merged pull requests underneath it. The title
-            # keeps the form the earlier hand-cut releases used: `Recon <version>`.
+            # `--notes-from-tag` would publish the bare tag message. The CHANGELOG.md entry
+            # for this version is the release note a reader wants — `tools/tag-release.ts`
+            # refused to tag without one — and `--generate-notes` appends the merged pull
+            # requests underneath it. The title keeps the form the earlier hand-cut
+            # releases used: `Recon <version>`.
             - name: Create the release
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   TAG: ${{ needs.tag.outputs.tag }}
-              run: gh release create "$TAG" --title "Recon ${TAG#v}" --generate-notes
+              run: |
+                  node tools/changelog.ts "${TAG#v}" > "$RUNNER_TEMP/release-notes.md"
+                  gh release create "$TAG" --title "Recon ${TAG#v}" \
+                      --notes-file "$RUNNER_TEMP/release-notes.md" --generate-notes
