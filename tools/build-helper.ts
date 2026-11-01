@@ -6,7 +6,15 @@
 // which is what makes a helper and a `recon` build verifiably matched.
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+    copyFileSync,
+    existsSync,
+    mkdirSync,
+    readFileSync,
+    readdirSync,
+    rmSync,
+    writeFileSync,
+} from "node:fs";
 import path from "node:path";
 
 import { verifiedCompiler } from "./swift-toolchain.ts";
@@ -70,9 +78,17 @@ function buildHelper(): void {
     let outDir = path.resolve("target");
     let dylib = path.join(outDir, "recon-helper.dylib");
     let buildIdPath = path.join(outDir, "recon-helper.build-id");
+    // The helper reads its own identity out of this section at run time. It is linked in rather
+    // than compiled in because the helper has no C left to compile a definition into.
+    let section = path.join(outDir, "recon-helper.identity");
     mkdirSync(outDir, { recursive: true });
     rmSync(dylib, { force: true });
     rmSync(buildIdPath, { force: true });
+    // Only when it changes: rewriting it would relink unchanged sources, and a relink gives
+    // the image a new UUID even though its content is the same.
+    if (!existsSync(section) || readFileSync(section, "utf8") !== buildId) {
+        writeFileSync(section, buildId, { mode: 0o600 });
+    }
 
     // Both Apple-silicon slices: a process can only load a dylib of its own architecture, so the
     // helper must match arm64 and arm64e targets alike.
@@ -92,8 +108,14 @@ function buildHelper(): void {
         "xcrun",
         [
             ...universal,
-            "-Xcc",
-            `-DRECON_HELPER_BUILD="${buildId}"`,
+            "-Xlinker",
+            "-sectcreate",
+            "-Xlinker",
+            "__TEXT",
+            "-Xlinker",
+            "__recon_build",
+            "-Xlinker",
+            section,
             // Without this the linker's debug map embeds absolute source and object paths, and
             // two checkouts of the same sources produce different bytes.
             "-Xlinker",
