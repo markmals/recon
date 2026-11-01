@@ -19,7 +19,9 @@ extension AppKitInspection {
                 "tree", ["root": root, "depth": 0, "fields": ["basic"]], as: NodesResponse.self)
             #expect(tree.nodes.count == 1)
             #expect(tree.coverage.narrowed.contains("depth"))
-            #expect(!tree.coverage.complete || tree.coverage.truncated.isEmpty)
+            // A narrowed read is still a complete one: nothing it set out to return was cut.
+            #expect(tree.coverage.truncated.isEmpty)
+            #expect(tree.coverage.complete)
         }
 
         @Test func findMatchesAnExactIdentifier() throws {
@@ -68,6 +70,7 @@ extension AppKitInspection {
                 as: NodesResponse.self)
             #expect(limited.nodes.count == 2)
             #expect(limited.coverage.truncated.contains("unsearched-scope"))
+            #expect(limited.coverage.complete == false)
 
             let full = try inspector.read(
                 "tree", ["root": root, "depth": 1, "limit": 3, "fields": ["appearance"]],
@@ -76,6 +79,8 @@ extension AppKitInspection {
             #expect(full.coverage.returned == 3)
             #expect(full.nodes[2].reference == true)
             #expect(full.nodes[2].handle == full.nodes[1].handle)
+            #expect(full.coverage.truncated.isEmpty)
+            #expect(full.coverage.complete)
         }
 
         @Test func aLayerTraversalNeedsALayerScope() throws {

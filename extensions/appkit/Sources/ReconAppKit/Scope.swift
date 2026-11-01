@@ -111,6 +111,11 @@ extension Work {
     }
 
     /// A layer belongs to the window of the nearest view that backs it.
+    ///
+    /// A layer reports its own superlayer, so the chain can be arbitrarily deep or lead back to
+    /// where it started. Each step spends the read's budget, and a budget or deadline that runs
+    /// out leaves the layer's window unknown — which the caller refuses as out of scope rather
+    /// than accepting into the selected window.
     private func hostingWindow(ofLayer layer: AnyObject) throws -> AnyObject? {
         var current: AnyObject? = layer
         while let parent = current {
@@ -120,6 +125,7 @@ extension Work {
             {
                 return try related(.viewWindow, of: view)
             }
+            guard consume() else { return nil }
             current = try related(.layerSuperlayer, of: parent)
         }
         return nil

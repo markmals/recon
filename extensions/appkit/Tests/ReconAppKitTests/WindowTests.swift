@@ -71,6 +71,69 @@ extension AppKitInspection {
             #expect(basic.normalizedFrame?.transform?.method == "primary-screen-height-flip")
         }
 
+        /// Every rectangle is published in the space it was read in, at the coordinates that
+        /// space gives it: a view's own bounds, its place in the window, and the same place on
+        /// the global screen are three different answers.
+        @Test func rectanglesCarryTheirOwnSpacesCoordinates() throws {
+            let inspector = try Inspector()
+            let window = onMain { Self.makeWindow(titled: "Placed") }
+            defer { onMain { window.close() } }
+            let view = onMain { NSView(frame: NSRect(x: 5, y: 7, width: 20, height: 10)) }
+            onMain {
+                window.setFrameOrigin(NSPoint(x: 300, y: 200))
+                window.contentView?.addSubview(view)
+            }
+            let origin = onMainValue { [window.frame.origin.x, window.frame.origin.y] }
+
+            let basic = try #require(
+                try inspector.read(
+                    "node", ["root": inspector.handle(for: view), "fields": ["basic"]],
+                    as: NodeResponse.self
+                ).node.basic)
+            #expect(basic.frame?.orientation == "bottom-left")
+            #expect(basic.frame?.x == 5)
+            #expect(basic.frame?.y == 7)
+            #expect(basic.bounds?.space == "self")
+            #expect(basic.bounds?.orientation == "bottom-left")
+            #expect(basic.bounds?.x == 0)
+            #expect(basic.bounds?.y == 0)
+            #expect(basic.bounds?.width == 20)
+            let inWindow = try #require(basic.normalizedFrame?.window)
+            let onScreen = try #require(basic.normalizedFrame?.screen)
+            #expect(inWindow.x == 5)
+            #expect(inWindow.y == 7)
+            // The same rectangle on the global screen is the window's own origin away from it,
+            // which is what tells the two spaces apart.
+            #expect(try #require(onScreen.x) - #require(inWindow.x) == origin[0])
+            #expect(try #require(onScreen.y) - #require(inWindow.y) == origin[1])
+        }
+
+        /// A flipped view measures from its own top left, and says so.
+        @Test func aFlippedViewReportsTopLeftBounds() throws {
+            let inspector = try Inspector()
+            let parent = onMain { FlippedView() }
+            let child = onMain { NSView(frame: NSRect(x: 2, y: 3, width: 8, height: 4)) }
+            onMain { parent.addSubview(child) }
+
+            let parentBasic = try #require(
+                try inspector.read(
+                    "node", ["root": inspector.handle(for: parent), "fields": ["basic"]],
+                    as: NodeResponse.self
+                ).node.basic)
+            #expect(parentBasic.flipped == true)
+            #expect(parentBasic.bounds?.orientation == "top-left")
+
+            let childBasic = try #require(
+                try inspector.read(
+                    "node", ["root": inspector.handle(for: child), "fields": ["basic"]],
+                    as: NodeResponse.self
+                ).node.basic)
+            // The frame is measured in the superview's space, so a flipped parent flips it.
+            #expect(childBasic.frame?.space == "superview")
+            #expect(childBasic.frame?.orientation == "top-left")
+            #expect(childBasic.bounds?.orientation == "bottom-left")
+        }
+
         @Test func handlesBelongToTheSessionThatIssuedThem() throws {
             let first = try Inspector("session-one")
             let view = onMain { NSView() }

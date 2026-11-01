@@ -13,6 +13,11 @@ func onMain<Value: AnyObject>(_ body: @MainActor () -> Value) -> Value {
     DispatchQueue.main.sync { MainActor.assumeIsolated { Carried(body()) } }.value
 }
 
+/// Runs on the main thread and brings back a value that crosses threads on its own.
+func onMainValue<Value: Sendable>(_ body: @MainActor () -> Value) -> Value {
+    DispatchQueue.main.sync { MainActor.assumeIsolated(body) }
+}
+
 func onMain(_ body: @MainActor () -> Void) {
     DispatchQueue.main.sync { MainActor.assumeIsolated(body) }
 }
@@ -49,6 +54,14 @@ struct Inspector {
         _ action: String, _ payload: [String: Any] = [:], as response: Response.Type
     ) throws -> Response {
         try invoke(action, payload).decode(response)
+    }
+
+    /// One read's budget and coverage, for the parts of the walk no action reaches directly.
+    func work(_ deadline: Duration = .seconds(30)) throws -> Work {
+        let request = try InspectionRequest(
+            .tree, root: nil, windowId: nil, depth: 3, limit: 200, fields: nil, kind: nil,
+            className: nil, identifier: nil)
+        return Work(request: request, session: session, deadline: .now + deadline)
     }
 
     func failure(_ action: String, _ payload: [String: Any] = [:]) throws -> (
@@ -114,3 +127,15 @@ final class AlternatingFontCell: NSCell {
 /// One serialized parent: every suite drives the same process-wide session and main thread.
 @Suite(.serialized)
 struct AppKitInspection {}
+
+/// A layer whose superlayer is whatever the test says, including itself or a cycle.
+final class CyclicLayer: CALayer {
+    nonisolated(unsafe) var cycle: CALayer?
+
+    override var superlayer: CALayer? { cycle }
+}
+
+/// A view that reports its own coordinate system as top-left, as a flipped view does.
+final class FlippedView: NSView {
+    override var isFlipped: Bool { true }
+}
