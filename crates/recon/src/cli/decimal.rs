@@ -39,13 +39,15 @@ pub(super) fn constraints(parser: &ValueParser) -> Option<Constraints> {
         Some(Decimal::<0>::constraints())
     } else if parser.type_id() == TypeId::of::<Decimal<1>>() {
         Some(Decimal::<1>::constraints())
-    } else if parser.type_id() == TypeId::of::<Decimal<0, { crate::ui::tree::MAX_DEPTH as u32 }>>()
-    {
-        Some(Decimal::<0, { crate::ui::tree::MAX_DEPTH as u32 }>::constraints())
     } else if parser.type_id()
-        == TypeId::of::<Decimal<1, { crate::ui::request::MAX_NATIVE_LIMIT as u32 }>>()
+        == TypeId::of::<Decimal<0, { recon_accessibility_macos::tree::MAX_DEPTH as u32 }>>()
     {
-        Some(Decimal::<1, { crate::ui::request::MAX_NATIVE_LIMIT as u32 }>::constraints())
+        Some(Decimal::<0, { recon_accessibility_macos::tree::MAX_DEPTH as u32 }>::constraints())
+    } else if parser.type_id()
+        == TypeId::of::<Decimal<1, { recon_native_access_macos::request::MAX_NATIVE_LIMIT as u32 }>>(
+        )
+    {
+        Some(Decimal::<1, { recon_native_access_macos::request::MAX_NATIVE_LIMIT as u32 }>::constraints())
     } else {
         None
     }

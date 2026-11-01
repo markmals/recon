@@ -97,7 +97,7 @@ fn wait_failure(output: &Output, command: &[&str]) {
     assert_eq!(envelope["error"]["details"]["stage"], "wait");
     assert_eq!(envelope["error"]["command"], serde_json::json!(command));
     assert_eq!(envelope["error"]["retryable"], false);
-    let schema = recon::cli::schema::output_schema::<recon::error::ErrorReport<'static>>();
+    let schema = recon_core::schema::output_schema::<recon_core::error::ErrorReport<'static>>();
     assert!(jsonschema::draft202012::is_valid(&schema, &envelope));
     let registry = recon::cli::registry::registry();
     let entry = registry.iter().find(|entry| entry.path == command).unwrap();
@@ -276,7 +276,7 @@ fn internal_delivery_failure(output: &Output, command: Option<&[&str]>) {
     assert_eq!(envelope["error"]["command"], serde_json::json!(command));
     assert_eq!(output.stderr.last(), Some(&b'\n'));
     assert_eq!(output.stderr.iter().filter(|byte| **byte == b'\n').count(), 1);
-    let schema = recon::cli::schema::output_schema::<recon::error::ErrorReport<'static>>();
+    let schema = recon_core::schema::output_schema::<recon_core::error::ErrorReport<'static>>();
     assert!(jsonschema::draft202012::is_valid(&schema, &envelope));
     if let Some(path) = command {
         let registry = recon::cli::registry::registry();

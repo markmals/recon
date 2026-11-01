@@ -1,5 +1,5 @@
-use recon::error::{ErrorCode, Failure};
 use recon::request::{AppRequest, Request, parse_arguments};
+use recon_core::error::{ErrorCode, Failure};
 mod support;
 
 fn parse(words: &[&str]) -> Result<Request, Failure> {

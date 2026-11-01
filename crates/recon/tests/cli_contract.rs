@@ -38,7 +38,7 @@ fn usage_error(output: Output) -> Value {
 fn invalid_request(arguments: &[&str]) -> Value {
     let arguments = arguments.iter().map(|word| (*word).to_owned()).collect::<Vec<_>>();
     let failure = recon::request::parse_arguments(&arguments).unwrap_err();
-    assert_eq!(failure.code, recon::error::ErrorCode::InvalidArgument);
+    assert_eq!(failure.code, recon_core::error::ErrorCode::InvalidArgument);
     let envelope = serde_json::to_value(failure.report()).unwrap();
     support::validate_failure(&envelope, &[]);
     envelope["error"].clone()

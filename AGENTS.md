@@ -52,7 +52,7 @@ mise run typecheck   # type-check both TypeScript projects
 mise run test        # the tools' tests and the Rust test suite
 mise run doc         # rustdoc over the workspace, warnings denied
 mise run build       # build every target in the workspace
-mise run crates      # every directory under crates/ is a workspace member
+mise run crates      # crates/ directories are workspace members; dependencies point inward
 mise run validate    # record frontmatter, IDs, and cross-references
 mise run docs:build  # the documentation site builds
 mise run status      # phase, next action, who acts
@@ -104,22 +104,27 @@ TypeScript is covered by Oxfmt, Oxlint, and `tsrs`; Rust by `cargo fmt`, Clippy,
 
 ## Platform: macOS inspection CLI
 
-A macOS command-line program that investigates running applications for an agent. One Cargo workspace with one binary, plus two native artifacts Cargo does not build — an Objective-C helper that runs inside the inspected process and a C loader that gets it there. It ships through a Homebrew tap.
+A macOS command-line program that investigates running applications for an agent. One Cargo workspace with one binary, plus two native artifacts Cargo does not build — a Swift helper that runs inside the inspected process, assembled by SwiftPM from the Swift SDK and the AppKit extension, and a C loader that gets it there. It ships through a Homebrew tap.
 
 | Piece | Where |
 | --- | --- |
-| Workspace metadata, shared version, lint policy | `Cargo.toml` — `members = ["crates/recon"]` |
+| Workspace metadata, shared version, lint policy | `Cargo.toml` — every crate under `crates/` is a member |
 | The binary | `crates/recon/src/main.rs` — parse, render the error, exit |
-| Everything the binary does | `crates/recon/src/lib.rs` and the modules beneath it: `application`, `cli`, `context`, `error`, `inspection`, `macos`, `output`, `request`, `ui` |
-| Tests that need a process, a fixture, or a live Mac | `crates/recon/tests/` |
+| Argument parsing, the command registry, help and schemas, product assembly | `crates/recon/src/` — `cli`, `request`, `ui`, `context`, `correlate`, `output`, and on a Mac `investigate` and `observe` |
+| Action identities, payload schemas, the error envelope | `crates/recon-core/` — portable, and the only crate the capability crates depend on |
+| What a capability actually does | `crates/recon-applications-macos`, `recon-window-server-macos`, `recon-accessibility-macos`, `recon-native-access-macos`, `recon-privacy-macos`, `recon-ui-guard-macos` — each one names the platform it implements |
+| Objective-C frameworks the host calls | `crates/recon-applications-macos/swift/` — `NSWorkspace`, `NSRunningApplication` and `NSFileManager`, reached from Swift that the crate's `build.rs` compiles and links; Rust keeps `objc2` bindings only to C frameworks |
+| Tests that need a process, a fixture, or a live Mac | `crates/<crate>/tests/` — a behavioural test lives with the crate it specifies; `crates/recon/tests/` holds the executable's own contract |
 | Embedded `Info.plist` and build revision | `crates/recon/build.rs` — macOS records a privacy grant against the executable's signing identity, so the bare binary carries a plist |
-| Injected helper, Objective-C | `helper/` — `ReconCore`, `ReconInspect`, `ReconServer`, `ReconFacets`, `ReconFields`, with its own tests in `helper/tests/` |
+| Injected helper | `helper/` — a Swift package that assembles the SDK runtime and the AppKit extension into one dylib, serving framing, authentication and the access lifecycle from `ReconHelper`, with its tests in `helper/Tests/` |
+| Swift extension SDK | `sdks/swift/` — `ReconExtension` and its macros, the assembling runtime, `ReconExtensionTesting`, and `ReconNativeSupport`, whose allowlisted native reads are Swift over the one Objective-C file left: `ReconMessageSend.m`, typed message sends inside `@try`, because Swift cannot catch an Objective-C exception |
+| AppKit extension | `extensions/appkit/` — the `windows`, `tree`, `node`, `find` and `fonts` actions the helper serves |
 | Injector, C | `loader/` — `recon_loader.c` and the entitlements it is signed with |
 | Fixture application | `crates/recon/tests/fixtures/ReconFixture` — a Swift AppKit app the native tasks build into `target/fixtures/` |
 | Documentation site | `docs/` — VitePress; `docs/.vitepress/config.ts` renders the records from the repository root |
 | Repository tooling | `tools/*.ts` — TypeScript run directly by Node, no bundler |
 | Formatting | `rustfmt.toml` and `.oxfmtrc.jsonc` — the same 100 columns and 4 spaces on both sides |
-| Toolchain | `mise.toml` for everything that goes through mise; `rust-toolchain.toml` for rustup |
+| Toolchain | `mise.toml` for everything that goes through mise; `rust-toolchain.toml` for rustup; `swift-toolchain.toml` for Apple's Swift compiler build, which mise cannot install — `mise run swift:toolchain` verifies it and every Cargo build that compiles Swift refuses any other |
 
 ### Commands
 
@@ -132,7 +137,7 @@ A macOS command-line program that investigates running applications for an agent
 | `mise run fmt [paths…]` | Oxfmt and rustfmt; with no arguments, the whole tree |
 | `mise run lint` | `oxlint --fix` and `cargo clippy --workspace --all-targets -- -D warnings` |
 | `mise run doc` | `cargo doc --workspace --no-deps` with `RUSTDOCFLAGS=-D warnings` |
-| `mise run crates` | Fails when a directory under `crates/` is not a workspace member |
+| `mise run crates` | Fails when a directory under `crates/` is not a workspace member, or a crate dependency runs against the workspace's direction |
 | `mise run docs:dev` · `docs:build` · `docs:preview` | The documentation site |
 
 `lint`, `test`, and `doc` are the house Rust verification set, alongside the formatting check `mise run check` runs. Never substitute a command that checks a weaker property, and never report a check as passing unless it ran. Use `cargo` directly for anything without a task (`cargo add`, `cargo tree`, `cargo test -p recon --test cli_contract`).
@@ -147,6 +152,7 @@ These build the native artifacts and exercise them against a live Mac — the si
 | `mise run fixture:build` · `fixture:inject` | Build the fixture app bundle, and the injectable variant |
 | `mise run recon:sign` | Code-sign the debug `recon` with `RECON_SIGNING_IDENTITY` |
 | `mise run test:ui` · `test:focus` | UI observation against the live fixture, and the evidence that reading never steals focus |
+| `mise run swift:toolchain` · `swift:test` | Verify the pinned Apple Swift compiler, and run the SDK's and extension's suites |
 | `mise run test:helper` · `test:inject` · `test:inspection` | The helper's own tests, loader injection, and live inspection end to end |
 
 They observe a Mac rather than a repository, so they are **not** part of `mise run check` and cannot run in the Linux CI gate. Run them on a macOS host when a change touches the native path, and report what they printed. On any other platform they refuse to run rather than pretending to pass.

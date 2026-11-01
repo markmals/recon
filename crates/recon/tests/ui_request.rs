@@ -1,10 +1,11 @@
 use std::path::PathBuf;
 
-use recon::application::Pid;
-use recon::error::{ErrorCode, Failure};
 use recon::request::{Request, parse_arguments};
-use recon::ui::request::{Selection, UiRequest};
-use recon::ui::window::WindowId;
+use recon::ui::request::UiRequest;
+use recon_applications_macos::selection::Selection;
+use recon_core::error::{ErrorCode, Failure};
+use recon_core::process::Pid;
+use recon_window_server_macos::window::WindowId;
 mod support;
 
 fn arguments(words: &[&str]) -> Vec<String> {

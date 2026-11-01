@@ -7,7 +7,7 @@ use super::decimal;
 use super::native;
 use super::output_path;
 use super::registry::{CommandSpec, registry};
-use crate::error::{ErrorCode, ErrorReport, Failure};
+use recon_core::error::{ErrorCode, ErrorReport, Failure};
 
 pub fn output_schema<T: JsonSchema>() -> Value {
     serde_json::to_value(

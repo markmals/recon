@@ -5,7 +5,7 @@ let result = spawnSync(
     [
         "test",
         "-p",
-        "recon",
+        "recon-native-access-macos",
         "--test",
         "inject_binding",
         "--test",

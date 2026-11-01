@@ -1,14 +1,14 @@
 use std::path::Path;
 
 use proptest::prelude::*;
-use recon::application::Pid;
-use recon::cli::schema::output_schema;
 use recon::ui::response::{
     CapturedImage, CapturedWindow, ObservedApplication, ScreenshotResponse, TreeResponse,
     WindowsResponse,
 };
-use recon::ui::tree::{AttributeValue, ElementNode, Node, ReadFailure};
-use recon::ui::window::{Bounds, Window, WindowId};
+use recon_accessibility_macos::tree::{AttributeValue, ElementNode, Node, ReadFailure};
+use recon_core::process::Pid;
+use recon_core::schema::output_schema;
+use recon_window_server_macos::window::{Bounds, Window, WindowId};
 use serde_json::{Value, json};
 
 const BUNDLE: &str = "/Applications/Notes.app";

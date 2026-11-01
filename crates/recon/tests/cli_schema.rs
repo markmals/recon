@@ -1,9 +1,9 @@
 use std::path::Path;
 use std::process::Command;
 
-use recon::application::Pid;
 use recon::ui::response::{ObservedApplication, TreeResponse};
-use recon::ui::tree::{AttributeValue, ElementNode, Node, ReadFailure};
+use recon_accessibility_macos::tree::{AttributeValue, ElementNode, Node, ReadFailure};
+use recon_core::process::Pid;
 use serde_json::{Value, json};
 
 fn output(arguments: &[&str]) -> Value {

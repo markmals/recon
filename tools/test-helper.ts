@@ -1,46 +1,11 @@
+// The helper package's own test suites: framing, tokens, response envelopes, and the
+// authenticated access lifecycle driven over a real socket.
+//
+// They build the helper's sources in place rather than linking the shipped dylib, so the build
+// identity they serve is a fixture rather than the linked one.
 import { execFileSync } from "node:child_process";
-import { mkdirSync } from "node:fs";
-import path from "node:path";
 
 if (process.platform === "darwin") {
-    let output = path.resolve("target/helper-tests");
-    mkdirSync(output, { recursive: true });
-    let sources = [
-        "helper/recon_helper.c",
-        "helper/ReconCore.m",
-        "helper/ReconFields.m",
-        "helper/ReconFacets.m",
-        "helper/ReconInspect.m",
-        "helper/ReconServer.m",
-    ].map(source => path.resolve(source));
-    for (let test of ["helper_tests", "session_tests", "inspection_tests"]) {
-        let executable = path.join(output, test);
-        execFileSync(
-            "clang",
-            [
-                "-fobjc-arc",
-                "-O1",
-                '-DRECON_HELPER_BUILD="fixture"',
-                ...sources,
-                path.resolve(`helper/tests/${test}.m`),
-                "-framework",
-                "Foundation",
-                "-framework",
-                "AppKit",
-                "-framework",
-                "QuartzCore",
-                "-framework",
-                "CoreGraphics",
-                "-framework",
-                "Security",
-                "-lbsm",
-                "-lproc",
-                "-o",
-                executable,
-            ],
-            { stdio: "inherit" },
-        );
-        execFileSync(executable, { stdio: "inherit" });
-        console.log(`Passed ${test}`);
-    }
+    execFileSync("xcrun", ["swift", "test", "--package-path", "helper"], { stdio: "inherit" });
+    console.log("Passed helper tests");
 }

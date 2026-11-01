@@ -8,12 +8,11 @@ use std::process::{Command, Output};
 use std::thread::sleep;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use objc2_app_kit::{NSEvent, NSWorkspace};
 use objc2_core_foundation::{
     CFArray, CFDictionary, CFNumber, CFRetained, CFRunLoop, CFString, CFType, kCFRunLoopDefaultMode,
 };
 use objc2_core_graphics::{
-    CGDisplayCopyDisplayMode, CGDisplayMode, CGMainDisplayID, CGWindowListCopyWindowInfo,
+    CGDisplayCopyDisplayMode, CGDisplayMode, CGEvent, CGMainDisplayID, CGWindowListCopyWindowInfo,
     CGWindowListOption, kCGNullWindowID, kCGWindowOwnerPID,
 };
 use serde_json::Value;
@@ -145,9 +144,7 @@ fn validate_contract(arguments: &[&str], output: &Output) {
 
 pub(crate) fn frontmost_pid() -> Option<u32> {
     settle_workspace_notifications();
-    NSWorkspace::sharedWorkspace()
-        .frontmostApplication()
-        .and_then(|application| u32::try_from(application.processIdentifier()).ok())
+    recon_applications_macos::workspace::frontmost_application().map(|pid| pid.0)
 }
 
 pub(crate) fn main_window_id(fixture: &Fixture) -> u64 {
@@ -251,16 +248,20 @@ fn repository_target() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target")
 }
 
-/// `NSWorkspace` learns of activation changes through run-loop notifications; a test process that
-/// never runs its run loop would keep reporting whichever application was frontmost at startup.
+/// The frontmost application is reported through `NSWorkspace`, which learns of activation
+/// changes from run-loop notifications; a test process that never runs its run loop would keep
+/// reporting whichever application was frontmost at startup.
 fn settle_workspace_notifications() {
     // SAFETY: an immutable Core Foundation constant.
     let mode = unsafe { kCFRunLoopDefaultMode };
     CFRunLoop::run_in_mode(mode, 0.1, false);
 }
 
+/// Where the pointer is, in the window server's own top-left coordinates. These checks compare
+/// one reading with another, so only agreement between them matters, not the origin they share.
 fn pointer_location() -> (f64, f64) {
-    let location = NSEvent::mouseLocation();
+    let event = CGEvent::new(None).expect("a Core Graphics event carrying the pointer location");
+    let location = CGEvent::location(Some(&event));
     (location.x, location.y)
 }
 

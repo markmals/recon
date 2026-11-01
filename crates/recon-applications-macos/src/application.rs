@@ -1,0 +1,129 @@
+//! Applications as bundles on disk, and how a selector the user types resolves to exactly one.
+
+use std::error::Error;
+use std::fmt;
+use std::path::{Path, PathBuf};
+
+use recon_core::process::Pid;
+use schemars::JsonSchema;
+use serde::Serialize;
+
+/// An application bundle at one location, with the running instances observed for exactly that
+/// location. Copies of an application at other paths are other applications.
+#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Application {
+    pub name: String,
+    pub bundle_id: Option<String>,
+    pub path: PathBuf,
+    pub version: Option<String>,
+    pub build: Option<String>,
+    pub executable_path: Option<PathBuf>,
+    pub running_pids: Vec<Pid>,
+}
+
+impl Application {
+    /// Puts the running process IDs in ascending order and drops repeats.
+    pub fn normalize_running_pids(&mut self) {
+        self.running_pids.sort_unstable();
+        self.running_pids.dedup();
+    }
+}
+
+/// Why a selector names no single application.
+#[derive(Debug)]
+pub enum TargetError<'a> {
+    NotFound { selector: &'a str },
+    Ambiguous { selector: &'a str, candidates: Vec<&'a Application> },
+}
+
+impl fmt::Display for TargetError<'_> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TargetError::NotFound { selector } => {
+                write!(formatter, "no application matches {selector:?}")
+            }
+            TargetError::Ambiguous { selector, candidates } => {
+                write!(formatter, "ambiguous application {selector:?}; choose a bundle path:")?;
+                for candidate in candidates {
+                    write!(
+                        formatter,
+                        "\n  {} [{}] {}",
+                        candidate.name,
+                        candidate.bundle_id.as_deref().unwrap_or("-"),
+                        candidate.path.display()
+                    )?;
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+impl Error for TargetError<'_> {}
+
+/// Merges discovered applications into one entry per bundle path, combining the process IDs each
+/// discovery observed, and sorts the result by name and then path.
+pub fn normalize_applications(mut discovered: Vec<Application>) -> Vec<Application> {
+    discovered.sort_unstable_by(|left, right| left.path.cmp(&right.path));
+    let mut applications: Vec<Application> = Vec::with_capacity(discovered.len());
+    for application in discovered {
+        match applications.last_mut() {
+            Some(previous) if previous.path == application.path => {
+                previous.running_pids.extend(application.running_pids);
+            }
+            _ => applications.push(application),
+        }
+    }
+
+    for application in &mut applications {
+        application.normalize_running_pids();
+    }
+    applications.sort_unstable_by(|left, right| {
+        left.name.cmp(&right.name).then_with(|| left.path.cmp(&right.path))
+    });
+    applications
+}
+
+/// Finds the one application a selector names.
+///
+/// A selector starting with `/` must equal a bundle path. Any other selector matches a display
+/// name exactly or a bundle identifier without regard to ASCII case, so one selector may match a
+/// name and an identifier of different bundles.
+///
+/// # Errors
+///
+/// [`TargetError::NotFound`] when nothing matches, and [`TargetError::Ambiguous`] with every match
+/// when more than one bundle does; Recon never picks among them.
+pub fn resolve_target<'a>(
+    applications: &'a [Application],
+    selector: &'a str,
+) -> Result<&'a Application, TargetError<'a>> {
+    let mut first = None;
+    let mut ambiguous = Vec::new();
+    for application in applications {
+        let matches = if selector.starts_with('/') {
+            application.path == Path::new(selector)
+        } else {
+            application.name == selector
+                || application
+                    .bundle_id
+                    .as_deref()
+                    .is_some_and(|id| id.eq_ignore_ascii_case(selector))
+        };
+        if matches {
+            if let Some(previous) = first {
+                if ambiguous.is_empty() {
+                    ambiguous.push(previous);
+                }
+                ambiguous.push(application);
+            } else {
+                first = Some(application);
+            }
+        }
+    }
+    if !ambiguous.is_empty() {
+        return Err(TargetError::Ambiguous { selector, candidates: ambiguous });
+    }
+    first.ok_or(TargetError::NotFound { selector })
+}

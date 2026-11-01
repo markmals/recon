@@ -1,3 +1,9 @@
+# actionlint's list of GitHub-hosted runner labels predates the xcode-27 image, which
+# GitHub publishes as a public preview. It is a hosted label, declared here only so
+# actionlint accepts it.
+self-hosted-runner:
+    labels:
+        - xcode-27
 # actionlint 1.7.12 bundles metadata for actions/create-github-app-token@v3 that
 # predates the action's `client-id` input and still lists the deprecated `app-id` as
 # required. The action's own v3 action.yml declares `client-id` and makes `app-id`
