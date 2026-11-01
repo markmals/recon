@@ -11,6 +11,8 @@ pub mod selection;
 
 #[cfg(target_os = "macos")]
 mod metadata;
+#[cfg(target_os = "macos")]
+mod swift;
 
 #[cfg(target_os = "macos")]
 pub mod discovery;

@@ -154,7 +154,7 @@ fn macos() -> Result<Option<MacosFacts>, Failure> {
 
 #[cfg(target_os = "macos")]
 fn host_version() -> Option<String> {
-    Some(macos::product_version())
+    macos::product_version()
 }
 
 #[cfg(not(target_os = "macos"))]

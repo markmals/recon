@@ -4,6 +4,9 @@
 //! Permissions are preflighted and never requested. Other private symbols are looked up without
 //! being called. No application is touched.
 
+use std::ffi::CStr;
+use std::ptr;
+
 use recon_core::error::Failure;
 use recon_privacy_macos::identity::PrivacyFacts;
 
@@ -22,13 +25,36 @@ pub(super) fn facts() -> Result<MacosFacts, Failure> {
     })
 }
 
-/// The macOS product version as `major.minor.patch`.
+/// The macOS product version as `major.minor.patch`, or `None` when the kernel does not answer.
 ///
-/// Read from the structured interface rather than from `operatingSystemVersionString`, which
-/// Apple documents as unsuitable for parsing.
-pub(super) fn product_version() -> String {
-    let version = objc2_foundation::NSProcessInfo::processInfo().operatingSystemVersion();
-    format!("{}.{}.{}", version.majorVersion, version.minorVersion, version.patchVersion)
+/// `kern.osproductversion` is the same number System Settings and `sw_vers` show, read without
+/// parsing `operatingSystemVersionString`, which Apple documents as unsuitable for parsing. The
+/// kernel leaves a trailing zero out — it answers `27.1` rather than `27.1.0` — so the missing
+/// components are filled in rather than published as a shorter version than the contract
+/// promises.
+pub(super) fn product_version() -> Option<String> {
+    let mut version = [0u8; 64];
+    let mut length = version.len();
+    // SAFETY: `kern.osproductversion` names a string the kernel writes into `version`, with
+    // `length` carrying the buffer's size in and the answer's length out.
+    let read = unsafe {
+        libc::sysctlbyname(
+            c"kern.osproductversion".as_ptr(),
+            version.as_mut_ptr().cast(),
+            &raw mut length,
+            ptr::null_mut(),
+            0,
+        )
+    };
+    if read != 0 || length == 0 {
+        return None;
+    }
+    let reported = CStr::from_bytes_until_nul(&version[..length]).ok()?.to_str().ok()?;
+    let mut numbers = reported.split('.');
+    let component = |number: Option<&str>| number.unwrap_or("0").to_owned();
+    let (major, minor, patch) =
+        (numbers.next()?.to_owned(), component(numbers.next()), component(numbers.next()));
+    (!major.is_empty()).then(|| format!("{major}.{minor}.{patch}"))
 }
 
 /// Every private interface Recon depends on, reported in one fixed order: the privacy identity's

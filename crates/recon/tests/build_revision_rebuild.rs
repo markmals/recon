@@ -84,16 +84,16 @@ fn context_report(binary: &Path) -> serde_json::Value {
     serde_json::from_slice(&output.stdout).unwrap()
 }
 
-/// Reproduces the workspace in a scratch checkout: the root manifest and lock file, every
-/// crate the executable is built from, and `recon`'s own build script and sources.
+/// Reproduces the workspace in a scratch checkout: the root manifest, lock file and Swift pin,
+/// every crate the executable is built from, and their build scripts and sources.
 ///
-/// Only what Cargo reads to build the executable is copied. A crate's tests and fixtures do not
-/// take part in a build, and the fixture application is large enough that copying it would make
-/// each of these rebuilds noticeably slower.
+/// Only what Cargo reads to build the executable is copied — including a crate's `swift/`, which
+/// its build script compiles. A crate's tests and fixtures take no part in a build, and the
+/// fixture application is large enough that copying it would make each rebuild noticeably slower.
 fn copy_sources(checkout: &Path, package: &Path) {
     let source = Path::new(env!("CARGO_MANIFEST_DIR"));
     let crates = source.join("..");
-    for name in ["Cargo.toml", "Cargo.lock"] {
+    for name in ["Cargo.toml", "Cargo.lock", "swift-toolchain.toml"] {
         fs::copy(source.join("../..").join(name), checkout.join(name)).unwrap();
     }
     for entry in fs::read_dir(&crates).unwrap() {
@@ -108,7 +108,7 @@ fn copy_sources(checkout: &Path, package: &Path) {
                 fs::copy(member.join(name), destination.join(name)).unwrap();
             }
         }
-        for name in ["src", "build"] {
+        for name in ["src", "build", "swift"] {
             if member.join(name).is_dir() {
                 copy_directory(&member.join(name), &destination.join(name));
             }

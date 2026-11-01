@@ -1,28 +1,32 @@
-//! What `NSWorkspace` knows: which applications are running, and how to launch one.
+//! What `NSWorkspace` knows: which applications are running, which one is frontmost, and how to
+//! launch one. The framework calls are made from this crate's Swift side; the rules about what
+//! they mean are here.
 
-use block2::RcBlock;
-use objc2_app_kit::{NSRunningApplication, NSWorkspace, NSWorkspaceOpenConfiguration};
-use objc2_foundation::{NSError, NSString, NSURL};
-use serde_json::json;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{self, RecvTimeoutError};
 use std::time::Instant;
+
+use serde_json::json;
 
 use recon_core::error::{ErrorCode, Failure};
 use recon_core::process::Pid;
 
+use crate::swift::{self, Opened};
+
 /// The bundle path and process ID of every running application that has an identifiable bundle.
 pub fn running_applications() -> Vec<(PathBuf, Pid)> {
-    NSWorkspace::sharedWorkspace()
-        .runningApplications()
-        .iter()
-        .filter_map(|running| {
-            let pid = Pid(u32::try_from(running.processIdentifier()).ok()?);
-            let path = PathBuf::from(running.bundleURL()?.path()?.to_string());
-            let path = path.canonicalize().ok()?;
-            Some((path, pid))
-        })
+    swift::running_applications()
+        .into_iter()
+        .filter_map(|(path, pid)| Some((PathBuf::from(path).canonicalize().ok()?, Pid(pid))))
         .collect()
+}
+
+/// The process ID of the application macOS currently reports as frontmost, or `None` when it
+/// reports none.
+///
+/// `NSWorkspace` learns of activation changes through run-loop notifications, so a caller that
+/// never runs its run loop keeps seeing whichever application was frontmost when it started.
+pub fn frontmost_application() -> Option<Pid> {
+    swift::frontmost_application().map(Pid)
 }
 
 /// Why macOS did not open an application, as a `LAUNCH_FAILED` reason reports it.
@@ -30,9 +34,21 @@ enum Refusal {
     Refused(String),
     NoProcessId,
     NotOpened,
+    CallbackFailed(String),
 }
 
 impl Refusal {
+    /// What macOS answered, as the reason an agent branches on.
+    fn of(reason: &str, detail: Option<String>) -> Self {
+        match reason {
+            "refused" => {
+                Refusal::Refused(detail.unwrap_or_else(|| "macOS refused the open".to_owned()))
+            }
+            "no-process-id" => Refusal::NoProcessId,
+            _ => Refusal::NotOpened,
+        }
+    }
+
     /// The reason an agent branches on, the detail macOS gave, and the sentence a person reads.
     fn parts(self) -> (&'static str, Option<String>, String) {
         match self {
@@ -45,6 +61,11 @@ impl Refusal {
             Refusal::NotOpened => {
                 ("not-opened", None, "macOS did not open the application".to_owned())
             }
+            Refusal::CallbackFailed(detail) => (
+                "callback-failed",
+                Some(detail.clone()),
+                format!("macOS launch callback failed: {detail}"),
+            ),
         }
     }
 }
@@ -60,6 +81,11 @@ pub fn launch(path: &Path) -> Result<Pid, Failure> {
 }
 
 /// Starts exactly `path` without requesting activation or substituting another running copy.
+///
+/// # Errors
+///
+/// [`ErrorCode::InspectionTimeout`] when the open budget expires, and
+/// [`ErrorCode::LaunchFailed`] when macOS refused.
 pub fn launch_background(path: &Path, deadline: Instant) -> Result<Pid, Failure> {
     launch_with_activation(path, false, Some(deadline))
 }
@@ -72,74 +98,30 @@ fn launch_with_activation(
     if deadline.is_some_and(|limit| Instant::now() >= limit) {
         return Err(background_launch_timeout(path));
     }
-    let Some(path_string) = path.to_str() else {
+    if path.to_str().is_none() {
         return Err(launch_failure(
             path,
             "path-not-utf8",
             None,
             format!("application path is not UTF-8: {}", path.display()),
         ));
+    }
+    // A negative budget is the open that waits for LaunchServices however long it takes.
+    let budget = deadline
+        .map_or(-1.0, |limit| limit.saturating_duration_since(Instant::now()).as_secs_f64());
+    let refusal = match swift::open_application(path, activates, budget) {
+        Opened::Pid(pid) => return Ok(Pid(pid)),
+        Opened::TimedOut => return Err(background_launch_timeout(path)),
+        Opened::Refused { reason, detail } => Refusal::of(&reason, detail),
+        Opened::Unreadable(detail) => Refusal::CallbackFailed(detail),
     };
-    let url = NSURL::fileURLWithPath(&NSString::from_str(path_string));
-    let configuration = NSWorkspaceOpenConfiguration::configuration();
-    configuration.setActivates(activates);
-    configuration.setCreatesNewApplicationInstance(false);
-    configuration.setAllowsRunningApplicationSubstitution(false);
-
-    let (sender, receiver) = mpsc::sync_channel(1);
-    let completion =
-        RcBlock::new(move |running: *mut NSRunningApplication, error: *mut NSError| {
-            // SAFETY: AppKit passes each argument as null or as an object that stays valid for
-            // the duration of the completion handler.
-            let response = unsafe {
-                if let Some(error) = error.as_ref() {
-                    Err(Refusal::Refused(error.localizedDescription().to_string()))
-                } else if let Some(running) = running.as_ref() {
-                    u32::try_from(running.processIdentifier())
-                        .map(Pid)
-                        .map_err(|_| Refusal::NoProcessId)
-                } else {
-                    Err(Refusal::NotOpened)
-                }
-            };
-            // The receiver is gone only after `launch` has returned, when no one is left to tell.
-            let _ = sender.send(response);
-        });
-    NSWorkspace::sharedWorkspace().openApplicationAtURL_configuration_completionHandler(
-        &url,
-        &configuration,
-        Some(&completion),
-    );
-    let opened = match deadline {
-        Some(limit) => receiver
-            .recv_timeout(limit.saturating_duration_since(Instant::now()))
-            .map_err(|error| match error {
-                RecvTimeoutError::Timeout => background_launch_timeout(path),
-                RecvTimeoutError::Disconnected => launch_failure(
-                    path,
-                    "callback-failed",
-                    Some(error.to_string()),
-                    format!("macOS launch callback failed: {error}"),
-                ),
-            })?,
-        None => receiver.recv().map_err(|error| {
-            launch_failure(
-                path,
-                "callback-failed",
-                Some(error.to_string()),
-                format!("macOS launch callback failed: {error}"),
-            )
-        })?,
-    };
-    opened.map_err(|refusal| {
-        let (reason, detail, sentence) = refusal.parts();
-        launch_failure(
-            path,
-            reason,
-            detail,
-            format!("cannot launch {}: {sentence}", path.display()),
-        )
-    })
+    let (reason, detail, sentence) = refusal.parts();
+    Err(launch_failure(
+        path,
+        reason,
+        detail,
+        format!("cannot launch {}: {sentence}", path.display()),
+    ))
 }
 
 fn background_launch_timeout(path: &Path) -> Failure {
@@ -168,7 +150,7 @@ fn launch_failure(path: &Path, reason: &str, detail: Option<String>, message: St
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::{Duration, Instant};
+    use std::time::Duration;
 
     #[test]
     fn each_refusal_names_the_step_that_did_not_happen() {
@@ -176,18 +158,19 @@ mod tests {
             Refusal::Refused("The application is damaged".to_owned()),
             Refusal::NoProcessId,
             Refusal::NotOpened,
+            Refusal::CallbackFailed("macOS reported nothing".to_owned()),
         ]
         .into_iter()
         .map(|refusal| refusal.parts().0)
         .collect();
 
-        assert_eq!(reasons, ["refused", "no-process-id", "not-opened"]);
+        assert_eq!(reasons, ["refused", "no-process-id", "not-opened", "callback-failed"]);
     }
 
     #[test]
     fn a_refusal_carries_what_macos_said_as_structured_detail() {
         let (reason, detail, sentence) =
-            Refusal::Refused("The application is damaged".to_owned()).parts();
+            Refusal::of("refused", Some("The application is damaged".to_owned())).parts();
 
         assert_eq!(reason, "refused");
         assert_eq!(detail.as_deref(), Some("The application is damaged"));
@@ -209,6 +192,7 @@ mod tests {
             })
         );
     }
+
     #[test]
     fn expired_session_open_budget_never_starts_a_background_application() {
         let failure = launch_background(

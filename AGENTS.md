@@ -113,6 +113,7 @@ A macOS command-line program that investigates running applications for an agent
 | Argument parsing, the command registry, help and schemas, product assembly | `crates/recon/src/` — `cli`, `request`, `ui`, `context`, `correlate`, `output`, and on a Mac `investigate` and `observe` |
 | Action identities, payload schemas, the error envelope | `crates/recon-core/` — portable, and the only crate the capability crates depend on |
 | What a capability actually does | `crates/recon-applications-macos`, `recon-window-server-macos`, `recon-accessibility-macos`, `recon-native-access-macos`, `recon-privacy-macos`, `recon-ui-guard-macos` — each one names the platform it implements |
+| Objective-C frameworks the host calls | `crates/recon-applications-macos/swift/` — `NSWorkspace`, `NSRunningApplication` and `NSFileManager`, reached from Swift that the crate's `build.rs` compiles and links; Rust keeps `objc2` bindings only to C frameworks |
 | Tests that need a process, a fixture, or a live Mac | `crates/<crate>/tests/` — a behavioural test lives with the crate it specifies; `crates/recon/tests/` holds the executable's own contract |
 | Embedded `Info.plist` and build revision | `crates/recon/build.rs` — macOS records a privacy grant against the executable's signing identity, so the bare binary carries a plist |
 | Injected helper | `helper/` — a Swift package that assembles the SDK runtime and the AppKit extension into one dylib, keeping `ReconCore` and `ReconServer` in Objective-C for framing, authentication and the access lifecycle, with their tests in `helper/tests/` |
@@ -123,7 +124,7 @@ A macOS command-line program that investigates running applications for an agent
 | Documentation site | `docs/` — VitePress; `docs/.vitepress/config.ts` renders the records from the repository root |
 | Repository tooling | `tools/*.ts` — TypeScript run directly by Node, no bundler |
 | Formatting | `rustfmt.toml` and `.oxfmtrc.jsonc` — the same 100 columns and 4 spaces on both sides |
-| Toolchain | `mise.toml` for everything that goes through mise; `rust-toolchain.toml` for rustup; Apple's Swift compiler build `swiftlang-6.4.0.34.1` (Xcode 27.1 or the Command Line Tools), which mise cannot install and `mise run swift:toolchain` verifies |
+| Toolchain | `mise.toml` for everything that goes through mise; `rust-toolchain.toml` for rustup; `swift-toolchain.toml` for Apple's Swift compiler build, which mise cannot install — `mise run swift:toolchain` verifies it and every Cargo build that compiles Swift refuses any other |
 
 ### Commands
 

@@ -2,7 +2,6 @@
 
 use std::path::Path;
 
-use objc2_foundation::{NSFileManager, NSString};
 use plist::Value;
 use serde_json::json;
 
@@ -48,12 +47,7 @@ pub(crate) fn inspect_bundle(path: &Path) -> Result<Application, Failure> {
     })?;
     let field = |key: &str| info.get(key).and_then(Value::as_string);
 
-    let name = path
-        .to_str()
-        .map(|path| {
-            NSFileManager::defaultManager().displayNameAtPath(&NSString::from_str(path)).to_string()
-        })
-        .filter(|name| !name.is_empty())
+    let name = crate::swift::display_name(&path)
         .or_else(|| {
             field("CFBundleDisplayName").or_else(|| field("CFBundleName")).map(str::to_owned)
         })
