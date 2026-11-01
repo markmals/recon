@@ -1,6 +1,9 @@
 import CoreGraphics
 import Foundation
-import ReconNativeAccessors
+
+// The overlay is the whole surface: an author imports one module and names the allowlisted
+// fields through it.
+@_exported import ReconNativeAccessors
 
 /// The allowlisted way to read a live target object from Swift.
 ///
