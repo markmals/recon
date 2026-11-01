@@ -84,9 +84,15 @@ jobs:
     # The preview artifact named in every proposal: an installable macOS executable
     # plus the fixture app a reviewer exercises it against. It also proves the gate
     # passes on the platform Recon actually runs on, not only on the Linux runner.
+    #
+    # `cargo build` compiles Swift on macOS and requires the exact Apple compiler build
+    # in swift-toolchain.toml. The xcode-27 image's Command Line Tools ship that build;
+    # its default Xcode is a different 27.1 build, so the job selects the Tools.
     macos-preview:
         name: macOS preview artifact
-        runs-on: macos-15
+        runs-on: xcode-27
+        env:
+            DEVELOPER_DIR: /Library/Developer/CommandLineTools
         steps:
             - uses: actions/checkout@v7
               with:
@@ -96,8 +102,9 @@ jobs:
                   cache: false
             - uses: Swatinem/rust-cache@v2.9.3
               with:
-                  key: macos-15
+                  key: xcode-27
             - run: mise run deps:install
+            - run: mise run swift:toolchain
             - run: mise run check
             - run: mise run build:release
             - run: mise run fixture:build
