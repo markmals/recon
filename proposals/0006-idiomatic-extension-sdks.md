@@ -2,7 +2,7 @@
 id: proposal.0006
 title: Idiomatic Extension SDKs
 authors: [Mark Malstrom, OpenAI Codex]
-status: active-review
+status: implemented
 pull-request: https://github.com/markmals/recon/pull/82
 issues: ["https://github.com/markmals/recon/issues/74"]
 supersedes: []
@@ -358,5 +358,7 @@ No policy or decision is superseded by this draft. If feasibility requires viola
 On 2026-11-01, the owner confirmed the architecture, macOS-qualified crate partition, bare action annotations, Codable boundary, and target-resident AppKit placement. They selected existing command mappings for the first delivery and required feasibility proof before implementation approval. The same day they reviewed the proof recorded in Feasibility observations and selected: actions as static functions of an `@ReconExports` namespace; generated model schemas through `@ReconModel`; result-schema conformance checked in tests rather than by the runtime; and the exact Apple Swift build `swiftlang-6.4.0.34.1` for every build, including the Homebrew formula. They then approved implementation and the move to `awaiting-implementation`. This approval grants no additional research-target authorization, release, or tap update.
 
 On 2026-11-01, reviewing PR #82, the owner returned the implementation for revisions in the same pull request and authorized amending this proposal for them, without a new proposal. The revisions: shrink the helper's Objective-C to the smallest exception boundary Swift requires; move the Objective-C framework calls the Rust host makes through `objc2` into Swift, keeping `objc2` bindings to C frameworks in Rust; and require the exact Apple Swift build for every build, including the CLI's.
+
+On 2026-11-01, the owner accepted the revised implementation in PR #82 and instructed the agent to merge it into `main`. Delivery is merge-only: no release is authorized, and this grants no branch-deletion or other cleanup authority. Still outstanding: the Homebrew formula has not been built or bottle-validated with the pinned Swift (Beads `recon-d03`), which the next release needs; `test:ui` and `test:focus` still wait for the owner to grant Screen Recording and Accessibility to the signed development build; and research-path evidence on the Swift helper needs a separate research-target authorization.
 
 No open questions remain.
