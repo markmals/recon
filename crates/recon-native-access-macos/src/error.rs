@@ -114,7 +114,7 @@ impl fmt::Display for Stage {
 /// target-side execution may still be running.
 ///
 /// `message` is written for an operator and must never carry a session capability; the only way to
-/// read a capability is [`crate::Capability::expose`], which nothing here calls.
+/// read a capability is [`crate::identity::Capability::expose`], which nothing here calls.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InspectionError {
     code: InspectionErrorCode,
