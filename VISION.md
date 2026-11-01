@@ -1,6 +1,6 @@
 ---
 title: A Vision for Recon
-updated: 2026-10-27
+updated: 2026-11-01
 ---
 
 # A Vision for Recon
@@ -16,6 +16,8 @@ Controlled experiments, behavioral specifications, and comparison with independe
 Recon currently lists discovered and running macOS application bundles, inspects one bundle's metadata and running process IDs without activating it, and explicitly launches the selected bundle through its Rust CLI. It also observes a running macOS application without activating it, changing focus, or sending input: lists its windows, reads the accessibility tree of the application or of one window, including reachable windows on other Spaces, and captures one window to a PNG file. Those observations use Screen Recording and Accessibility permissions that belong to the locally signed `recon` executable rather than to the program that launched it.
 
 Recon can also establish an explicit, process-bound native inspection session and read a macOS application's AppKit windows, views, cells, layers, layout, and observed fonts. Native queries under `ui view`, accessibility queries under `ui ax`, shared WindowServer capture, and native/AX correlation preserve their separate evidence sources and identities. The current native scope is Apple silicon on macOS 27; cooperative and explicitly prepared research access have different prerequisites. Catalyst, UIKit, Simulator, and connected-device inspection remain future work.
+
+Native capabilities are assembled into that one Rust CLI from focused capability crates. Logic that runs inside an inspected application is written in Swift against Recon's own extension SDK and compiled into the helper Recon releases with the CLI; the AppKit inspector is its first consumer. This is first-party assembly, not a plugin system: extensions are trusted code fixed at build time, and the only Objective-C left is the boundary that catches a target's exceptions. Building Recon from source requires one exact Apple Swift compiler build.
 
 The current `ui tree` spelling is retired. Accessibility trees use `recon ui ax tree`; native hierarchies use `recon ui view` with an explicit session. Binary analysis, other runtime inspection, web and Electron inspection, live network capture, asset extraction, private-API discovery, UI interaction, experiments, behavioral specifications, verification, and persistent evidence remain future work.
 
@@ -117,3 +119,4 @@ The minimum proves the behavioral investigation loop on purpose-built macOS fixt
 | 2026-10-27 | Clarified reverse engineering across code, runtime/UI structure, web styles, network activity, resources, and platform APIs; retained behavioral verification as one workflow and distinguished the existing macOS minimum from the broader scope. | Owner clarification; no feature implementation approval |
 | 2026-10-27 | Recorded FLEX-derived UIKit/AppKit network, resource, runtime, and application-state scope; distinguished the owner's intended reimplementation from the unbuilt Flexscope checkout and closed AppKit-walker PR #740; linked capability families to GitHub issues. | Owner clarification; no feature implementation approval |
 | 2026-10-29 | Added process-bound native AppKit inspection sessions, native view/cell/layer/layout/font queries, the `ui ax` migration, and native/AX correlation with shared no-focus behavior. | proposal.0005 |
+| 2026-11-01 | Recorded the extension architecture: focused Rust capability crates, a Swift extension SDK, and the AppKit inspector rebuilt on it inside the helper, with no new user-visible capability. | proposal.0006 |
