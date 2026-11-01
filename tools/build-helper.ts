@@ -1,9 +1,10 @@
 // Builds the universal target helper and the build identity the CLI must match.
 //
 // The identity hashes repository-relative input paths and contents, the resolved package pins,
-// the compiler, linker and SDK identities, and the build configuration — never a timestamp or a
-// checkout path. The same inputs therefore produce the same signed bytes from any checkout,
-// which is what makes a helper and a `recon` build verifiably matched.
+// this build definition, the compiler, linker and SDK identities, and the build configuration —
+// never a timestamp or a checkout path. With the link options below and the UUID stamp, the same
+// inputs produce the same signed bytes from any checkout, which is what makes a helper and a
+// `recon` build verifiably matched.
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
@@ -135,8 +136,7 @@ function buildHelper(): void {
     mkdirSync(outDir, { recursive: true });
     rmSync(dylib, { force: true });
     rmSync(buildIdPath, { force: true });
-    // Only when it changes: rewriting it would relink unchanged sources, and a relink gives
-    // the image a new UUID even though its content is the same.
+    // Only when it changes, so an unchanged build does not relink for nothing.
     if (!existsSync(section) || readFileSync(section, "utf8") !== buildId) {
         writeFileSync(section, buildId, { mode: 0o600 });
     }
