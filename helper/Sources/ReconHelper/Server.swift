@@ -47,8 +47,12 @@ final class ReconHelperServer: Sendable {
                 if errno == EINTR { continue }
                 break
             }
-            ReconEndpoint.refuseSignalOnWrite(client)
-            Thread.detachNewThread { ReconConnection(descriptor: client).serve(router) }
+            // This loop runs for the life of the inspected process, so each turn drains what it
+            // autoreleased rather than growing the target's footprint until it exits.
+            autoreleasepool {
+                ReconEndpoint.refuseSignalOnWrite(client)
+                Thread.detachNewThread { ReconConnection(descriptor: client).serve(router) }
+            }
         }
         close(listener)
         unlink(path)
