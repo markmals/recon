@@ -1,0 +1,1 @@
+import{t as e}from"./framework.BK-VYr1i.js";var t={root:()=>e(()=>import(`./@localSearchIndexroot.Dkqfs8Gz.js`),[])};export{t as default};
