@@ -47,9 +47,8 @@ pub struct ReconFacts {
 pub struct HostFacts {
     /// The operating system this build targets.
     pub os: String,
-    /// The macOS product version as `major.minor.patch`, read from the structured API rather
-    /// than the version string Apple documents as unsuitable for parsing, and null on other
-    /// hosts.
+    /// The macOS product version as `major.minor.patch`, as the kernel reports it in
+    /// `kern.osproductversion`; null on other hosts, or when the kernel does not report it.
     pub version: Option<String>,
     /// The processor architecture this build targets.
     pub architecture: String,
