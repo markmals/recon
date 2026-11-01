@@ -117,7 +117,7 @@ enum Counter {
 
 Its input is `{"upTo": 3}`: the argument label names the member.
 
-`checkCancellation()` throws once the invocation's deadline has passed or its session has been closed. Cancellation is cooperative: Recon cannot interrupt a getter that is already running, and it never rolls work back. When an action has already started and its deadline passes, Recon reports `INSPECTION_TIMEOUT` with `targetExecutionMayContinue: true`. An action still waiting to start when its session closes or its deadline passes never starts.
+`checkCancellation()` throws once the invocation's deadline has passed or its session has been closed. Cancellation is cooperative: Recon cannot interrupt a getter that is already running, and it never rolls work back. When an action has already started and its deadline passes, Recon reports `INSPECTION_TIMEOUT` with `targetExecutionMayContinue: true`. When its session closes while it runs, Recon reports `STALE_SESSION` instead of whatever the action returns or throws, because closing the session invalidated what it read. An action still waiting to start when its session closes or its deadline passes never starts.
 
 ### Choose isolation
 

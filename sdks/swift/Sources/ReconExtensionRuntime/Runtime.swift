@@ -85,7 +85,15 @@ public final class ReconRuntime: Sendable {
                         message: "Access was revoked before the action started")
                     : ReconFailure(
                         code: "INSPECTION_TIMEOUT", stage: queue,
-                        message: "Queued action expired before it started"))
+                        message: "Queued action expired before it started", mayContinue: false))
+        }
+        // Closing access invalidates what the action read, including its native handles, so a
+        // result that finished after revocation is not delivered.
+        if access.isRevoked() {
+            return .failure(
+                ReconFailure(
+                    code: "STALE_SESSION", stage: "target-execution",
+                    message: "Access was revoked while the action ran"))
         }
         switch answer {
         case .success(let result) where result.count > Self.maximumResultBytes:
@@ -106,7 +114,11 @@ public final class ReconRuntime: Sendable {
         _ finished: @escaping @Sendable () -> Void
     ) {
         let context = ReconContext(deadline: deadline, revoked: access.isRevoked)
-        let gate: @Sendable () -> Bool = { ContinuousClock.now < deadline && access.begin() }
+        // The deadline is checked again after the host's gate answers: a gate that waited for its
+        // lock past the deadline must not start work that is already late.
+        let gate: @Sendable () -> Bool = {
+            ContinuousClock.now < deadline && access.begin() && ContinuousClock.now < deadline
+        }
         switch invocation {
         case .mainActor(let adapter):
             DispatchQueue.main.async {

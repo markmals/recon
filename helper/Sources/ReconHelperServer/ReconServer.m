@@ -164,11 +164,10 @@ static id handleRead(NSDictionary *request, uint64_t requestStart) {
             return revoked;
         },
         ^{ atomic_store(&reading, false); });
-    NSData *response = (__bridge_transfer NSData *)answer;
-    [stateLock lock];
-    BOOL current = [activeSession isEqual:session] && [activeCapability isEqual:request[@"capability"]];
-    [stateLock unlock];
-    return current ? (id)response : ReconError(@"STALE_SESSION", @"read", @"Session closed during native read");
+    // The runtime reports a close that lands while the action runs as STALE_SESSION. A read that
+    // outlived its deadline keeps its timeout even if the session has closed since, because its
+    // target execution may still be running.
+    return (__bridge_transfer NSData *)answer;
 }
 static id dispatchRequest(NSDictionary *request, uint64_t requestStart) {
     NSString *op = request[@"op"];

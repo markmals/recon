@@ -1,4 +1,5 @@
 import Foundation
+import ReconExtensionRuntime
 import Testing
 
 extension ProposalSDK {
@@ -51,14 +52,36 @@ extension ProposalSDK {
             usleep(400_000)
         }
 
-        @Test func loopsObserveRevocationThroughTheirContext() {
+        /// A loop notices the close through its context, and the closed session is what Recon
+        /// reports: a result produced after access was revoked is never delivered.
+        @Test func revocationWhileAnActionRunsIsReportedAsAStaleSession() {
             let gate = Gate()
             let pending = inBackground { invoke("main-demo", "spin", "{}", gate: gate) }
             usleep(100_000)
             gate.revoked.store(true, ordering: .sequentiallyConsistent)
             let outcome = failure(pending())
-            #expect(outcome?.code == "INSPECTION_TIMEOUT")
+            #expect(outcome?.code == "STALE_SESSION")
             #expect(outcome?.stage == "target-execution")
+        }
+
+        /// The deadline is checked again once the host's gate answers, so a gate that takes its
+        /// lock late cannot start work whose deadline passed while it waited.
+        @Test func anAccessGateThatAnswersAfterTheDeadlineStartsNothing() {
+            let callsBefore = MainDemo.callsSnapshot()
+            let late = ReconAccess(
+                begin: {
+                    usleep(300_000)
+                    return true
+                }, isRevoked: { false })
+            let outcome = failure(
+                runtime.invoke(
+                    "main-demo", "whereAmI", payload: Data("{}".utf8), access: late,
+                    deadline: .now + .milliseconds(100)))
+            usleep(300_000)
+            #expect(outcome?.code == "INSPECTION_TIMEOUT")
+            #expect(outcome?.stage == "main-thread-queue")
+            #expect(outcome?.targetExecutionMayContinue == false)
+            #expect(MainDemo.callsSnapshot() == callsBefore)
         }
 
         @Test func asyncActionsCompleteAndObserveTheirDeadline() throws {
