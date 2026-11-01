@@ -6,8 +6,8 @@
 //! and the JSON each command prints, [`context`] composes what this host says about Recon, and
 //! [`correlate`] relates two sources' evidence without making either own the other.
 //!
-//! The capabilities themselves live in their own crates. On a Mac [`investigate`] and [`observe`]
-//! assemble them into the commands a person runs.
+//! The capabilities themselves live in their own crates. On a Mac the `investigate` and `observe`
+//! modules assemble them into the commands a person runs; neither exists on other hosts.
 
 pub mod cli;
 pub mod context;
