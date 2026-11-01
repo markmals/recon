@@ -1,1 +1,0 @@
-import{t as e}from"./framework.Dc2C-di8.js";var t={root:()=>e(()=>import(`./@localSearchIndexroot.7FxdnQiz.js`),[])};export{t as default};
