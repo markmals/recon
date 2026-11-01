@@ -24,7 +24,9 @@ struct Boundary {
         #expect(ReconNative.string(.toolTip, of: Carrier(NSObject())) == .failed)
     }
 
-    @Test func aStringReconPublishesIsItsOwnCopy() throws {
+    /// The copy itself is pinned by the raising-string tests: a target string read outside the
+    /// boundary would raise there instead of failing the read.
+    @Test func anOrdinaryStringIsReadAsItsValue() throws {
         let read = ReconNative.string(.toolTip, of: Carrier("borrowed" as NSString))
         #expect(read == .value("borrowed"))
     }
