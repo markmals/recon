@@ -52,7 +52,7 @@ mise run typecheck   # type-check both TypeScript projects
 mise run test        # the tools' tests and the Rust test suite
 mise run doc         # rustdoc over the workspace, warnings denied
 mise run build       # build every target in the workspace
-mise run crates      # every directory under crates/ is a workspace member
+mise run crates      # crates/ directories are workspace members; dependencies point inward
 mise run validate    # record frontmatter, IDs, and cross-references
 mise run docs:build  # the documentation site builds
 mise run status      # phase, next action, who acts
@@ -104,7 +104,7 @@ TypeScript is covered by Oxfmt, Oxlint, and `tsrs`; Rust by `cargo fmt`, Clippy,
 
 ## Platform: macOS inspection CLI
 
-A macOS command-line program that investigates running applications for an agent. One Cargo workspace with one binary, plus two native artifacts Cargo does not build — an Objective-C helper that runs inside the inspected process and a C loader that gets it there. It ships through a Homebrew tap.
+A macOS command-line program that investigates running applications for an agent. One Cargo workspace with one binary, plus two native artifacts Cargo does not build — a helper that runs inside the inspected process, assembled by SwiftPM from the Swift SDK, the AppKit extension, and Objective-C runtime support, and a C loader that gets it there. It ships through a Homebrew tap.
 
 | Piece | Where |
 | --- | --- |
@@ -123,7 +123,7 @@ A macOS command-line program that investigates running applications for an agent
 | Documentation site | `docs/` — VitePress; `docs/.vitepress/config.ts` renders the records from the repository root |
 | Repository tooling | `tools/*.ts` — TypeScript run directly by Node, no bundler |
 | Formatting | `rustfmt.toml` and `.oxfmtrc.jsonc` — the same 100 columns and 4 spaces on both sides |
-| Toolchain | `mise.toml` for everything that goes through mise; `rust-toolchain.toml` for rustup |
+| Toolchain | `mise.toml` for everything that goes through mise; `rust-toolchain.toml` for rustup; Apple's Swift compiler build `swiftlang-6.4.0.34.1` (Xcode 27.1 or the Command Line Tools), which mise cannot install and `mise run swift:toolchain` verifies |
 
 ### Commands
 
@@ -136,7 +136,7 @@ A macOS command-line program that investigates running applications for an agent
 | `mise run fmt [paths…]` | Oxfmt and rustfmt; with no arguments, the whole tree |
 | `mise run lint` | `oxlint --fix` and `cargo clippy --workspace --all-targets -- -D warnings` |
 | `mise run doc` | `cargo doc --workspace --no-deps` with `RUSTDOCFLAGS=-D warnings` |
-| `mise run crates` | Fails when a directory under `crates/` is not a workspace member |
+| `mise run crates` | Fails when a directory under `crates/` is not a workspace member, or a crate dependency runs against the workspace's direction |
 | `mise run docs:dev` · `docs:build` · `docs:preview` | The documentation site |
 
 `lint`, `test`, and `doc` are the house Rust verification set, alongside the formatting check `mise run check` runs. Never substitute a command that checks a weaker property, and never report a check as passing unless it ran. Use `cargo` directly for anything without a task (`cargo add`, `cargo tree`, `cargo test -p recon --test cli_contract`).
