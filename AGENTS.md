@@ -116,7 +116,7 @@ A macOS command-line program that investigates running applications for an agent
 | Objective-C frameworks the host calls | `crates/recon-applications-macos/swift/` — `NSWorkspace`, `NSRunningApplication` and `NSFileManager`, reached from Swift that the crate's `build.rs` compiles and links; Rust keeps `objc2` bindings only to C frameworks |
 | Tests that need a process, a fixture, or a live Mac | `crates/<crate>/tests/` — a behavioural test lives with the crate it specifies; `crates/recon/tests/` holds the executable's own contract |
 | Embedded `Info.plist` and build revision | `crates/recon/build.rs` — macOS records a privacy grant against the executable's signing identity, so the bare binary carries a plist |
-| Injected helper | `helper/` — a Swift package that assembles the SDK runtime and the AppKit extension into one dylib, keeping `ReconCore` and `ReconServer` in Objective-C for framing, authentication and the access lifecycle, with their tests in `helper/tests/` |
+| Injected helper | `helper/` — a Swift package that assembles the SDK runtime and the AppKit extension into one dylib, serving framing, authentication and the access lifecycle from `ReconHelper`, with its tests in `helper/Tests/` |
 | Swift extension SDK | `sdks/swift/` — `ReconExtension` and its macros, the assembling runtime, `ReconExtensionTesting`, and the allowlisted native accessors |
 | AppKit extension | `extensions/appkit/` — the `windows`, `tree`, `node`, `find` and `fonts` actions the helper serves |
 | Injector, C | `loader/` — `recon_loader.c` and the entitlements it is signed with |

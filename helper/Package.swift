@@ -17,26 +17,14 @@ let package = Package(
         .package(path: "../extensions/appkit"),
     ],
     targets: [
-        // Authentication, the access lifecycle, framing, and the loader's entry point stay in
-        // Objective-C: they are the boundary the loader and the host already trust.
-        .target(
-            name: "ReconHelperServer",
-            dependencies: [
-                .product(name: "ReconNativeAccessors", package: "swift")
-            ],
-            linkerSettings: [
-                .linkedFramework("AppKit"),
-                .linkedFramework("Security"),
-                .linkedLibrary("bsm"),
-            ]
-        ),
         .target(
             name: "ReconHelper",
             dependencies: [
                 .product(name: "ReconAppKit", package: "appkit"),
                 .product(name: "ReconExtensionRuntime", package: "swift"),
-                "ReconHelperServer",
+                .product(name: "ReconNativeSupport", package: "swift"),
             ]
         ),
+        .testTarget(name: "ReconHelperTests", dependencies: ["ReconHelper"]),
     ]
 )
