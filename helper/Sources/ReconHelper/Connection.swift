@@ -53,21 +53,10 @@ struct ReconConnection: Sendable {
     }
 
     private func send(_ response: Data?) {
-        var body = framed(response)
+        var body = ReconFrame.bounded(response)
         var header = ReconFrame.header(UInt32(body.count))
         guard header.withUnsafeMutableBytes({ transfer($0, sending: true) }) else { return }
         _ = body.withUnsafeMutableBytes { transfer($0, sending: true) }
-    }
-
-    /// An answer that could not be built, or that does not fit the frame, is replaced rather
-    /// than truncated: a client must never decode half an observation.
-    private func framed(_ response: Data?) -> Data {
-        guard let response, response.count <= ReconFrame.maximumResponseBytes else {
-            let refusal = ReconEnvelope.error(
-                "INSPECTION_UNAVAILABLE", "response-size", "Native response exceeds 8 MiB")
-            return ReconEnvelope.serialized(refusal) ?? Data()
-        }
-        return response
     }
 
     private func receive(_ count: Int) -> Data? {

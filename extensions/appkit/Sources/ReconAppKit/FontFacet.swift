@@ -104,7 +104,7 @@ extension Work {
                         range: TextRange(location: Int(run.location), length: Int(run.length)),
                         font: FontDescriptor(font, self), source: "attributed-run"))
             }
-            offset = Int(run.location + run.length)
+            offset = run.location + run.length
         }
         if offset < length, examined == Self.runLimit {
             note(truncated: "attributed-runs:\(Self.runLimit)")

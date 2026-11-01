@@ -118,29 +118,38 @@ enum Message {
         }
     }
 
-    /// A string the object answered. A value that is not a string is a failed read, not an
-    /// absent one: the object answered something Recon cannot publish.
+    /// The longest string one read publishes. Every observation bounds what it reports far
+    /// below this; the bound here is what stops a target that claims a length no process could
+    /// hold from deciding an allocation.
+    static let maximumStringScalars = 1 << 20
+    /// The most elements a collection may report. No collection a read reaches — an
+    /// application's windows, a view's subviews or constraints, a layer's sublayers — comes
+    /// near it, and the read's own visit budget stops at 25,000 long before.
+    static let maximumElements = 1 << 20
+
+    /// A string the object answered, verified and copied inside the boundary. A value that is
+    /// not a string is a failed read, not an absent one: the object answered something Recon
+    /// cannot publish.
     static func text(_ selector: Selector, to target: AnyObject) -> ReconRead<String> {
-        switch object(selector, to: target) {
-        case .value(let value): (value as? NSString).map { .value($0 as String) } ?? .failed
-        case .unavailable: .unavailable
-        case .failed: .failed
+        var result: NSString?
+        return read(ReconSendString(target, selector, UInt(maximumStringScalars), &result)) {
+            result as String?
         }
     }
 
-    /// The elements of a collection the object answered, read one at a time so that no bridging
-    /// messages it outside the boundary.
-    static func elements(of collection: AnyObject) -> ReconRead<[AnyObject]> {
-        guard case .value(let count) = integer(Fields.count, to: collection) else {
-            return .failed
-        }
+    /// The elements of a collection the object answered, snapshotted inside the boundary so
+    /// that reading them messages the copy rather than the target.
+    static func elements(of collection: AnyObject, limit: Int = maximumElements)
+        -> ReconRead<[AnyObject]>
+    {
+        var snapshot: NSArray?
+        guard ReconCopyElements(collection, UInt(limit), &snapshot) == .value,
+            let snapshot
+        else { return .failed }
         var elements: [AnyObject] = []
-        elements.reserveCapacity(count)
-        for index in 0..<count {
-            switch object(Fields.objectAtIndex, to: collection, at: index) {
-            case .value(let element): elements.append(element)
-            case .unavailable, .failed: return .failed
-            }
+        elements.reserveCapacity(snapshot.count)
+        for index in 0..<snapshot.count {
+            elements.append(snapshot.object(at: index) as AnyObject)
         }
         return .value(elements)
     }

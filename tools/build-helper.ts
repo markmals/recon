@@ -19,10 +19,15 @@ import path from "node:path";
 
 import { verifiedCompiler } from "./swift-toolchain.ts";
 
-/// Everything the helper's behaviour depends on, beyond the sources themselves.
-const CONFIGURATION = "arm64+arm64e|release|macOS27.0|ld -S|ReconProtocolVersion=1";
+/// What the helper answers with, beyond anything a file states.
+const CONFIGURATION = "arm64+arm64e|release|macOS27.0|ReconProtocolVersion=1";
 
+/// Every file that decides what the helper is built from, including this one: the link line
+/// lives here, so a change to it is a change to the helper even when no source moved.
 const MANIFESTS = [
+    "swift-toolchain.toml",
+    "tools/build-helper.ts",
+    "tools/swift-toolchain.ts",
     "sdks/swift/Package.swift",
     "sdks/swift/Package.resolved",
     "extensions/appkit/Package.swift",
@@ -62,6 +67,48 @@ function buildIdentity(compiler: string): string {
     hash.update(execFileSync("xcrun", ["--show-sdk-build-version"], { encoding: "utf8" }));
     hash.update(CONFIGURATION);
     return hash.digest("hex");
+}
+
+/// Replaces every slice's image UUID with the build identity's own first bytes.
+///
+/// The linker gives each link a fresh UUID rather than one derived from what it linked, so two
+/// builds of the same inputs would otherwise differ in those sixteen bytes and in the signature
+/// over them. Stamping the identity there makes the artifact a function of its inputs again,
+/// and makes the UUID say which build this is. It runs before signing, so the signature covers
+/// what ships.
+function stampIdentity(dylib: string, buildId: string): void {
+    let image = readFileSync(dylib);
+    let stamp = Buffer.from(buildId.slice(0, 32), "hex");
+    for (let slice of slices(image)) stampSlice(image, slice, stamp);
+    writeFileSync(dylib, image);
+}
+
+/** Where each architecture's Mach-O header starts. */
+function slices(image: Buffer): number[] {
+    let FAT_MAGIC = 0xcafe_babe;
+    let MACHO_64_MAGIC = 0xfeed_facf;
+    if (image.readUInt32LE(0) === MACHO_64_MAGIC) return [0];
+    if (image.readUInt32BE(0) !== FAT_MAGIC) {
+        throw new Error("the built helper is neither a 64-bit Mach-O nor a universal file");
+    }
+    let count = image.readUInt32BE(4);
+    return Array.from({ length: count }, (_, index) => image.readUInt32BE(8 + index * 20 + 8));
+}
+
+function stampSlice(image: Buffer, header: number, stamp: Buffer): void {
+    let LC_UUID = 0x1b;
+    let commands = image.readUInt32LE(header + 16);
+    let cursor = header + 32;
+    for (let index = 0; index < commands; index++) {
+        let command = image.readUInt32LE(cursor);
+        let size = image.readUInt32LE(cursor + 4);
+        if (command === LC_UUID) {
+            stamp.copy(image, cursor + 8);
+            return;
+        }
+        cursor += size;
+    }
+    throw new Error("the built helper has no image UUID to stamp");
 }
 
 function buildHelper(): void {
@@ -133,6 +180,7 @@ function buildHelper(): void {
         encoding: "utf8",
     }).trim();
     copyFileSync(path.join(products, "libReconHelper.dylib"), dylib);
+    stampIdentity(dylib, buildId);
 
     // Ad-hoc is enough to load into a cooperative target; the research profile re-signs the whole
     // inspector, helper included, with the entitlements the platform-binary path needs.

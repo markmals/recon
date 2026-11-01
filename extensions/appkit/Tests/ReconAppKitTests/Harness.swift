@@ -124,6 +124,32 @@ final class AlternatingFontCell: NSCell {
     }
 }
 
+/// An attributed value that reports a run outside itself, as an application's own
+/// `NSAttributedString` subclass may.
+final class LyingRunString: NSAttributedString {
+    override var string: String { "lying" }
+
+    override func attributes(at location: Int, effectiveRange range: NSRangePointer?)
+        -> [NSAttributedString.Key: Any]
+    { [:] }
+
+    override func attribute(
+        _ attrName: NSAttributedString.Key, at location: Int,
+        longestEffectiveRange range: NSRangePointer?, in rangeLimit: NSRange
+    ) -> Any? {
+        range?.pointee = NSRange(location: Int.max, length: 1)
+        return NSFont.systemFont(ofSize: 12)
+    }
+}
+
+/// A cell whose attributed value lies about where its runs are.
+final class LyingRunCell: NSCell {
+    override var attributedStringValue: NSAttributedString {
+        get { LyingRunString() }
+        set {}
+    }
+}
+
 /// One serialized parent: every suite drives the same process-wide session and main thread.
 @Suite(.serialized)
 struct AppKitInspection {}

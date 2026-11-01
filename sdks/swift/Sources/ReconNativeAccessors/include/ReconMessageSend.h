@@ -23,6 +23,16 @@ typedef NS_ENUM(NSInteger, ReconSendStatus) {
 };
 
 ReconSendStatus ReconSendObject(id target, SEL selector, id _Nullable *_Nonnull result);
+/// A string the target answered: verified against the runtime's class chain and copied here,
+/// so the caller only ever holds a string this process made. A target that reports more
+/// characters than `limit` is refused rather than copied.
+ReconSendStatus ReconSendString(id target, SEL selector, NSUInteger limit,
+                                NSString *_Nullable *_Nonnull result);
+/// A snapshot of a collection the target answered. A collection that reports more elements
+/// than `limit` is refused rather than reserved for: the target names the number, so the
+/// target must not decide an allocation.
+ReconSendStatus ReconCopyElements(id collection, NSUInteger limit,
+                                  NSArray *_Nullable *_Nonnull result);
 ReconSendStatus ReconSendObjectTo(id target, SEL selector, id _Nullable argument,
                                   id _Nullable *_Nonnull result);
 ReconSendStatus ReconSendObjectAt(id target, SEL selector, NSInteger argument,

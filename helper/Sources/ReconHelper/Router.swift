@@ -33,7 +33,7 @@ struct ReconRouter: Sendable {
     /// A client that was built against other code is refused rather than answered from this
     /// one: the two agree on what an observation means only when they are the same build.
     private func speaksThisBuild(_ request: [String: Any]) -> Bool {
-        guard let version = request["protocol"] as? NSNumber,
+        guard !build.isEmpty, let version = request["protocol"] as? NSNumber,
             version.intValue == ReconHelperIdentity.protocolVersion,
             let named = request["helperBuild"] as? String, named == build
         else { return false }

@@ -180,6 +180,19 @@ extension AppKitInspection {
             #expect(fonts.node.font?.source == "cell")
         }
 
+        /// A target decides where its runs are, so a run that could not be where it says it
+        /// is fails the facet that asked rather than the process.
+        @Test func aRunReportedOutsideItsStringFailsTheFacet() throws {
+            let inspector = try Inspector()
+            let cell = onMain { LyingRunCell() }
+            let node = try inspector.read(
+                "node", ["root": inspector.handle(for: cell), "fields": ["font"]],
+                as: NodeResponse.self
+            ).node
+            #expect(node.font?.status == .failed)
+            #expect(node.font?.reason == "target-getter-exception")
+        }
+
         @Test func theScreenFlipIsTheScreensHeightAndNothingElse() {
             #expect(
                 ReconNative.screenTopLeft(NSRect(x: 10, y: 100, width: 50, height: 20),

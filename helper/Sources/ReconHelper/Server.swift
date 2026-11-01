@@ -18,9 +18,11 @@ final class ReconHelperServer: Sendable {
     /// Starts serving on `path`, and answers 0 once the endpoint is accepting. A process serves
     /// one endpoint: a second start is refused rather than replacing the first.
     func start(_ path: String) -> Int32 {
-        guard let runtime, !path.isEmpty, path.utf8.count < ReconEndpoint.maximumPathBytes else {
-            return -1
-        }
+        // An image whose build identity was never linked in cannot be matched to a client, so
+        // it does not serve: answering would mean answering whoever names no build either.
+        guard let runtime, !build.isEmpty, !path.isEmpty,
+            path.utf8.count < ReconEndpoint.maximumPathBytes
+        else { return -1 }
         guard
             started.compareExchange(
                 expected: false, desired: true, ordering: .sequentiallyConsistent

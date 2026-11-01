@@ -1,6 +1,7 @@
 #import "ReconMessageSend.h"
 
 #import <objc/message.h>
+#import <objc/runtime.h>
 
 #if !__has_feature(objc_arc)
 #error "ReconNativeAccessors requires ARC"
@@ -19,9 +20,46 @@
         return ReconSendStatusFailed;                                          \
     }
 
+/// What an object is, from the class chain the runtime already holds. Asking the object with
+/// `-isKindOfClass:` would be one more message it could answer with an exception.
+static BOOL reconInherits(id object, Class ancestor) {
+    for (Class candidate = object_getClass(object); candidate;
+         candidate = class_getSuperclass(candidate)) {
+        if (candidate == ancestor) return YES;
+    }
+    return NO;
+}
+
 ReconSendStatus ReconSendObject(id target, SEL selector, id *result) {
     *result = nil;
     RECON_SEND(*result = ((id (*)(id, SEL))objc_msgSend)(target, selector))
+}
+
+ReconSendStatus ReconSendString(id target, SEL selector, NSUInteger limit, NSString **result) {
+    *result = nil;
+    @try {
+        if (![target respondsToSelector:selector]) return ReconSendStatusUnavailable;
+        id value = ((id (*)(id, SEL))objc_msgSend)(target, selector);
+        if (!value) return ReconSendStatusUnavailable;
+        if (!reconInherits(value, NSString.class)) return ReconSendStatusFailed;
+        if ([value length] > limit) return ReconSendStatusFailed;
+        *result = [[NSMutableString stringWithString:value] copy];
+        return ReconSendStatusValue;
+    } @catch (id exception) {
+        return ReconSendStatusFailed;
+    }
+}
+
+ReconSendStatus ReconCopyElements(id collection, NSUInteger limit, NSArray **result) {
+    *result = nil;
+    @try {
+        if (!reconInherits(collection, NSArray.class)) return ReconSendStatusFailed;
+        if ([collection count] > limit) return ReconSendStatusFailed;
+        *result = [[NSArray alloc] initWithArray:collection];
+        return ReconSendStatusValue;
+    } @catch (id exception) {
+        return ReconSendStatusFailed;
+    }
 }
 
 ReconSendStatus ReconSendObjectTo(id target, SEL selector, id argument, id *result) {

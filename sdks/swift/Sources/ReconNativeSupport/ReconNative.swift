@@ -148,6 +148,7 @@ public enum ReconNative {
             within: NSRange(location: 0, length: length))
         switch read {
         case .value(let found):
+            guard Self.describes(found.range, at: offset, within: length) else { return .failed }
             let font = found.value.map { Facts.font(of: $0) }
             if case .failed = font { return .failed }
             return .value(
@@ -157,6 +158,15 @@ public enum ReconNative {
         case .unavailable: return .unavailable
         case .failed: return .failed
         }
+    }
+
+    /// A target decides what range its runs cover, so the answer is checked before the walk
+    /// does arithmetic with it: a run must contain the index it was asked about and lie inside
+    /// the string it came from.
+    private static func describes(_ range: NSRange, at index: Int, within length: Int) -> Bool {
+        guard range.location >= 0, range.length > 0, range.location <= index else { return false }
+        let (end, overflowed) = range.location.addingReportingOverflow(range.length)
+        return !overflowed && index < end && end <= length
     }
 
     public static func constraint(_ constraint: AnyObject) -> ReconRead<ReconConstraintFacts> {
