@@ -62,7 +62,7 @@ struct Point: Codable, ReconSchema {
 }
 ```
 
-`String`, `Bool`, the fixed-width integer types, `Double`, `Float`, arrays, and dictionaries with `String` keys already have schemas. Integer schemas carry the type's bounds, so a value that would overflow a `UInt32` parameter is rejected before your function runs.
+`String`, `Bool`, the fixed-width integer types, `Double`, `Float`, arrays, and dictionaries with `String` keys already have schemas. Integer schemas carry the type's bounds, so a value that would overflow a `UInt32` parameter is rejected before your function runs. When a custom codec writes a member that takes one of several shapes, such as either a string or an object, state it with `.oneOf([...])`.
 
 ### Export actions from a namespace
 
@@ -84,7 +84,7 @@ The macro turns each signature into an action contract:
 - **Name.** The function's base name is the action name, exactly: `greeting`. Renaming the function renames the action. Names must be lowerCamelCase ASCII letters and digits. The extension identifier must be lowercase ASCII letters, digits, and hyphens, starting with a letter.
 - **Input.** The input is one JSON object with a member for each parameter, named by the argument label or, for a parameter without a label, by the parameter's own name. `greeting` takes `{"name": "Ada"}` or `{"name": "Ada", "excited": true}`. A parameter that is optional or has a default value is an optional member: leave it out to get `nil` or the default. Members the signature does not name, missing required members, wrong types, out-of-range integers, and `null` where the schema does not allow it are rejected as `INVALID_ARGUMENT` before your function runs.
 - **Result.** Return an `Encodable` value with a schema, or return nothing to answer an empty object.
-- **Errors.** Throw `ReconActionError` to report a failure with one of Recon's existing classifications. Any other thrown error is reported as `INSPECTION_FAILED`; it need not be `Codable`.
+- **Errors.** Throw `ReconActionError` to report a failure with one of Recon's existing classifications. Any other thrown error is reported as `INSPECTION_FAILED`; it need not be `Codable`. The message-carrying cases also accept a `stage:` that names the step that failed, such as `ReconActionError.invalidArgument("depth out of range", stage: "bounds")`; without one, Recon reports the `target-execution` stage.
 
 | You throw | Recon reports |
 | --- | --- |
