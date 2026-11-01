@@ -24,6 +24,11 @@ fn main() {
     for source in &sources {
         println!("cargo:rerun-if-changed={}", source.display());
     }
+    // The deployment target must match the one rustc links with, and xcrun picks the compiler and
+    // SDK from these variables; a cached library built under other values would be stale.
+    for variable in ["MACOSX_DEPLOYMENT_TARGET", "DEVELOPER_DIR", "SDKROOT", "TOOLCHAINS"] {
+        println!("cargo:rerun-if-env-changed={variable}");
+    }
 
     let compiler = Compiler::pinned(&pin);
     let library = compiler
