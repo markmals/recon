@@ -1,4 +1,5 @@
 import Foundation
+import ObjectiveC
 import ReconNativeSupport
 import Testing
 
@@ -77,12 +78,35 @@ struct NativeSessions {
     }
 }
 
-@Suite
+@Suite(.serialized)
 struct NativeReads {
     @Test func aRaisingGetterIsCaughtBeforeSwiftSeesIt() {
         #expect(ReconNative.string(.toolTip, of: Raising()) == .failed)
         #expect(ReconNative.string(.toolTip, of: Subject()) == .unavailable)
         #expect(ReconNative.string(.toolTip, of: Tipped()) == .value("tip"))
+    }
+
+    /// The bundle belongs to the target, and an application may override its accessors. A
+    /// raising one leaves the bundle facts absent rather than unwinding through Swift.
+    @Test func aRaisingBundleLeavesTheBundleFactsAbsent() {
+        // The executable path is read after the identifier and inside the same catch, so its
+        // presence here and its absence below are the catch at work rather than a vacuous test.
+        #expect(ReconProcessIdentity.current.executablePath.value != nil)
+        let selector = #selector(getter: Bundle.bundleIdentifier)
+        let method = class_getInstanceMethod(Bundle.self, selector)!
+        let original = method_getImplementation(method)
+        let raising: @convention(block) (AnyObject) -> NSString = { _ in
+            NSException(name: .genericException, reason: "no bundle", userInfo: nil).raise()
+            return ""
+        }
+        method_setImplementation(method, imp_implementationWithBlock(raising))
+        defer { method_setImplementation(method, original) }
+
+        let identity = ReconProcessIdentity.current
+        #expect(identity.bundleId.value == nil)
+        #expect(identity.bundlePath.value == nil)
+        #expect(identity.executablePath.value == nil)
+        #expect(identity.pid == Int(ProcessInfo.processInfo.processIdentifier))
     }
 
     @Test func theProcessIdentityDescribesThisProcess() {

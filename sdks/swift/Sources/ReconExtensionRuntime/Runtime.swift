@@ -71,11 +71,14 @@ public final class ReconRuntime: Sendable {
     ) -> ReconOutcome {
         let queue = Self.queueStage(action.invocation)
         if done.wait(timeout: .now() + Self.remaining(until: deadline)) == .timedOut {
-            let started = execution.started
+            // A read whose deadline passes while it waits is a timeout even if access was
+            // revoked in the meantime: what the caller needs to know is whether the target is
+            // still working.
+            guard execution.started else { return .failure(Self.neverStarted(queue)) }
             return .failure(
                 ReconFailure(
-                    code: "INSPECTION_TIMEOUT", stage: started ? "target-execution" : queue,
-                    message: "Action exceeded its deadline", mayContinue: started))
+                    code: "INSPECTION_TIMEOUT", stage: "target-execution",
+                    message: "Action exceeded its deadline", mayContinue: true))
         }
         guard let answer = execution.answer else {
             return .failure(
@@ -83,9 +86,7 @@ public final class ReconRuntime: Sendable {
                     ? ReconFailure(
                         code: "STALE_SESSION", stage: queue,
                         message: "Access was revoked before the action started")
-                    : ReconFailure(
-                        code: "INSPECTION_TIMEOUT", stage: queue,
-                        message: "Queued action expired before it started", mayContinue: false))
+                    : Self.neverStarted(queue))
         }
         // Closing access invalidates what the action read, including its native handles, so a
         // result that finished after revocation is not delivered.
@@ -151,6 +152,14 @@ public final class ReconRuntime: Sendable {
                 finished()
             }
         }
+    }
+
+    /// Work the deadline passed before it could start. Nothing ran in the target, whichever
+    /// way the waiter learned of it.
+    private static func neverStarted(_ queue: String) -> ReconFailure {
+        ReconFailure(
+            code: "INSPECTION_TIMEOUT", stage: queue,
+            message: "Action exceeded its deadline before it started", mayContinue: false)
     }
 
     /// Where an action that has not started yet is waiting. A main-actor action is queued on the

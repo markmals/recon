@@ -40,6 +40,9 @@ extension ProposalSDK {
             #expect(outcome?.code == "INSPECTION_TIMEOUT")
             #expect(outcome?.stage == "main-thread-queue")
             #expect(outcome?.targetExecutionMayContinue == false)
+            // One definition answers for work that never started, however the waiter learned
+            // of it, so the unreachable signalled race cannot drift from this one.
+            #expect(outcome?.message == "Action exceeded its deadline before it started")
             #expect(MainDemo.callsSnapshot() == callsBefore)
         }
 
@@ -81,6 +84,7 @@ extension ProposalSDK {
             #expect(outcome?.code == "INSPECTION_TIMEOUT")
             #expect(outcome?.stage == "main-thread-queue")
             #expect(outcome?.targetExecutionMayContinue == false)
+            #expect(outcome?.message == "Action exceeded its deadline before it started")
             #expect(MainDemo.callsSnapshot() == callsBefore)
         }
 

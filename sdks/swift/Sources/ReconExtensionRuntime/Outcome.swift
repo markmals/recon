@@ -53,9 +53,10 @@ extension ReconFailure {
         case .unavailable(let message, let stage):
             ReconFailure(code: "INSPECTION_UNAVAILABLE", stage: stage, message: message)
         case .cancelled:
+            // The action observed cancellation and returned, so nothing is still running.
             ReconFailure(
                 code: "INSPECTION_TIMEOUT", stage: ReconActionError.defaultStage,
-                message: "Action observed cancellation")
+                message: "Action observed cancellation", mayContinue: false)
         }
     }
 }

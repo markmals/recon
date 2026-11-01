@@ -69,6 +69,15 @@ extension ProposalSDK {
             #expect(unknown?.stage == "target-execution")
         }
 
+        /// An action that observed cancellation has returned, so nothing is still running in
+        /// the target.
+        @Test func anActionThatObservedCancellationLeavesNothingRunning() {
+            let cancelled = failure(invoke("demo", "fail", #"{"kind":"cancelled"}"#))
+            #expect(cancelled?.code == "INSPECTION_TIMEOUT")
+            #expect(cancelled?.stage == "target-execution")
+            #expect(cancelled?.targetExecutionMayContinue == false)
+        }
+
         /// An action reproducing a published error contract names the stage that contract names.
         @Test func thrownErrorsKeepTheStageTheyName() {
             let staged = failure(invoke("demo", "fail", #"{"kind":"staged"}"#))

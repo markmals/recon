@@ -34,6 +34,7 @@ enum Demo {
         switch kind {
         case "stale": throw ReconActionError.staleReference("node was deallocated")
         case "invalid": throw ReconActionError.invalidArgument("unknown window")
+        case "cancelled": throw ReconActionError.cancelled
         case "staged": throw ReconActionError.invalidArgument("bad depth", stage: "bounds")
         case "unavailable": throw ReconActionError.unavailable("no handles", stage: "registry")
         default: throw Unexpected()
