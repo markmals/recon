@@ -3,7 +3,7 @@ id: proposal.0006
 title: Idiomatic Extension SDKs
 authors: [Mark Malstrom, OpenAI Codex]
 status: draft
-pull-request:
+pull-request: https://github.com/markmals/recon/pull/82
 issues: ["https://github.com/markmals/recon/issues/74"]
 supersedes: []
 ---
