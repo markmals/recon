@@ -19,9 +19,6 @@ let package = Package(
         .library(name: "ReconNativeSupport", targets: ["ReconNativeSupport"]),
         // What the target-resident helper assembles and serves actions with.
         .library(name: "ReconExtensionRuntime", targets: ["ReconExtensionRuntime"]),
-        // The helper's own Objective-C runtime support links this directly; extensions use
-        // ReconNativeSupport, which is the allowlisted Swift surface over it.
-        .library(name: "ReconNativeAccessors", targets: ["ReconNativeAccessors"]),
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax.git", exact: "604.0.0")
@@ -39,16 +36,18 @@ let package = Package(
         .target(name: "ReconExtension", dependencies: ["ReconExtensionMacros"]),
         .target(name: "ReconExtensionRuntime", dependencies: ["ReconExtension"]),
         .target(name: "ReconExtensionTesting", dependencies: ["ReconExtensionRuntime"]),
+        // The exception boundary: typed message-send trampolines and nothing else. Which
+        // messages may be sent, and what their results mean, is Swift in ReconNativeSupport.
+        .target(name: "ReconNativeAccessors"),
         .target(
-            name: "ReconNativeAccessors",
+            name: "ReconNativeSupport",
+            dependencies: ["ReconExtension", "ReconNativeAccessors"],
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("QuartzCore"),
                 .linkedFramework("CoreGraphics"),
-                .linkedLibrary("proc"),
             ]
         ),
-        .target(name: "ReconNativeSupport", dependencies: ["ReconExtension", "ReconNativeAccessors"]),
         .testTarget(
             name: "ReconExtensionTests",
             dependencies: ["ReconExtension", "ReconExtensionRuntime", "ReconExtensionTesting"]
