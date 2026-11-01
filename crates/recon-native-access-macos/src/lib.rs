@@ -43,7 +43,6 @@ mod lifecycle;
 #[cfg(all(test, target_os = "macos"))]
 mod access_tests;
 
-#[cfg(target_os = "macos")]
 pub mod appkit;
 #[cfg(target_os = "macos")]
 pub mod inject;
