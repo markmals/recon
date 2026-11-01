@@ -5,7 +5,7 @@ use recon_accessibility_macos::tree::{TreeOptions, read_tree};
 use recon_accessibility_macos::window_element;
 use recon_applications_macos::selection::Selection;
 use recon_core::error::Failure;
-use recon_native_access_macos::SessionId;
+use recon_native_access_macos::identity::SessionId;
 use recon_privacy_macos::permission::Permission;
 use recon_privacy_macos::permissions;
 use recon_window_server_macos::inventory::windows_owned_by;

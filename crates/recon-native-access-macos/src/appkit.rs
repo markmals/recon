@@ -13,11 +13,12 @@ use recon_core::process::Pid;
 use serde_json::{Map, Value};
 
 use crate::host::failure;
+use crate::identity::SessionId;
 use crate::lifecycle::{default_store, same_bundle};
 use crate::request::{FieldSet, Filters, NativeScope, NodeHandle, TraversalKind};
 use crate::{
-    InspectionError, InspectionErrorCode, Op, Reconciliation, SessionId, SessionRecord,
-    SessionState, Stage, native_request, reconcile,
+    InspectionError, InspectionErrorCode, Op, Reconciliation, SessionRecord, SessionState, Stage,
+    native_request, reconcile,
 };
 
 /// The extension that owns Recon's AppKit reads.

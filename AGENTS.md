@@ -108,10 +108,12 @@ A macOS command-line program that investigates running applications for an agent
 
 | Piece | Where |
 | --- | --- |
-| Workspace metadata, shared version, lint policy | `Cargo.toml` — `members = ["crates/recon"]` |
+| Workspace metadata, shared version, lint policy | `Cargo.toml` — every crate under `crates/` is a member |
 | The binary | `crates/recon/src/main.rs` — parse, render the error, exit |
-| Everything the binary does | `crates/recon/src/lib.rs` and the modules beneath it: `application`, `cli`, `context`, `error`, `inspection`, `macos`, `output`, `request`, `ui` |
-| Tests that need a process, a fixture, or a live Mac | `crates/recon/tests/` |
+| Argument parsing, the command registry, help and schemas, product assembly | `crates/recon/src/` — `cli`, `request`, `ui`, `context`, `correlate`, `output`, and on a Mac `investigate` and `observe` |
+| Action identities, payload schemas, the error envelope | `crates/recon-core/` — portable, and the only crate the capability crates depend on |
+| What a capability actually does | `crates/recon-applications-macos`, `recon-window-server-macos`, `recon-accessibility-macos`, `recon-native-access-macos`, `recon-privacy-macos`, `recon-ui-guard-macos` — each one names the platform it implements |
+| Tests that need a process, a fixture, or a live Mac | `crates/<crate>/tests/` — a behavioural test lives with the crate it specifies; `crates/recon/tests/` holds the executable's own contract |
 | Embedded `Info.plist` and build revision | `crates/recon/build.rs` — macOS records a privacy grant against the executable's signing identity, so the bare binary carries a plist |
 | Injected helper, Objective-C | `helper/` — `ReconCore`, `ReconInspect`, `ReconServer`, `ReconFacets`, `ReconFields`, with its own tests in `helper/tests/` |
 | Injector, C | `loader/` — `recon_loader.c` and the entitlements it is signed with |

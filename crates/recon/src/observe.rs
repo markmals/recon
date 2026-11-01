@@ -16,14 +16,16 @@ mod windows;
 #[cfg(test)]
 mod focus_scope_tests;
 
+use recon_applications_macos::application::Application;
 use recon_applications_macos::discovery::with_target;
 use recon_core::error::{Failure, InspectionStage};
 use recon_core::process::Pid;
-use recon_native_access_macos::SessionId;
+use recon_native_access_macos::identity::SessionId;
 use recon_privacy_macos::responsibility::{self, ResponsibilityError};
 use recon_ui_guard_macos::{Scope, guarded};
 
 use crate::ui::request::{SessionRequest, UiRequest, ViewRequest};
+use crate::ui::response::SessionSummary;
 use target::{session_record, view_selection, with_instance};
 
 /// Runs one `recon ui` command and returns its result as JSON.
@@ -121,21 +123,22 @@ fn view_command(view: &ViewRequest) -> Result<String, Failure> {
 }
 
 /// The session an external command was bound to, as the summary every response repeats.
+///
+/// Binding confirms with the helper that still holds the session, so a command that names one
+/// reports a stale session rather than observing through a relationship that has ended.
 fn bound(
-    application: &recon_applications_macos::application::Application,
+    application: &Application,
     pid: Pid,
     session: Option<&SessionId>,
-) -> Result<Option<crate::ui::response::SessionSummary>, Failure> {
+) -> Result<Option<SessionSummary>, Failure> {
     session
         .map(|session| {
-            target::validate_session(application, pid, session).map(|record| {
-                crate::ui::response::SessionSummary {
-                    id: record.session_id.to_string(),
-                    acquired: record.established_mode,
-                    profile: record.profile,
-                    protocol_version: record.protocol,
-                    helper_build: record.helper_build.clone(),
-                }
+            target::validate_session(application, pid, session).map(|record| SessionSummary {
+                id: record.session_id.to_string(),
+                acquired: record.established_mode,
+                profile: record.profile,
+                protocol_version: record.protocol,
+                helper_build: record.helper_build.clone(),
             })
         })
         .transpose()

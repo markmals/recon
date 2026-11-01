@@ -7,7 +7,8 @@ use recon_core::action::{ActionId, Invocation, invoke};
 use recon_core::error::Failure;
 use recon_core::process::Pid;
 use recon_native_access_macos::appkit::{AppKit, ViewQuery};
-use recon_native_access_macos::{InspectionError, SessionId, close_session, failure, open_session};
+use recon_native_access_macos::identity::SessionId;
+use recon_native_access_macos::{InspectionError, close_session, failure, open_session};
 use serde_json::Value;
 
 use crate::cli::registry;

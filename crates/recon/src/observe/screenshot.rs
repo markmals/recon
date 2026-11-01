@@ -8,7 +8,7 @@ use recon_applications_macos::application::Application;
 use recon_applications_macos::selection::Selection;
 use recon_core::error::{ErrorCode, Failure, NotFound};
 use recon_core::process::Pid;
-use recon_native_access_macos::SessionId;
+use recon_native_access_macos::identity::SessionId;
 use recon_privacy_macos::permission::Permission;
 use recon_privacy_macos::permissions;
 use recon_window_server_macos::capture;

@@ -6,7 +6,7 @@
 
 use recon_applications_macos::selection::Selection;
 use recon_core::error::Failure;
-use recon_native_access_macos::SessionId;
+use recon_native_access_macos::identity::SessionId;
 use recon_native_access_macos::request::{FieldSet, NativeScope, TraversalKind};
 use recon_window_server_macos::window::WindowId;
 use serde_json::{Value, json};

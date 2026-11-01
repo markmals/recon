@@ -225,4 +225,7 @@ run = "node tools/test-helper.ts"
 [tasks."test:inspection"]
 description = "Native inspection end to end: loader, helper, and AppKit facets"
 depends = ["fixture:build", "fixture:inject", "helper:build", "loader:build"]
-run = "cargo test -p recon-native-access-macos --test live --test appkit -- --ignored --test-threads=1"
+run = [
+    "cargo test -p recon-native-access-macos --test live --test appkit -- --ignored --test-threads=1",
+    "cargo test -p recon --test inspection_close_cli -- --ignored --test-threads=1",
+]

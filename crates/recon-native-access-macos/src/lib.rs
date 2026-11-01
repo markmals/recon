@@ -21,7 +21,6 @@ pub mod identity;
 pub mod request;
 
 pub use error::{InspectionError, InspectionErrorCode, Stage};
-pub use identity::SessionId;
 pub use session::{
     CloseOutcome, OpenOutcome, OpenRequest, Reconciliation, close, close_until, native_request,
     open, open_until, reconcile,

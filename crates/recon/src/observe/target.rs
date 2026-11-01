@@ -6,7 +6,8 @@ use recon_applications_macos::discovery::with_target;
 use recon_applications_macos::selection::{Selection, select_instance};
 use recon_core::error::{ErrorCode, Failure};
 use recon_core::process::Pid;
-use recon_native_access_macos::{InspectionError, SessionId, SessionRecord, appkit, failure};
+use recon_native_access_macos::identity::SessionId;
+use recon_native_access_macos::{InspectionError, SessionRecord, appkit, failure};
 
 use crate::ui::request::ViewRequest;
 use crate::ui::response::ObservedApplication;

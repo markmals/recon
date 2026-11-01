@@ -4,8 +4,8 @@
 use recon_applications_macos::selection::Selection;
 use recon_core::action::{Invocation, invoke};
 use recon_core::error::Failure;
-use recon_native_access_macos::SessionId;
 use recon_native_access_macos::appkit::{AppKit, WINDOWS};
+use recon_native_access_macos::identity::SessionId;
 use recon_privacy_macos::permission::Permission;
 use recon_privacy_macos::permissions;
 use serde_json::Map;
