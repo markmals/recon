@@ -199,8 +199,7 @@ run = "node tools/swift-toolchain.ts"
 [tasks."swift:test"]
 description = "The Swift SDK's and the AppKit extension's own test suites"
 # Swift Testing, run by the pinned toolchain against the packages in place. The
-# helper package has no Swift tests of its own: `test:helper` covers the
-# Objective-C runtime support it keeps.
+# helper package has its own suites, which `test:helper` runs.
 depends = ["swift:toolchain"]
 run = [
     "xcrun swift test --package-path sdks/swift",
@@ -236,8 +235,10 @@ depends = ["fixture:inject", "loader:build"]
 run = "node tools/test-inject.ts"
 
 [tasks."test:helper"]
-description = "The helper dylib's own test suite"
-depends = ["helper:build"]
+description = "The helper package's own test suite"
+# Swift Testing against the helper's sources in place, so it needs the pinned
+# toolchain rather than the built dylib.
+depends = ["swift:toolchain"]
 run = "node tools/test-helper.ts"
 
 [tasks."test:inspection"]
