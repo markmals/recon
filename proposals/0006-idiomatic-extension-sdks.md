@@ -2,7 +2,7 @@
 id: proposal.0006
 title: Idiomatic Extension SDKs
 authors: [Mark Malstrom, OpenAI Codex]
-status: active-review
+status: returned-for-revisions
 pull-request: https://github.com/markmals/recon/pull/82
 issues: ["https://github.com/markmals/recon/issues/74"]
 supersedes: []
@@ -137,7 +137,7 @@ Extract current implementations along the following focused ownership boundaries
 | --- | --- |
 | `recon` | Executable entry point, argument parsing, one command registry, help/schema presentation, product assembly, standard-stream delivery, exit behavior, and embedded executable build/privacy metadata |
 | `recon-core` | Portable action identities, export descriptors, shared serialized-payload/observation/error contracts, and invocation orchestration; no platform I/O or capability-specific model catalogue |
-| `recon-applications-macos` | macOS bundle metadata, indexed/running application discovery, target resolution, and existing launch behavior; not a universal application model |
+| `recon-applications-macos` | macOS bundle metadata, indexed/running application discovery, target resolution, and existing launch behavior; not a universal application model. Its calls into Objective-C frameworks (`NSWorkspace`, `NSRunningApplication`, `NSFileManager`) are made from a small Swift library the crate links |
 | `recon-window-server-macos` | macOS WindowServer/SkyLight window inventory and capture, including their private native calls; no AX tree or NSView traversal |
 | `recon-accessibility-macos` | macOS AX element access, attributes, window-element resolution, menu handling, and existing tree traversal/model; not a cross-platform accessibility contract |
 | `recon-native-access-macos` | macOS process-incarnation-bound helper access: loader integration, build matching, research-access prerequisites, authenticated sessions, persistence, bounded transport, and open/reconcile/close lifecycle; no NSView walker |
@@ -156,7 +156,7 @@ Migrate every import and caller to its owner. Behavioral tests move with the res
 
 Register every real crate in the workspace with the shared version and lint policy. `mise run check`, rustdoc, and all-target builds cover every member; the portable core compiles/tests without a Mac, CLI, or Swift runtime. Native checks cover the extracted mechanisms and their composition on macOS. Update source-path-sensitive native build/test tasks, executable metadata, and packaging references. Do not add empty networking, UIKit, or other future crates to illustrate the architecture; a later capability receives its own grounded ownership boundary when implemented.
 
-Existing Rust-backed macOS capabilities continue to work without being rewritten into Swift. The AppKit native-read path becomes the first foreign-language implementation behind the action boundary. The first delivery explicitly assembles one implementation per exported action; no runtime provider-priority or fallback algorithm is introduced. A missing native action implementation is an inspection failure, not permission to substitute an accessibility tree.
+Existing Rust-backed macOS capabilities keep their logic in Rust. Where a capability calls an Objective-C framework, that call is made from a small Swift library linked into the owning crate and reached through a C-ABI function; Rust keeps `objc2` bindings only for C frameworks such as CoreFoundation, CoreGraphics, ApplicationServices, Security, and ImageIO. The AppKit native-read path becomes the first foreign-language implementation behind the action boundary. The first delivery explicitly assembles one implementation per exported action; no runtime provider-priority or fallback algorithm is introduced. A missing native action implementation is an inspection failure, not permission to substitute an accessibility tree.
 
 ### Language-neutral contract
 
@@ -237,11 +237,11 @@ The optional execution context exposes only the operation's applicable scope, de
 
 Normal Swift errors, target field-read failures, and access/lifecycle failures remain distinct. Missing/unavailable fields, truncated traversal, stale objects, and geometry retain current observation semantics in Codable models and their serialized payloads. The core never retains live framework objects. Swift ARC and actor isolation govern local implementation values; neither Codable nor a copied GC-handle model makes Objective-C exceptions or cross-process references safe.
 
-Macros generate Swift, not Objective-C source. Exception-prone native access is implemented through typed SDK native-access primitives whose actual getter invocation and Objective-C catch occur entirely in Objective-C before returning to Swift. Supported getter signatures and fields are explicitly allowlisted. A client cannot supply a selector, key path, expression, or pointer for arbitrary execution. Adding an accessor family is SDK implementation work, not a requirement that extension authors hand-wrap a C API. The SDK must not promise to catch an arbitrary Objective-C exception thrown through arbitrary Swift code.
+Macros generate Swift, not Objective-C source. Exception-prone native access is implemented through typed SDK native-access primitives whose actual getter invocation and Objective-C catch occur entirely in Objective-C before returning to Swift. That Objective-C is the helper's only Objective-C: a minimal exception boundary of typed message-send trampolines that perform one call inside `@try`. Which getters may be called, with which signatures, and how their results become facts is an allowlist written in Swift. A client cannot supply a selector, key path, expression, or pointer for arbitrary execution. Adding an accessor family is SDK implementation work, not a requirement that extension authors hand-wrap a C API. The SDK must not promise to catch an arbitrary Objective-C exception thrown through arbitrary Swift code.
 
 ### Execution, lifecycle, and failure semantics
 
-Keep process boundaries where the inspection mechanism requires them. The confirmed AppKit arrangement loads the Swift backend and SDK runtime into the target-resident helper through the existing `recon_helper_main` entry point, C loader, and assembly bootstrap. Source-linked native support may retain existing authentication and lifecycle code. The Swift traversal is not a host wrapper that continues delegating every observation to the previous Objective-C walker.
+Keep process boundaries where the inspection mechanism requires them. The confirmed AppKit arrangement loads the Swift backend and SDK runtime into the target-resident helper through the existing `recon_helper_main` entry point, C loader, and assembly bootstrap. The helper's authentication, framing, and access lifecycle are implemented in Swift; the loader and bootstrap stay in C and assembly. The Swift traversal is not a host wrapper that continues delegating every observation to the previous Objective-C walker.
 
 The host remains responsible for the existing privacy-identity and continuous no-focus guarded path. No extension load or dispatch bypasses the guard or changes the meaning of `recon context`. Metadata discovery and command help do not inject code, request permission, or instantiate a target-side backend. The existing explicit session-opening modes remain the entry point to target-side access.
 
@@ -285,7 +285,7 @@ Issue #74 is related work, not a prerequisite or authority for a simultaneous Ru
 
 Recon users continue to install one product through the existing Homebrew path and use the same commands and grants. The build must package required runtime support; users must not install SwiftPM or an extension development environment to inspect an application from a bottle.
 
-Contributors and source builds gain focused Rust capability/support crates, a pinned Swift toolchain, Swift package dependency resolution, SDK tests, and macOS build verification. The pinned toolchain is Apple's Swift 6.4 (`swiftlang-6.4.0.34.1`), from Xcode 27.1 or the Command Line Tools; the swift.org toolchain cannot build the arm64e helper. Every build, including the Homebrew formula's source and bottle builds, requires that exact compiler build and fails rather than producing a helper from another one. Building also needs swift-syntax 604.0.0, resolved over the network or vendored. The OS supplies the Swift runtime, so a bottle needs nothing new at run time. The Swift SDK is initially consumed from the same source revision, not published as an independently compatible package. There is no requirement to link unrelated inspectors into an extension merely because they support the same OS.
+Contributors and source builds gain focused Rust capability/support crates, a pinned Swift toolchain, Swift package dependency resolution, SDK tests, and macOS build verification. The pinned toolchain is Apple's Swift 6.4 (`swiftlang-6.4.0.34.1`), from Xcode 27.1 or the Command Line Tools; the swift.org toolchain cannot build the arm64e helper. Every build, including `cargo build` of the CLI on macOS, which now compiles Swift, and the Homebrew formula's source and bottle builds, requires that exact compiler build and fails rather than producing an artifact from another one. Building also needs swift-syntax 604.0.0, resolved over the network or vendored. The OS supplies the Swift runtime, so a bottle needs nothing new at run time. The Swift SDK is initially consumed from the same source revision, not published as an independently compatible package. There is no requirement to link unrelated inspectors into an extension merely because they support the same OS.
 
 A normal release rollback can reinstall the previous matched artifact set; it cannot safely unload a newer helper from an already-running target. Target restart and privacy re-granting retain their existing meanings. Approval of this proposal does not itself authorize a package publication, release, or tap update.
 
@@ -354,5 +354,7 @@ No policy or decision is superseded by this draft. If feasibility requires viola
 ## Open questions
 
 On 2026-11-01, the owner confirmed the architecture, macOS-qualified crate partition, bare action annotations, Codable boundary, and target-resident AppKit placement. They selected existing command mappings for the first delivery and required feasibility proof before implementation approval. The same day they reviewed the proof recorded in Feasibility observations and selected: actions as static functions of an `@ReconExports` namespace; generated model schemas through `@ReconModel`; result-schema conformance checked in tests rather than by the runtime; and the exact Apple Swift build `swiftlang-6.4.0.34.1` for every build, including the Homebrew formula. They then approved implementation and the move to `awaiting-implementation`. This approval grants no additional research-target authorization, release, or tap update.
+
+On 2026-11-01, reviewing PR #82, the owner returned the implementation for revisions in the same pull request and authorized amending this proposal for them, without a new proposal. The revisions: shrink the helper's Objective-C to the smallest exception boundary Swift requires; move the Objective-C framework calls the Rust host makes through `objc2` into Swift, keeping `objc2` bindings to C frameworks in Rust; and require the exact Apple Swift build for every build, including the CLI's.
 
 No open questions remain.
