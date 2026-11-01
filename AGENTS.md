@@ -104,7 +104,7 @@ TypeScript is covered by Oxfmt, Oxlint, and `tsrs`; Rust by `cargo fmt`, Clippy,
 
 ## Platform: macOS inspection CLI
 
-A macOS command-line program that investigates running applications for an agent. One Cargo workspace with one binary, plus two native artifacts Cargo does not build — a helper that runs inside the inspected process, assembled by SwiftPM from the Swift SDK, the AppKit extension, and Objective-C runtime support, and a C loader that gets it there. It ships through a Homebrew tap.
+A macOS command-line program that investigates running applications for an agent. One Cargo workspace with one binary, plus two native artifacts Cargo does not build — a Swift helper that runs inside the inspected process, assembled by SwiftPM from the Swift SDK and the AppKit extension, and a C loader that gets it there. It ships through a Homebrew tap.
 
 | Piece | Where |
 | --- | --- |
@@ -117,7 +117,7 @@ A macOS command-line program that investigates running applications for an agent
 | Tests that need a process, a fixture, or a live Mac | `crates/<crate>/tests/` — a behavioural test lives with the crate it specifies; `crates/recon/tests/` holds the executable's own contract |
 | Embedded `Info.plist` and build revision | `crates/recon/build.rs` — macOS records a privacy grant against the executable's signing identity, so the bare binary carries a plist |
 | Injected helper | `helper/` — a Swift package that assembles the SDK runtime and the AppKit extension into one dylib, serving framing, authentication and the access lifecycle from `ReconHelper`, with its tests in `helper/Tests/` |
-| Swift extension SDK | `sdks/swift/` — `ReconExtension` and its macros, the assembling runtime, `ReconExtensionTesting`, and the allowlisted native accessors |
+| Swift extension SDK | `sdks/swift/` — `ReconExtension` and its macros, the assembling runtime, `ReconExtensionTesting`, and `ReconNativeSupport`, whose allowlisted native reads are Swift over the one Objective-C file left: `ReconMessageSend.m`, typed message sends inside `@try`, because Swift cannot catch an Objective-C exception |
 | AppKit extension | `extensions/appkit/` — the `windows`, `tree`, `node`, `find` and `fonts` actions the helper serves |
 | Injector, C | `loader/` — `recon_loader.c` and the entitlements it is signed with |
 | Fixture application | `crates/recon/tests/fixtures/ReconFixture` — a Swift AppKit app the native tasks build into `target/fixtures/` |
