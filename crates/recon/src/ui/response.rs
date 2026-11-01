@@ -15,10 +15,11 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-use crate::application::Pid;
-use crate::ui::request::{AccessMode, AccessProfile, FieldGroup, NodeHandle};
-use crate::ui::tree::Node;
-use crate::ui::window::{Bounds, Window, WindowId};
+use recon_accessibility_macos::tree::Node;
+use recon_core::process::Pid;
+use recon_native_access_macos::identity::{AccessMode, AccessProfile};
+use recon_native_access_macos::request::{FieldGroup, NodeHandle};
+use recon_window_server_macos::window::{Bounds, Window, WindowId};
 
 const CAPTURE_METHOD: &str = "skylight-hardware-capture";
 

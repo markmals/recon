@@ -21,7 +21,9 @@ function buildInjectFixture(): void {
         return;
     }
 
-    let source = path.resolve("crates/recon/tests/fixtures/inject-fixture/main.c");
+    let source = path.resolve(
+        "crates/recon-native-access-macos/tests/fixtures/inject-fixture/main.c",
+    );
     let outDir = path.resolve("target/fixtures");
     let binary = path.join(outDir, "inject-fixture");
     let entitlements = path.join(outDir, "inject-fixture.entitlements.plist");
@@ -59,7 +61,7 @@ function buildInjectFixture(): void {
             "-arch",
             "arm64e",
             "-O2",
-            path.resolve("crates/recon/tests/fixtures/inject-fixture/helper.c"),
+            path.resolve("crates/recon-native-access-macos/tests/fixtures/inject-fixture/helper.c"),
             "-o",
             path.join(outDir, "inject-helper.dylib"),
         ],

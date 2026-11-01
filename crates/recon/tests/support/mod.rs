@@ -1,8 +1,8 @@
 use std::sync::LazyLock;
 
 use recon::cli::registry::registry;
-use recon::cli::schema::output_schema;
-use recon::error::ErrorReport;
+use recon_core::error::ErrorReport;
+use recon_core::schema::output_schema;
 use serde::Serialize;
 
 pub(crate) fn validate_failure(report: &impl Serialize, command: &[&str]) {

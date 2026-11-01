@@ -1,0 +1,13 @@
+# The exact Swift compiler every Recon build uses, beside `rust-toolchain.toml` because it pins
+# the same kind of thing: the compiler a build is reproducible with.
+#
+# It is Apple's, shipped by Xcode 27.1 and the Command Line Tools, so mise cannot provision it.
+# `mise run swift:toolchain` verifies it instead of installing it, `tools/swift-toolchain.ts`
+# reads this file for every TypeScript task, and the Cargo build scripts that compile Swift read
+# it too and refuse to build with any other compiler.
+#
+# The swift.org toolchain of the same version is not a substitute: its `usr/lib/swift/macosx`
+# stubs lack arm64e, and the arm64e code it generates dies in the OS runtime with
+# `EXC_ARM_PAC_FAIL`.
+[toolchain]
+build = "swiftlang-6.4.0.34.1"

@@ -1,5 +1,5 @@
-use crate::error::Failure;
 use crate::ui::request::UiRequest;
+use recon_core::error::Failure;
 
 /// One `recon` command.
 #[derive(Clone, Debug, Eq, PartialEq)]

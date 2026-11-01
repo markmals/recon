@@ -6,17 +6,19 @@
 
 use std::process::{Command, Output};
 
-use recon::application::Pid;
-use recon::error::{
+use recon::request::{Request, parse_arguments};
+use recon::ui::request::{SessionRequest, UiRequest, ViewRequest};
+use recon_applications_macos::selection::Selection;
+use recon_core::error::{
     ErrorCode, Failure, InspectionFailure, InspectionStage, Interference, InterferenceEvidence,
 };
-use recon::inspection::SessionId;
-use recon::request::{Request, parse_arguments};
-use recon::ui::request::{
-    AccessMode, AccessProfile, FieldGroup, FieldSet, Filters, HostPreparation, NativeScope,
-    NodeHandle, Selection, SessionRequest, TraversalKind, UiRequest, ViewRequest,
+use recon_core::process::Pid;
+use recon_native_access_macos::identity::SessionId;
+use recon_native_access_macos::identity::{AccessMode, AccessProfile};
+use recon_native_access_macos::request::{
+    FieldGroup, FieldSet, Filters, HostPreparation, NativeScope, NodeHandle, TraversalKind,
 };
-use recon::ui::window::WindowId;
+use recon_window_server_macos::window::WindowId;
 use serde_json::{Value, json};
 mod support;
 

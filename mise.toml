@@ -189,6 +189,23 @@ run = "node tools/build-fixture.ts"
 description = "Build the fixture variant used by the loader injection tests"
 run = "node tools/build-inject-fixture.ts"
 
+[tasks."swift:toolchain"]
+description = "Verify the exact Apple Swift compiler every Swift build requires"
+# mise cannot provision it: this is Apple's toolchain, from Xcode or the Command
+# Line Tools, and the swift.org one cannot build the helper's arm64e slice. The
+# task prints the compiler it found and fails when it is not the pinned build.
+run = "node tools/swift-toolchain.ts"
+
+[tasks."swift:test"]
+description = "The Swift SDK's and the AppKit extension's own test suites"
+# Swift Testing, run by the pinned toolchain against the packages in place. The
+# helper package has its own suites, which `test:helper` runs.
+depends = ["swift:toolchain"]
+run = [
+    "xcrun swift test --package-path sdks/swift",
+    "xcrun swift test --package-path extensions/appkit",
+]
+
 [tasks."helper:build"]
 description = "Build the universal recon-helper dylib and its build identity"
 run = "node tools/build-helper.ts"
@@ -218,11 +235,16 @@ depends = ["fixture:inject", "loader:build"]
 run = "node tools/test-inject.ts"
 
 [tasks."test:helper"]
-description = "The helper dylib's own test suite"
-depends = ["helper:build"]
+description = "The helper package's own test suite"
+# Swift Testing against the helper's sources in place, so it needs the pinned
+# toolchain rather than the built dylib.
+depends = ["swift:toolchain"]
 run = "node tools/test-helper.ts"
 
 [tasks."test:inspection"]
 description = "Native inspection end to end: loader, helper, and AppKit facets"
 depends = ["fixture:build", "fixture:inject", "helper:build", "loader:build"]
-run = "cargo test -p recon --test inspection_live --test inspection_appkit -- --ignored --test-threads=1"
+run = [
+    "cargo test -p recon-native-access-macos --test live --test appkit -- --ignored --test-threads=1",
+    "cargo test -p recon --test inspection_close_cli -- --ignored --test-threads=1",
+]

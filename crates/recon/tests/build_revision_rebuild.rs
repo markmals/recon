@@ -84,17 +84,37 @@ fn context_report(binary: &Path) -> serde_json::Value {
     serde_json::from_slice(&output.stdout).unwrap()
 }
 
+/// Reproduces the workspace in a scratch checkout: the root manifest, lock file and Swift pin,
+/// every crate the executable is built from, and their build scripts and sources.
+///
+/// Only what Cargo reads to build the executable is copied — including a crate's `swift/`, which
+/// its build script compiles. A crate's tests and fixtures take no part in a build, and the
+/// fixture application is large enough that copying it would make each rebuild noticeably slower.
 fn copy_sources(checkout: &Path, package: &Path) {
     let source = Path::new(env!("CARGO_MANIFEST_DIR"));
-    for name in ["Cargo.toml", "Cargo.lock"] {
+    let crates = source.join("..");
+    for name in ["Cargo.toml", "Cargo.lock", "swift-toolchain.toml"] {
         fs::copy(source.join("../..").join(name), checkout.join(name)).unwrap();
     }
-    for name in ["Cargo.toml", "build.rs"] {
-        fs::copy(source.join(name), package.join(name)).unwrap();
+    for entry in fs::read_dir(&crates).unwrap() {
+        let member = entry.unwrap().path();
+        if !member.join("Cargo.toml").is_file() {
+            continue;
+        }
+        let destination = checkout.join("crates").join(member.file_name().unwrap());
+        fs::create_dir_all(&destination).unwrap();
+        for name in ["Cargo.toml", "build.rs"] {
+            if member.join(name).is_file() {
+                fs::copy(member.join(name), destination.join(name)).unwrap();
+            }
+        }
+        for name in ["src", "build", "swift"] {
+            if member.join(name).is_dir() {
+                copy_directory(&member.join(name), &destination.join(name));
+            }
+        }
     }
-    for name in ["src", "build"] {
-        copy_directory(&source.join(name), &package.join(name));
-    }
+    assert!(package.join("build.rs").is_file(), "the executable keeps its build script");
 }
 
 #[test]

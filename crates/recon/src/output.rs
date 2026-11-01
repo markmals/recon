@@ -2,6 +2,9 @@
 
 use std::fs::File;
 use std::io;
+
+use recon_core::error::Failure;
+use serde::Serialize;
 #[cfg(not(windows))]
 use std::os::fd::AsFd;
 #[cfg(windows)]
@@ -18,4 +21,14 @@ pub fn stdout() -> io::Result<File> {
     #[cfg(windows)]
     let handle = stdout.as_handle().try_clone_to_owned()?;
     Ok(File::from(handle))
+}
+
+/// One response as the compact JSON object a command prints.
+///
+/// # Errors
+///
+/// [`recon_core::error::ErrorCode::Internal`] when the response cannot be encoded.
+pub fn encode(response: &impl Serialize) -> Result<String, Failure> {
+    serde_json::to_string(response)
+        .map_err(|error| Failure::internal(format!("cannot encode response: {error}")))
 }

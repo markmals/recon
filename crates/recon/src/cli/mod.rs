@@ -12,16 +12,19 @@ use output_path::OutputPath;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 
-use crate::application::Pid;
-use crate::error::Failure;
-use crate::inspection::SessionId;
 use crate::request::{AppRequest, Request};
-use crate::ui::request::{
-    AccessMode, AccessProfile, FieldSet, Filters, HostPreparation, MAX_NATIVE_DEPTH,
-    MAX_NATIVE_LIMIT, NativeScope, NodeHandle, Selection, SessionRequest, TraversalKind, UiRequest,
-    ViewRequest,
+use recon_applications_macos::selection::Selection;
+use recon_core::error::Failure;
+use recon_core::process::Pid;
+use recon_native_access_macos::identity::SessionId;
+use recon_native_access_macos::identity::{AccessMode, AccessProfile};
+use recon_native_access_macos::request::{
+    FieldSet, Filters, HostPreparation, MAX_NATIVE_DEPTH, MAX_NATIVE_LIMIT, NativeScope,
+    NodeHandle, TraversalKind,
 };
-use crate::ui::window::WindowId;
+
+use crate::ui::request::{SessionRequest, UiRequest, ViewRequest};
+use recon_window_server_macos::window::WindowId;
 
 const HELP_FLAGS: [&str; 2] = ["--help", "-h"];
 const VERSION_FLAG: &str = "--version";
@@ -94,7 +97,9 @@ fn ui_request(
             session: session(matches),
             window: window(matches),
             depth: matches
-                .get_one::<Decimal<0, { crate::ui::tree::MAX_DEPTH as u32 }>>("depth")
+                .get_one::<Decimal<0, { recon_accessibility_macos::tree::MAX_DEPTH as u32 }>>(
+                    "depth",
+                )
                 .map(|number| number.0 as usize),
             no_menu_bar: matches.get_flag("no-menu-bar"),
         }),
