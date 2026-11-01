@@ -1,4 +1,4 @@
-#import "../ReconCore.h"
+#import "../Sources/ReconHelperServer/ReconCore.h"
 #import <bsm/libbsm.h>
 #import <mach/mach.h>
 #import <sys/socket.h>

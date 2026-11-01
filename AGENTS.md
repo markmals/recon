@@ -115,7 +115,9 @@ A macOS command-line program that investigates running applications for an agent
 | What a capability actually does | `crates/recon-applications-macos`, `recon-window-server-macos`, `recon-accessibility-macos`, `recon-native-access-macos`, `recon-privacy-macos`, `recon-ui-guard-macos` — each one names the platform it implements |
 | Tests that need a process, a fixture, or a live Mac | `crates/<crate>/tests/` — a behavioural test lives with the crate it specifies; `crates/recon/tests/` holds the executable's own contract |
 | Embedded `Info.plist` and build revision | `crates/recon/build.rs` — macOS records a privacy grant against the executable's signing identity, so the bare binary carries a plist |
-| Injected helper, Objective-C | `helper/` — `ReconCore`, `ReconInspect`, `ReconServer`, `ReconFacets`, `ReconFields`, with its own tests in `helper/tests/` |
+| Injected helper | `helper/` — a Swift package that assembles the SDK runtime and the AppKit extension into one dylib, keeping `ReconCore` and `ReconServer` in Objective-C for framing, authentication and the access lifecycle, with their tests in `helper/tests/` |
+| Swift extension SDK | `sdks/swift/` — `ReconExtension` and its macros, the assembling runtime, `ReconExtensionTesting`, and the allowlisted native accessors |
+| AppKit extension | `extensions/appkit/` — the `windows`, `tree`, `node`, `find` and `fonts` actions the helper serves |
 | Injector, C | `loader/` — `recon_loader.c` and the entitlements it is signed with |
 | Fixture application | `crates/recon/tests/fixtures/ReconFixture` — a Swift AppKit app the native tasks build into `target/fixtures/` |
 | Documentation site | `docs/` — VitePress; `docs/.vitepress/config.ts` renders the records from the repository root |
@@ -149,6 +151,7 @@ These build the native artifacts and exercise them against a live Mac — the si
 | `mise run fixture:build` · `fixture:inject` | Build the fixture app bundle, and the injectable variant |
 | `mise run recon:sign` | Code-sign the debug `recon` with `RECON_SIGNING_IDENTITY` |
 | `mise run test:ui` · `test:focus` | UI observation against the live fixture, and the evidence that reading never steals focus |
+| `mise run swift:toolchain` · `swift:test` | Verify the pinned Apple Swift compiler, and run the SDK's and extension's suites |
 | `mise run test:helper` · `test:inject` · `test:inspection` | The helper's own tests, loader injection, and live inspection end to end |
 
 They observe a Mac rather than a repository, so they are **not** part of `mise run check` and cannot run in the Linux CI gate. Run them on a macOS host when a change touches the native path, and report what they printed. On any other platform they refuse to run rather than pretending to pass.

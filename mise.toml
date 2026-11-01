@@ -189,6 +189,24 @@ run = "node tools/build-fixture.ts"
 description = "Build the fixture variant used by the loader injection tests"
 run = "node tools/build-inject-fixture.ts"
 
+[tasks."swift:toolchain"]
+description = "Verify the exact Apple Swift compiler every Swift build requires"
+# mise cannot provision it: this is Apple's toolchain, from Xcode or the Command
+# Line Tools, and the swift.org one cannot build the helper's arm64e slice. The
+# task prints the compiler it found and fails when it is not the pinned build.
+run = "node tools/swift-toolchain.ts"
+
+[tasks."swift:test"]
+description = "The Swift SDK's and the AppKit extension's own test suites"
+# Swift Testing, run by the pinned toolchain against the packages in place. The
+# helper package has no Swift tests of its own: `test:helper` covers the
+# Objective-C runtime support it keeps.
+depends = ["swift:toolchain"]
+run = [
+    "xcrun swift test --package-path sdks/swift",
+    "xcrun swift test --package-path extensions/appkit",
+]
+
 [tasks."helper:build"]
 description = "Build the universal recon-helper dylib and its build identity"
 run = "node tools/build-helper.ts"

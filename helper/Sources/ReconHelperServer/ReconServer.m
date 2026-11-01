@@ -1,4 +1,5 @@
-#import "ReconInspect.h"
+#import "ReconCore.h"
+#import "ReconNativeAccessors.h"
 #import <AppKit/AppKit.h>
 #import <bsm/libbsm.h>
 #import <mach/mach.h>
@@ -13,7 +14,6 @@
 
 static NSLock *stateLock;
 static NSString *activeSession, *activeCapability, *activeProfile, *establishedMode, *lastClosed;
-static ReconRegistry *activeRegistry;
 static atomic_bool reading = ATOMIC_VAR_INIT(false);
 static uint32_t ownPidversion;
 static atomic_bool serverStarted = ATOMIC_VAR_INIT(false);
@@ -31,8 +31,7 @@ static BOOL transfer(int fd, uint8_t *bytes, size_t count, BOOL sending) {
     }
     return YES;
 }
-static void sendResponse(int fd, NSDictionary *response) {
-    NSData *json = [NSJSONSerialization dataWithJSONObject:response options:0 error:NULL];
+static void sendData(int fd, NSData *json) {
     if (!json || json.length > 8 * 1024 * 1024) {
         json = [NSJSONSerialization dataWithJSONObject:ReconError(@"INSPECTION_UNAVAILABLE", @"response-size", @"Native response exceeds 8 MiB") options:0 error:NULL];
     }
@@ -40,6 +39,16 @@ static void sendResponse(int fd, NSDictionary *response) {
     if (!transfer(fd, length, 4, YES)) return;
     transfer(fd, (uint8_t *)json.bytes, json.length, YES);
 }
+static void sendResponse(int fd, NSDictionary *response) {
+    sendData(fd, [NSJSONSerialization dataWithJSONObject:response options:0 error:NULL]);
+}
+// Implemented in Swift by the assembled extension runtime (ReconHelper/Bridge.swift).
+// `recon_runtime_invoke` answers a +1 retained NSData holding the complete response object.
+extern bool recon_runtime_ready(void);
+extern void recon_runtime_session_open(const char *sessionId, const char *helperBuild, uint64_t protocolVersion);
+extern void recon_runtime_session_close(const char *sessionId);
+extern void *recon_runtime_invoke(const char *operation, const void *payload, size_t length,
+    uint64_t remainingNanoseconds, BOOL (^begin)(void), BOOL (^isRevoked)(void), void (^settled)(void));
 static NSDictionary *validateIdentity(NSDictionary *request) {
     NSNumber *pid = request[@"expectedPid"], *version = request[@"expectedPidversion"], *uid = request[@"expectedUid"];
     if (![pid isKindOfClass:NSNumber.class] || ![version isKindOfClass:NSNumber.class] || ![uid isKindOfClass:NSNumber.class])
@@ -66,8 +75,8 @@ static NSDictionary *handleLifecycle(NSDictionary *request) {
                 response = ReconError(@"STALE_SESSION", @"close", @"Session authentication failed");
             else {
                 lastClosed = activeSession;
+                recon_runtime_session_close(activeSession.UTF8String);
                 activeSession = nil; activeCapability = nil; activeProfile = nil; establishedMode = nil;
-                activeRegistry = nil;
                 response = @{ @"ok": (NSNumber *)kCFBooleanTrue, @"revoked": (NSNumber *)kCFBooleanTrue, @"wasActive": (NSNumber *)kCFBooleanTrue,
                     @"helperResident": (NSNumber *)kCFBooleanTrue, @"bootstrapActive": (NSNumber *)kCFBooleanTrue };
             }
@@ -93,13 +102,16 @@ static NSDictionary *handleLifecycle(NSDictionary *request) {
             if (!reused) {
                 activeSession = [ReconToken() substringToIndex:32]; activeCapability = ReconToken();
                 if (!activeSession || !activeCapability) response = ReconError(@"INSPECTION_FAILED", @"random", @"Secure randomness is unavailable");
-                else { activeRegistry = [ReconRegistry new]; activeProfile = profile; establishedMode = mode; }
+                else {
+                    activeProfile = profile; establishedMode = mode;
+                    recon_runtime_session_open(activeSession.UTF8String, ReconHelperBuild.UTF8String, ReconProtocolVersion);
+                }
             }
             if (!response) {
                 NSMutableDictionary *opened = [@{ @"ok": (NSNumber *)kCFBooleanTrue, @"sessionId": activeSession, @"reused": @(reused),
                 @"pid": @(getpid()), @"pidversion": @(ownPidversion), @"uid": @(geteuid()),
                 @"incarnation": @{ @"pid": @(getpid()), @"pidversion": @(ownPidversion) },
-                @"identity": ReconProcessIdentity(),
+                @"identity": ReconProcessIdentityDictionary(),
                 @"helperBuild": ReconHelperBuild, @"protocol": @(ReconProtocolVersion),
                 @"profile": activeProfile, @"mode": mode, @"requestedMode": mode,
                 @"requestedProfile": profile, @"establishedMode": establishedMode,
@@ -114,78 +126,51 @@ static NSDictionary *handleLifecycle(NSDictionary *request) {
     [stateLock unlock];
     return response;
 }
-static NSDictionary *handleRead(NSDictionary *request, uint64_t requestStart) {
+// A read is an invocation of one generated action. Authentication, the single-flight guard and
+// the session lock stay here; queueing, the start gate, the deadline wait and every published
+// observation are the runtime's and the extension's.
+static id handleRead(NSDictionary *request, uint64_t requestStart) {
     [stateLock lock];
     BOOL authenticated = activeSession && [activeSession isEqual:request[@"sessionId"]] &&
         [activeCapability isEqual:request[@"capability"]];
-    ReconRegistry *registry = authenticated ? activeRegistry : nil;
     NSString *session = authenticated ? activeSession : nil;
     [stateLock unlock];
     if (!authenticated) return ReconError(@"STALE_SESSION", @"read", @"Session authentication failed");
-    if (!ReconValidBounds(request)) return ReconError(@"INVALID_ARGUMENT", @"bounds", @"Invalid depth, limit, or fields");
-    NSString *op = request[@"op"], *kind = request[@"kind"];
-    if (kind && (![kind isKindOfClass:NSString.class] || ![@[ @"view", @"layer" ] containsObject:kind]))
-        return ReconError(@"INVALID_ARGUMENT", @"kind", @"Traversal kind must be view or layer");
-    if (([op isEqual:@"find"] || [op isEqual:@"tree"] || [op isEqual:@"fonts"]) &&
-        (request[@"class"] && ![request[@"class"] isKindOfClass:NSString.class] ||
-         request[@"identifier"] && ![request[@"identifier"] isKindOfClass:NSString.class]))
-        return ReconError(@"INVALID_ARGUMENT", @"filters", @"Exact filters must be strings");
-    if (request[@"root"] && !ReconValidHandle(request[@"root"]))
-        return ReconError(@"INVALID_ARGUMENT", @"root", @"Malformed native handle");
-    if ([op isEqual:@"node"] && !request[@"root"])
-        return ReconError(@"INVALID_ARGUMENT", @"root", @"Native handle is required");
-    id windowId = request[@"windowId"];
-    if (windowId) {
-        if (![windowId isKindOfClass:NSNumber.class] || CFGetTypeID((__bridge CFTypeRef)windowId) == CFBooleanGetTypeID() ||
-            !isfinite([windowId doubleValue]) || [windowId doubleValue] != floor([windowId doubleValue]) ||
-            [windowId doubleValue] < 1 || [windowId doubleValue] > UINT32_MAX)
-            return ReconError(@"INVALID_ARGUMENT", @"window", @"WindowServer ID must be a positive 32-bit integer");
-    }
-    if ([op isEqual:@"find"] && !request[@"class"] && !request[@"identifier"])
-        return ReconError(@"INVALID_ARGUMENT", @"filters", @"Find requires an exact class or identifier");
-    if (nowNs() >= requestStart + 2000000000ULL)
+    uint64_t deadline = requestStart + 2000000000ULL;
+    if (nowNs() >= deadline)
         return ReconError(@"INSPECTION_TIMEOUT", @"transport", @"Native request exceeded its deadline before dispatch");
     bool expected = false;
     if (!atomic_compare_exchange_strong(&reading, &expected, true))
         return ReconError(@"INSPECTION_BUSY", @"target-execution", @"A prior native read has not finished");
-    ReconWork *work = [ReconWork new]; work.registry = registry; work.request = request;
-    work.sessionId = session; work.depth = request[@"depth"] ? [request[@"depth"] unsignedIntegerValue] : 3;
-    work.limit = request[@"limit"] ? [request[@"limit"] unsignedIntegerValue] : 200;
-    work.deadline = requestStart + 2000000000ULL;
-    work.startedAt = NSDate.date.timeIntervalSince1970;
-    dispatch_semaphore_t done = dispatch_semaphore_create(0);
-    __block NSDictionary *answer = nil;
-    __block atomic_bool started = ATOMIC_VAR_INIT(false);
-    dispatch_async(dispatch_get_main_queue(), ^{
-        @autoreleasepool {
-            // A read that was queued but has not begun must not start once its session is closed:
-            // close revokes access, and a not-yet-started read has no in-flight target execution to
-            // protect. The session check and the commit to `started` happen together under the lock
-            // so a close cannot slip between them: either close wins and the read never begins, or
-            // the read commits first and runs as in-flight execution the close does not stop.
+    NSMutableDictionary *parameters = [request mutableCopy];
+    [parameters removeObjectsForKeys:@[ @"op", @"protocol", @"helperBuild", @"sessionId", @"capability",
+        @"clientPid", @"clientPidversion", @"clientUid" ]];
+    NSData *payload = [NSJSONSerialization dataWithJSONObject:parameters options:0 error:NULL];
+    uint64_t now = nowNs();
+    void *answer = recon_runtime_invoke([request[@"op"] UTF8String], payload.bytes, payload.length,
+        now < deadline ? deadline - now : 0,
+        ^BOOL {
+            // Close takes the same lock, so either it wins and the action never begins, or the
+            // action commits first and runs as in-flight execution the close does not stop.
             [stateLock lock];
-            if ([activeSession isEqual:session] && nowNs() < work.deadline) atomic_store(&started, true);
+            BOOL current = [activeSession isEqual:session];
             [stateLock unlock];
-            if (atomic_load(&started)) {
-                @try { answer = ReconInspect(work); }
-                @catch (NSException *exception) {
-                    answer = ReconError(@"INSPECTION_FAILED", @"target-execution", @"Native getter raised an exception");
-                }
-            }
-            atomic_store(&reading, false);
-            dispatch_semaphore_signal(done);
-        }
-    });
-    uint64_t remaining = nowNs() < work.deadline ? work.deadline - nowNs() : 0;
-    if (dispatch_semaphore_wait(done, dispatch_time(DISPATCH_TIME_NOW, (int64_t)remaining)))
-        return @{ @"ok": (NSNumber *)kCFBooleanFalse, @"error": @{ @"code": @"INSPECTION_TIMEOUT",
-            @"message": @"Native read exceeded its deadline", @"stage": atomic_load(&started) ? @"target-execution" : @"main-thread-queue",
-            @"targetExecutionMayContinue": @(atomic_load(&started)) } };
-    [stateLock lock]; BOOL current = [activeSession isEqual:session] && [activeCapability isEqual:request[@"capability"]]; [stateLock unlock];
-    return current ? (answer ?: ReconError(@"INSPECTION_TIMEOUT", @"main-thread-queue", @"Queued native read expired")) :
-        ReconError(@"STALE_SESSION", @"read", @"Session closed during native read");
+            return current;
+        },
+        ^BOOL {
+            [stateLock lock];
+            BOOL revoked = ![activeSession isEqual:session];
+            [stateLock unlock];
+            return revoked;
+        },
+        ^{ atomic_store(&reading, false); });
+    NSData *response = (__bridge_transfer NSData *)answer;
+    [stateLock lock];
+    BOOL current = [activeSession isEqual:session] && [activeCapability isEqual:request[@"capability"]];
+    [stateLock unlock];
+    return current ? (id)response : ReconError(@"STALE_SESSION", @"read", @"Session closed during native read");
 }
-static NSDictionary *dispatchRequest(NSDictionary *request, uint64_t requestStart) {
+static id dispatchRequest(NSDictionary *request, uint64_t requestStart) {
     NSString *op = request[@"op"];
     if (![op isKindOfClass:NSString.class]) return ReconError(@"INVALID_ARGUMENT", @"request", @"Operation is required");
     BOOL recovery = [op isEqual:@"reconcile"] || [op isEqual:@"close"];
@@ -231,7 +216,11 @@ static void *serveClient(void *context) {
             sendResponse(fd, ReconError(@"STALE_SESSION", @"peer", @"Peer process incarnation changed"));
             goto finish;
         }
-        sendResponse(fd, dispatchRequest(request, requestStart));
+        {
+            id answer = dispatchRequest(request, requestStart);
+            if ([answer isKindOfClass:NSData.class]) sendData(fd, answer);
+            else sendResponse(fd, answer);
+        }
     finish:
         close(fd);
     }
@@ -263,6 +252,7 @@ static int startupFailed(void) {
 }
 int recon_server_main(const char *path) {
     if (!path || !*path || strlen(path) >= sizeof(((struct sockaddr_un *)0)->sun_path)) return -1;
+    if (!recon_runtime_ready()) return -1;
     bool expected = false;
     if (!atomic_compare_exchange_strong(&serverStarted, &expected, true)) return -1;
     @autoreleasepool {
