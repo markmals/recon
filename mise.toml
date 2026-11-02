@@ -136,7 +136,10 @@ run = "changeset add"
 
 [tasks.version]
 description = "Apply pending changesets: bump package.json, write CHANGELOG.md, sync the Cargo workspace version"
-run = ["changeset version", "node tools/sync-version.ts"]
+# `cargo fetch --locked` first: sync-version's offline `cargo update` needs the registry
+# cache, and the release runner starts without one. `--locked` fetches exactly what
+# Cargo.lock pins, so it can never change a dependency.
+run = ["cargo fetch --locked", "changeset version", "node tools/sync-version.ts"]
 
 [tasks."deps:install"]
 description = "Install npm dependencies with the pinned pnpm"
