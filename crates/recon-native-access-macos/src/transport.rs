@@ -409,7 +409,7 @@ fn io_failure(op: Op, stage: Stage, context: &str, error: &std::io::Error) -> In
     }
 }
 
-/// Refuse an endpoint that is not an owner-only socket. The helper creates it inside a directory
+/// Refuse an endpoint that is not an owner-only socket. The loader creates it inside a directory
 /// the host made 0700; both halves are checked because either one alone can be loosened.
 fn verify_endpoint(socket_path: &Path) -> Result<(), InspectionError> {
     use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};

@@ -1,11 +1,12 @@
 #![cfg(target_os = "macos")]
 
 use std::fs::{self, OpenOptions};
-use std::io::Write;
+use std::io::{BufRead, BufReader, Write};
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command};
-use std::thread::sleep;
+use std::process::{Child, Command, Stdio};
+use std::sync::mpsc;
+use std::thread::{self, sleep};
 use std::time::{Duration, Instant};
 
 use objc2_core_foundation::{CFArray, CFDictionary, CFNumber, CFRetained, CFString, CFType};
@@ -30,6 +31,21 @@ impl Drop for OwnedFixture {
     }
 }
 
+/// Wait for the fixture to print its pid. `arch` execs the fixture, and exec starts a new
+/// incarnation of the same pid, so only an incarnation read after that line is the bindable one.
+fn wait_for_fixture(child: &mut Child) {
+    let output = child.stdout.take().expect("piped fixture output");
+    let (sender, receiver) = mpsc::channel();
+    thread::spawn(move || {
+        let mut line = String::new();
+        let _ = BufReader::new(output).read_line(&mut line);
+        let _ = sender.send(line);
+    });
+    let line =
+        receiver.recv_timeout(Duration::from_secs(5)).expect("the fixture never printed its pid");
+    assert_eq!(line.trim().parse::<u32>().ok(), Some(child.id()), "the fixture never started");
+}
+
 #[test]
 #[ignore = "requires vp run test:inspection artifacts and a signed cooperative inject fixture"]
 fn an_unconfirmed_close_is_a_typed_cli_failure_not_success_json() {
@@ -38,17 +54,13 @@ fn an_unconfirmed_close_is_a_typed_cli_failure_not_success_json() {
         Command::new("arch")
             .arg("-arm64e")
             .arg(&executable)
+            .stdout(Stdio::piped())
             .spawn()
             .expect("start a controlled cooperative target"),
     );
     let deadline = Instant::now() + Duration::from_secs(10);
-    let incarnation = loop {
-        match inject::bind_target(fixture.0.id() as i32) {
-            Ok(target) => break target.handle.incarnation(),
-            Err(_) if Instant::now() < deadline => sleep(Duration::from_millis(20)),
-            Err(error) => panic!("bind the target: {error}"),
-        }
-    };
+    wait_for_fixture(&mut fixture.0);
+    let incarnation = inject::identify(fixture.0.id() as i32).expect("identify the target");
 
     let home = tempfile::Builder::new().prefix("rcn").tempdir_in("/tmp").expect("private HOME");
     let root = home.path().join("Library/Application Support/recon/inspection");
@@ -111,14 +123,8 @@ fn proposal_0005_pending_attach_without_endpoint_refuses_reinjection() {
     let mut fixture =
         OwnedFixture(Command::new(&executable).spawn().expect("launch own AppKit fixture"));
     let deadline = Instant::now() + Duration::from_secs(10);
-    let target = loop {
-        match inject::bind_target(fixture.0.id() as i32) {
-            Ok(target) => break target,
-            Err(_) if Instant::now() < deadline => sleep(Duration::from_millis(25)),
-            Err(error) => panic!("bind AppKit fixture: {error}"),
-        }
-    };
-    let incarnation: Incarnation = target.handle.incarnation().into();
+    let incarnation: Incarnation =
+        inject::identify(fixture.0.id() as i32).expect("identify AppKit fixture").into();
     while fixture_window_count(incarnation.pid) < 2 && Instant::now() < deadline {
         sleep(Duration::from_millis(25));
     }

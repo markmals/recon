@@ -71,14 +71,12 @@ fn resolves_a_window_server_id_to_a_live_native_window() {
     let executable = artifact("fixtures/ReconFixture.app/Contents/MacOS/ReconFixture");
     let mut fixture = Fixture(Command::new(&executable).spawn().expect("launch AppKit fixture"));
     let deadline = Instant::now() + Duration::from_secs(10);
-    let target = loop {
-        match inject::bind_target(fixture.0.id() as i32) {
-            Ok(target) => break target,
-            Err(_) if Instant::now() < deadline => sleep(Duration::from_millis(25)),
-            Err(error) => panic!("bind AppKit fixture: {error}"),
-        }
-    };
-    let incarnation = target.handle.incarnation();
+    // The loader needs a target whose libSystem has initialized; a window proves it has.
+    while fixture_main_window_server_id(fixture.0.id()).is_none() {
+        assert!(Instant::now() < deadline, "the AppKit fixture never showed its main window");
+        sleep(Duration::from_millis(25));
+    }
+    let incarnation = inject::identify(fixture.0.id() as i32).expect("identify AppKit fixture");
     let directory = TempDir::new().expect("session directory");
     fs::set_permissions(directory.path(), fs::Permissions::from_mode(0o700))
         .expect("private session directory");

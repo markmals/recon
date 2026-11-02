@@ -805,6 +805,11 @@ fn proposal0005_prepare_host_accepts_both_a_status_report_and_an_applied_change(
                 "host": host_facts(),
                 "requiredBootArgs": "amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0",
                 "readiness": "blocked",
+                "stagedHelper": {
+                    "value": false,
+                    "source": "/Library/Application Support/Recon/recon-helper.dylib compared with /opt/homebrew/Cellar/recon/0.1.3/libexec/bin/recon-helper.dylib",
+                    "detail": null,
+                },
                 "operatorSteps": "To disable SIP: shut down the Mac; ...",
             }),
             json!({
@@ -816,6 +821,7 @@ fn proposal0005_prepare_host_accepts_both_a_status_report_and_an_applied_change(
                     "-arm64e_preview_abi",
                     "tss_should_crash=0",
                 ],
+                "stagedHelper": "/Library/Application Support/Recon/recon-helper.dylib",
                 "operatorSteps": ["To disable SIP: shut down the Mac; ..."],
             }),
             json!({
@@ -823,6 +829,7 @@ fn proposal0005_prepare_host_accepts_both_a_status_report_and_an_applied_change(
                 "changed": true,
                 "rebootRequired": true,
                 "reconBootArgs": [],
+                "stagedHelper": null,
                 "operatorSteps": ["To re-enable SIP, return to Recovery, run `csrutil enable`."],
             }),
         ],

@@ -135,7 +135,11 @@ pub(crate) trait CommandRunner {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HostPreparation {
     pub(crate) changed: bool,
+    /// Only a boot-argument change needs a reboot; staging or removing the helper does not.
+    pub(crate) reboot_required: bool,
     pub(crate) boot_args: String,
+    /// The research helper this preparation installed or removed, when it touched one.
+    pub(crate) staged_helper: Option<String>,
     pub(crate) operator_steps: String,
 }
 #[derive(Clone, Debug, Serialize, JsonSchema)]
@@ -144,6 +148,7 @@ pub(crate) struct HostPreparationStatus {
     pub(crate) host: HostFacts,
     pub(crate) required_boot_args: String,
     pub(crate) readiness: Eligibility,
+    pub(crate) staged_helper: Fact<bool>,
     pub(crate) operator_steps: String,
 }
 
@@ -279,7 +284,10 @@ fn read_configured_boot_args<R: CommandRunner>(runner: &mut R) -> Result<String,
     Err(format!("cannot read boot-args: {}", output.stderr.trim()))
 }
 
-pub(crate) fn prepare_host_status<R: CommandRunner>(runner: &mut R) -> HostPreparationStatus {
+pub(crate) fn prepare_host_status<R: CommandRunner>(
+    runner: &mut R,
+    staged_helper: Fact<bool>,
+) -> HostPreparationStatus {
     let host = host_status(runner);
     let required_boot_args = host
         .configured_boot_args
@@ -303,6 +311,7 @@ pub(crate) fn prepare_host_status<R: CommandRunner>(runner: &mut R) -> HostPrepa
         host,
         required_boot_args,
         readiness,
+        staged_helper,
         operator_steps: OPERATOR_STEPS.into(),
     }
 }
@@ -434,7 +443,13 @@ pub(crate) fn prepare_host<R: CommandRunner>(
             ));
         }
     }
-    Ok(HostPreparation { changed: true, boot_args, operator_steps: OPERATOR_STEPS.into() })
+    Ok(HostPreparation {
+        changed: true,
+        reboot_required: true,
+        boot_args,
+        staged_helper: None,
+        operator_steps: OPERATOR_STEPS.into(),
+    })
 }
 
 pub(crate) fn revert_host<R: CommandRunner>(
@@ -448,10 +463,12 @@ pub(crate) fn revert_host<R: CommandRunner>(
     let Some(recorded) = read_recon_added(runner)? else {
         return Ok(HostPreparation {
             changed: false,
+            reboot_required: false,
             boot_args: current,
+            staged_helper: None,
             operator_steps:
-                "No Recon research boot-arg record was found, so nothing was reverted. \
-                             Remove any research boot-args manually if they are no longer wanted."
+                "No Recon research boot-arg record was found, so no boot-args were reverted. \
+                 Remove any research boot-args manually if they are no longer wanted."
                     .into(),
         });
     };
@@ -498,7 +515,13 @@ pub(crate) fn revert_host<R: CommandRunner>(
     } else {
         "No recorded research boot-args remained, so no boot-arg reboot is needed. To re-enable SIP: shut down, enter macOS Recovery by holding the power button until startup options appear; choose Options > Continue; open Utilities > Terminal; run `csrutil enable`; reboot."
     };
-    Ok(HostPreparation { changed: removed_any, boot_args, operator_steps: operator_steps.into() })
+    Ok(HostPreparation {
+        changed: removed_any,
+        reboot_required: removed_any,
+        boot_args,
+        staged_helper: None,
+        operator_steps: operator_steps.into(),
+    })
 }
 
 fn require(

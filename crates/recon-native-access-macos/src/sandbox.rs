@@ -1,0 +1,159 @@
+//! Whether a target's own sandbox lets it load the helper Recon would hand it.
+//!
+//! The loader's bootstrap opens the helper from inside the target, under the target's sandbox.
+//! When that sandbox cannot read the helper, the loader still succeeds: the helper never loads,
+//! and the open can only time out with the bootstrap already in the target. Asking the target's
+//! sandbox first turns that into a refusal before any effect. The endpoint needs no such
+//! question: the loader binds it outside the target and hands it over.
+
+use std::ffi::{CStr, CString, c_char};
+use std::os::unix::ffi::OsStrExt;
+use std::path::Path;
+
+/// `SANDBOX_FILTER_PATH`: the operation's one argument is a C-string path.
+const FILTER_PATH: libc::c_int = 1;
+
+unsafe extern "C" {
+    /// Queries another process's sandbox: 0 when it allows the operation, 1 when it denies it, and
+    /// -1 when the query itself failed.
+    fn sandbox_check(
+        pid: libc::pid_t,
+        operation: *const c_char,
+        filter: libc::c_int,
+        ...
+    ) -> libc::c_int;
+    /// Flag for `sandbox_check` that asks without recording a violation.
+    static SANDBOX_CHECK_NO_REPORT: libc::c_int;
+}
+
+/// Why the sandbox of the process running as `pid` would stop the helper at `helper` from loading,
+/// or `None` when it allows it or cannot say.
+pub(crate) fn load_refusal(pid: i32, helper: &Path) -> Option<String> {
+    if !denies(pid, c"file-read-data", helper) && !denies(pid, c"file-map-executable", helper) {
+        return None;
+    }
+    Some(format!(
+        "the target's sandbox cannot read the helper at {}, so nothing was loaded; run `recon ui \
+         session prepare-host` to install the helper in /Library/Application Support/Recon, \
+         where App Sandbox can read it",
+        helper.display()
+    ))
+}
+
+fn denies(pid: i32, operation: &CStr, path: &Path) -> bool {
+    let Ok(path) = CString::new(path.as_os_str().as_bytes()) else {
+        return false;
+    };
+    // SAFETY: both strings are NUL-terminated and outlive the call, and the path filter takes
+    // exactly one C-string argument.
+    unsafe {
+        let filter = FILTER_PATH | SANDBOX_CHECK_NO_REPORT;
+        sandbox_check(pid, operation.as_ptr(), filter, path.as_ptr()) == 1
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use std::path::PathBuf;
+    use std::process::{Child, Command};
+    use std::thread::sleep;
+    use std::time::{Duration, Instant};
+
+    use super::*;
+
+    /// A sleeping process, killed and reaped when dropped.
+    struct Target(Child);
+
+    impl Target {
+        /// `/bin/sleep` under a profile that allows everything except reading files inside
+        /// `confined`.
+        fn sandboxed(confined: &Path) -> Self {
+            let profile = format!(
+                "(version 1)(allow default)(deny file-read-data (subpath \"{}\"))",
+                confined.display()
+            );
+            let target = Self(
+                Command::new("/usr/bin/sandbox-exec")
+                    .args(["-p", &profile, "/bin/sleep", "30"])
+                    .spawn()
+                    .expect("start a sandboxed sleeper"),
+            );
+            // sandbox-exec applies the profile before it execs, so wait until the kernel says so.
+            let deadline = Instant::now() + Duration::from_secs(5);
+            // SAFETY: a null operation with no filter asks only whether the process is sandboxed.
+            while unsafe { sandbox_check(target.pid(), std::ptr::null(), 0) } != 1 {
+                assert!(Instant::now() < deadline, "the sleeper never became sandboxed");
+                sleep(Duration::from_millis(10));
+            }
+            target
+        }
+
+        fn unsandboxed() -> Self {
+            Self(Command::new("/bin/sleep").arg("30").spawn().expect("start a sleeper"))
+        }
+
+        fn pid(&self) -> i32 {
+            self.0.id() as i32
+        }
+    }
+
+    impl Drop for Target {
+        fn drop(&mut self) {
+            let _ = self.0.kill();
+            let _ = self.0.wait();
+        }
+    }
+
+    /// A helper file in each of the confined and the open half of one temporary directory.
+    /// Sandbox rules match resolved paths, so both halves are canonical.
+    struct Layout {
+        _root: tempfile::TempDir,
+        confined: PathBuf,
+        open: PathBuf,
+    }
+
+    impl Layout {
+        fn new() -> Self {
+            let root = tempfile::tempdir().expect("temporary layout");
+            let base = fs::canonicalize(root.path()).expect("canonical layout");
+            let (confined, open) = (base.join("confined"), base.join("open"));
+            for directory in [&confined, &open] {
+                fs::create_dir(directory).expect("layout directory");
+                fs::write(directory.join("recon-helper.dylib"), b"helper").expect("helper file");
+            }
+            Self { _root: root, confined, open }
+        }
+
+        fn helper(directory: &Path) -> PathBuf {
+            directory.join("recon-helper.dylib")
+        }
+    }
+
+    #[test]
+    fn names_a_helper_the_target_sandbox_cannot_read() {
+        let layout = Layout::new();
+        let target = Target::sandboxed(&layout.confined);
+        let helper = Layout::helper(&layout.confined);
+
+        let refusal = load_refusal(target.pid(), &helper).expect("the sandbox denies the helper");
+
+        assert!(refusal.contains(&helper.display().to_string()), "{refusal}");
+    }
+
+    #[test]
+    fn allows_a_helper_the_target_sandbox_can_read() {
+        let layout = Layout::new();
+        let target = Target::sandboxed(&layout.confined);
+
+        assert_eq!(load_refusal(target.pid(), &Layout::helper(&layout.open)), None);
+    }
+
+    #[test]
+    fn never_refuses_an_unsandboxed_target() {
+        let layout = Layout::new();
+        let target = Target::unsandboxed();
+
+        assert_eq!(load_refusal(target.pid(), &Layout::helper(&layout.confined)), None);
+    }
+}

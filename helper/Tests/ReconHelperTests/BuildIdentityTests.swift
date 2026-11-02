@@ -15,14 +15,12 @@ struct BuildIdentityTests {
         #expect(ReconHelperIdentity.build.isEmpty)
     }
 
-    @Test("A server with no build identity refuses to start")
+    @Test("A server with no build identity refuses to start and gives its endpoint up")
     func refusesToStart() throws {
-        var template = Array("/tmp/recon-helper-identity-XXXXXX".utf8CString)
-        guard let made = mkdtemp(&template) else { throw FixtureFailure.directory }
-        let directory = String(cString: made)
+        let directory = try privateDirectory()
         defer { rmdir(directory) }
-        #expect(chmod(directory, 0o700) == 0)
-        #expect(ReconHelperServer(build: "").start("\(directory)/s") == -1)
+        let port = try handedEndpoint(at: "\(directory)/s")
+        #expect(ReconHelperServer(build: "").start(port) == -1)
         #expect(!FileManager.default.fileExists(atPath: "\(directory)/s"))
     }
 

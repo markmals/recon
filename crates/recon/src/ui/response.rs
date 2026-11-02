@@ -568,6 +568,10 @@ pub struct HostPreparationStatus {
     /// The boot arguments the research profile requires, exactly as they are written to nvram.
     pub required_boot_args: String,
     pub readiness: Eligibility,
+    /// Whether `/Library/Application Support/Recon` holds a copy identical to this Recon's packaged
+    /// helper, which an App Sandboxed target needs. It does not change `readiness`, which describes
+    /// host security.
+    pub staged_helper: Fact<bool>,
     /// The exact operator steps Recon cannot perform itself, printed rather than linked.
     pub operator_steps: String,
 }
@@ -583,6 +587,8 @@ pub struct HostPreparationChange {
     pub reboot_required: bool,
     /// The boot arguments Recon sets or removes, exactly as written.
     pub recon_boot_args: Vec<String>,
+    /// The research helper this invocation installed or removed, or null when it touched none.
+    pub staged_helper: Option<String>,
     /// The exact operator steps Recon cannot perform itself, printed rather than linked.
     pub operator_steps: Vec<String>,
 }
