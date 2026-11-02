@@ -117,14 +117,13 @@ pub fn open_session(
         }
     };
 
-    let target = inject::bind_target(pid.0 as i32).map_err(|error| {
+    let incarnation = Incarnation::from(inject::identify(pid.0 as i32).map_err(|error| {
         InspectionError::new(
             InspectionErrorCode::Unavailable,
             Stage::Attach,
-            format!("the selected process incarnation could not be bound: {error}"),
+            format!("the selected process incarnation could not be identified: {error}"),
         )
-    })?;
-    let incarnation = Incarnation::from(target.handle.incarnation());
+    })?);
     let executable = selected_executable(application, pid)?;
     let store = default_store()?;
     let _lifecycle = store.lock_lifecycle(incarnation)?;
@@ -467,10 +466,15 @@ fn resident_facts(pid: Option<Pid>) -> ResidentObservation {
     };
     let result = (|| -> Result<ResidentObservation, InspectionError> {
         let store = SessionStore::default_root().and_then(SessionStore::open)?;
-        let bound = inject::bind_target(pid.0 as i32).map_err(|error| {
-            InspectionError::new(InspectionErrorCode::Unavailable, Stage::Attach, error.to_string())
-        })?;
-        let incarnation = bound.handle.incarnation().into();
+        let incarnation = inject::identify(pid.0 as i32)
+            .map_err(|error| {
+                InspectionError::new(
+                    InspectionErrorCode::Unavailable,
+                    Stage::Attach,
+                    error.to_string(),
+                )
+            })?
+            .into();
         let record = store.live_record_for(incarnation)?;
         let bootstrap = store.endpoint_path(incarnation)?.exists();
         if let Some(record) = record.filter(|record| record.state == SessionState::Active)

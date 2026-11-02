@@ -2,9 +2,10 @@
 //! Proposal 0005: a real loader/helper handshake and acknowledged close through the host transport.
 
 use std::fs;
+use std::io::{BufRead, BufReader};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command};
+use std::process::{Child, Command, Stdio};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
@@ -34,18 +35,18 @@ fn opens_and_closes_a_real_helper_session() {
         Command::new("arch")
             .arg("-arm64e")
             .arg(binary)
+            .stdout(Stdio::piped())
             .spawn()
             .expect("launch cooperative fixture"),
     );
-    let bind_deadline = Instant::now() + Duration::from_secs(5);
-    let target = loop {
-        match inject::bind_target(fixture.0.id() as i32) {
-            Ok(target) => break target,
-            Err(_) if Instant::now() < bind_deadline => sleep(Duration::from_millis(20)),
-            Err(error) => panic!("bind target: {error}"),
-        }
-    };
-    let incarnation = target.handle.incarnation();
+    // `arch` execs the fixture, which starts a new incarnation; the fixture prints its pid once
+    // it runs, so the incarnation read after that line is the one the loader can bind.
+    let mut line = String::new();
+    BufReader::new(fixture.0.stdout.take().expect("piped fixture output"))
+        .read_line(&mut line)
+        .expect("read the fixture's pid");
+    assert_eq!(line.trim().parse::<u32>().ok(), Some(fixture.0.id()), "fixture never started");
+    let incarnation = inject::identify(fixture.0.id() as i32).expect("identify the fixture");
 
     let directory = TempDir::new().expect("session directory");
     fs::set_permissions(directory.path(), fs::Permissions::from_mode(0o700))

@@ -3,8 +3,9 @@
 //! helper inside arm64 and arm64e targets.
 
 use std::fs;
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command};
+use std::process::{Child, Command, Stdio};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
@@ -26,14 +27,15 @@ impl Fixture {
         let binary = artifact("fixtures/inject-fixture");
         let mut command = Command::new("arch");
         command.arg(if arm64e { "-arm64e" } else { "-arm64" }).arg(&binary);
-        let child = command.spawn().expect("spawn the inject fixture");
-        let fixture = Self(child);
-        let deadline = Instant::now() + Duration::from_secs(5);
-        while inject::bind_target(fixture.pid()).is_err() {
-            assert!(Instant::now() < deadline, "the fixture never became bindable");
-            sleep(Duration::from_millis(20));
-        }
-        fixture
+        let mut child = command.stdout(Stdio::piped()).spawn().expect("spawn the inject fixture");
+        // `arch` execs the fixture, and exec starts a new incarnation of the same pid. The fixture
+        // prints its pid once it runs, so an incarnation read after that line is the bindable one.
+        let mut line = String::new();
+        BufReader::new(child.stdout.take().expect("piped fixture output"))
+            .read_line(&mut line)
+            .expect("read the fixture's pid");
+        assert_eq!(line.trim().parse::<u32>().ok(), Some(child.id()), "the fixture never started");
+        Self(child)
     }
 
     fn pid(&self) -> i32 {
@@ -52,7 +54,7 @@ impl Drop for Fixture {
 #[ignore = "requires signed loader and cooperative fixtures; run via `vp run test:inject`"]
 fn c_loader_rejects_a_mismatched_executable_before_loading() {
     let mut fixture = Fixture::launch(true);
-    let incarnation = inject::bind(fixture.pid()).expect("bind the fixture").incarnation();
+    let incarnation = inject::identify(fixture.pid()).expect("identify the fixture");
     let report = std::env::temp_dir().join(format!("recon-c-loader-exec-{}.pid", fixture.pid()));
     let _ = fs::remove_file(&report);
 
@@ -90,7 +92,7 @@ fn c_loader_executes_inside_an_arm64e_target() {
 #[ignore = "requires signed loader and cooperative fixtures; run via `vp run test:inject`"]
 fn c_loader_rejects_a_reused_incarnation_before_loading() {
     let mut fixture = Fixture::launch(true);
-    let incarnation = inject::bind(fixture.pid()).expect("bind the fixture").incarnation();
+    let incarnation = inject::identify(fixture.pid()).expect("identify the fixture");
     let report = std::env::temp_dir().join(format!("recon-c-loader-stale-{}.pid", fixture.pid()));
     let _ = fs::remove_file(&report);
 
@@ -112,7 +114,7 @@ fn c_loader_rejects_a_reused_incarnation_before_loading() {
 
 fn assert_c_loader_executes(arm64e: bool) {
     let fixture = Fixture::launch(arm64e);
-    let incarnation = inject::bind(fixture.pid()).expect("bind the fixture").incarnation();
+    let incarnation = inject::identify(fixture.pid()).expect("identify the fixture");
     let report = std::env::temp_dir().join(format!("recon-c-loader-{}.pid", fixture.pid()));
     let _ = fs::remove_file(&report);
 

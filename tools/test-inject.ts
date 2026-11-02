@@ -7,8 +7,6 @@ let result = spawnSync(
         "-p",
         "recon-native-access-macos",
         "--test",
-        "inject_binding",
-        "--test",
         "inject_loader",
         "--",
         "--ignored",
