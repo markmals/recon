@@ -68,8 +68,8 @@ fn c_loader_rejects_a_mismatched_executable_before_loading() {
     let report = std::env::temp_dir().join(format!("recon-c-loader-exec-{}.pid", fixture.pid()));
     let _ = fs::remove_file(&report);
 
-    // The incarnation is correct, but the expected executable names a different binary: exec()
-    // keeps pid and pidversion, so only the executable check can catch a swapped image.
+    // The incarnation is correct, but the expected executable names a different binary, so only
+    // the loader's executable check can refuse it.
     let output = Command::new("arch")
         .arg("-arm64e")
         .arg(artifact("recon-loader"))
