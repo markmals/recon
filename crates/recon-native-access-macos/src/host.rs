@@ -59,11 +59,12 @@ pub fn prepare_host(action: HostPreparation) -> Result<Value, InspectionError> {
             }
             eprintln!(
                 "Recon will set these research boot-args through sudo nvram: {}\nIt will also \
-                 install its research helper (build {}) in {} through sudo install, because App \
-                 Sandboxed applications can load a helper only from a location like it.\n{}",
+                 create {} through sudo, owned by you, and copy its research helper (build {}) \
+                 into it, because App Sandboxed applications can load a helper only from a \
+                 location like it.\n{}",
                 status.required_boot_args,
-                packaged.helper_build,
                 STAGED_DIRECTORY,
+                packaged.helper_build,
                 status.operator_steps
             );
             confirm()?;
@@ -80,8 +81,8 @@ pub fn prepare_host(action: HostPreparation) -> Result<Value, InspectionError> {
                         Stage::Attach,
                         format!(
                             "the research boot-args were set, but the research helper could not \
-                             be installed in {STAGED_DIRECTORY} ({error}); run prepare-host again \
-                             to install it"
+                             be copied to {STAGED_DIRECTORY} ({error}); run prepare-host again \
+                             to copy it"
                         ),
                     )
                 })?;

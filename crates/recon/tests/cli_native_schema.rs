@@ -807,7 +807,7 @@ fn proposal0005_prepare_host_accepts_both_a_status_report_and_an_applied_change(
                 "readiness": "blocked",
                 "stagedHelper": {
                     "value": false,
-                    "source": "/Library/Application Support/Recon build file",
+                    "source": "/Library/Application Support/Recon/recon-helper.dylib compared with /opt/homebrew/Cellar/recon/0.1.3/libexec/bin/recon-helper.dylib",
                     "detail": null,
                 },
                 "operatorSteps": "To disable SIP: shut down the Mac; ...",
