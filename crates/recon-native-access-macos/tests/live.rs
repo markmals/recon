@@ -6,7 +6,8 @@ use std::io::{BufRead, BufReader};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-use std::thread::sleep;
+use std::sync::mpsc;
+use std::thread::{self, sleep};
 use std::time::{Duration, Instant};
 
 use recon_native_access_macos::identity::{AccessMode, AccessProfile};
@@ -27,6 +28,21 @@ impl Drop for Fixture {
     }
 }
 
+/// Wait for the fixture to print its pid. `arch` execs the fixture, and exec starts a new
+/// incarnation of the same pid, so only an incarnation read after that line is the bindable one.
+fn wait_for_fixture(child: &mut Child) {
+    let output = child.stdout.take().expect("piped fixture output");
+    let (sender, receiver) = mpsc::channel();
+    thread::spawn(move || {
+        let mut line = String::new();
+        let _ = BufReader::new(output).read_line(&mut line);
+        let _ = sender.send(line);
+    });
+    let line =
+        receiver.recv_timeout(Duration::from_secs(5)).expect("the fixture never printed its pid");
+    assert_eq!(line.trim().parse::<u32>().ok(), Some(child.id()), "the fixture never started");
+}
+
 #[test]
 #[ignore = "requires signed loader, production helper, and cooperative fixture"]
 fn opens_and_closes_a_real_helper_session() {
@@ -39,13 +55,7 @@ fn opens_and_closes_a_real_helper_session() {
             .spawn()
             .expect("launch cooperative fixture"),
     );
-    // `arch` execs the fixture, which starts a new incarnation; the fixture prints its pid once
-    // it runs, so the incarnation read after that line is the one the loader can bind.
-    let mut line = String::new();
-    BufReader::new(fixture.0.stdout.take().expect("piped fixture output"))
-        .read_line(&mut line)
-        .expect("read the fixture's pid");
-    assert_eq!(line.trim().parse::<u32>().ok(), Some(fixture.0.id()), "fixture never started");
+    wait_for_fixture(&mut fixture.0);
     let incarnation = inject::identify(fixture.0.id() as i32).expect("identify the fixture");
 
     let directory = TempDir::new().expect("session directory");

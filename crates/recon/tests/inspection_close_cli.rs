@@ -5,7 +5,8 @@ use std::io::{BufRead, BufReader, Write};
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-use std::thread::sleep;
+use std::sync::mpsc;
+use std::thread::{self, sleep};
 use std::time::{Duration, Instant};
 
 use objc2_core_foundation::{CFArray, CFDictionary, CFNumber, CFRetained, CFString, CFType};
@@ -30,6 +31,21 @@ impl Drop for OwnedFixture {
     }
 }
 
+/// Wait for the fixture to print its pid. `arch` execs the fixture, and exec starts a new
+/// incarnation of the same pid, so only an incarnation read after that line is the bindable one.
+fn wait_for_fixture(child: &mut Child) {
+    let output = child.stdout.take().expect("piped fixture output");
+    let (sender, receiver) = mpsc::channel();
+    thread::spawn(move || {
+        let mut line = String::new();
+        let _ = BufReader::new(output).read_line(&mut line);
+        let _ = sender.send(line);
+    });
+    let line =
+        receiver.recv_timeout(Duration::from_secs(5)).expect("the fixture never printed its pid");
+    assert_eq!(line.trim().parse::<u32>().ok(), Some(child.id()), "the fixture never started");
+}
+
 #[test]
 #[ignore = "requires vp run test:inspection artifacts and a signed cooperative inject fixture"]
 fn an_unconfirmed_close_is_a_typed_cli_failure_not_success_json() {
@@ -43,13 +59,7 @@ fn an_unconfirmed_close_is_a_typed_cli_failure_not_success_json() {
             .expect("start a controlled cooperative target"),
     );
     let deadline = Instant::now() + Duration::from_secs(10);
-    // `arch` execs the fixture, which starts a new incarnation; the fixture prints its pid once
-    // it runs, so the incarnation read after that line is the one the loader can bind.
-    let mut line = String::new();
-    BufReader::new(fixture.0.stdout.take().expect("piped fixture output"))
-        .read_line(&mut line)
-        .expect("read the fixture's pid");
-    assert_eq!(line.trim().parse::<u32>().ok(), Some(fixture.0.id()), "fixture never started");
+    wait_for_fixture(&mut fixture.0);
     let incarnation = inject::identify(fixture.0.id() as i32).expect("identify the target");
 
     let home = tempfile::Builder::new().prefix("rcn").tempdir_in("/tmp").expect("private HOME");

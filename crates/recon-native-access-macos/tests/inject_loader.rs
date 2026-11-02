@@ -6,7 +6,8 @@ use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
-use std::thread::sleep;
+use std::sync::mpsc;
+use std::thread::{self, sleep};
 use std::time::{Duration, Instant};
 
 use recon_native_access_macos::inject;
@@ -28,13 +29,7 @@ impl Fixture {
         let mut command = Command::new("arch");
         command.arg(if arm64e { "-arm64e" } else { "-arm64" }).arg(&binary);
         let mut child = command.stdout(Stdio::piped()).spawn().expect("spawn the inject fixture");
-        // `arch` execs the fixture, and exec starts a new incarnation of the same pid. The fixture
-        // prints its pid once it runs, so an incarnation read after that line is the bindable one.
-        let mut line = String::new();
-        BufReader::new(child.stdout.take().expect("piped fixture output"))
-            .read_line(&mut line)
-            .expect("read the fixture's pid");
-        assert_eq!(line.trim().parse::<u32>().ok(), Some(child.id()), "the fixture never started");
+        wait_for_fixture(&mut child);
         Self(child)
     }
 
@@ -48,6 +43,21 @@ impl Drop for Fixture {
         let _ = self.0.kill();
         let _ = self.0.wait();
     }
+}
+
+/// Wait for the fixture to print its pid. `arch` execs the fixture, and exec starts a new
+/// incarnation of the same pid, so only an incarnation read after that line is the bindable one.
+fn wait_for_fixture(child: &mut Child) {
+    let output = child.stdout.take().expect("piped fixture output");
+    let (sender, receiver) = mpsc::channel();
+    thread::spawn(move || {
+        let mut line = String::new();
+        let _ = BufReader::new(output).read_line(&mut line);
+        let _ = sender.send(line);
+    });
+    let line =
+        receiver.recv_timeout(Duration::from_secs(5)).expect("the fixture never printed its pid");
+    assert_eq!(line.trim().parse::<u32>().ok(), Some(child.id()), "the fixture never started");
 }
 
 #[test]
