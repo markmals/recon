@@ -1,10 +1,10 @@
-//! What a target's own sandbox lets it do with the helper Recon would load into it.
+//! Whether a target's own sandbox lets it load the helper Recon would hand it.
 //!
-//! The loader's bootstrap opens the helper, and the helper binds its endpoint, from inside the
-//! target and under the target's sandbox. When that sandbox denies either, the loader still
-//! succeeds: the helper never loads or never listens, and the open can only time out with the
-//! bootstrap already in the target. Asking the target's sandbox first turns that into a refusal
-//! before any effect.
+//! The loader's bootstrap opens the helper from inside the target, under the target's sandbox.
+//! When that sandbox cannot read the helper, the loader still succeeds: the helper never loads,
+//! and the open can only time out with the bootstrap already in the target. Asking the target's
+//! sandbox first turns that into a refusal before any effect. The endpoint needs no such
+//! question: the loader binds it outside the target and hands it over.
 
 use std::ffi::{CStr, CString, c_char};
 use std::os::unix::ffi::OsStrExt;
@@ -27,29 +27,17 @@ unsafe extern "C" {
 }
 
 /// Why the sandbox of the process running as `pid` would stop the helper at `helper` from loading,
-/// or from listening at `endpoint`; `None` when it allows both or cannot say. The sandbox answers
-/// only for paths that exist, so the endpoint, which the helper creates, is judged by its
-/// directory.
-pub(crate) fn load_refusal(pid: i32, helper: &Path, endpoint: &Path) -> Option<String> {
-    let mut refusals = Vec::new();
-    if denies(pid, c"file-read-data", helper) || denies(pid, c"file-map-executable", helper) {
-        refusals.push(format!(
-            "it cannot read the helper at {}; a sandboxed target loads the helper only from a \
-             location its sandbox reads, such as /Library/Application Support/Recon",
-            helper.display()
-        ));
+/// or `None` when it allows it or cannot say.
+pub(crate) fn load_refusal(pid: i32, helper: &Path) -> Option<String> {
+    if !denies(pid, c"file-read-data", helper) && !denies(pid, c"file-map-executable", helper) {
+        return None;
     }
-    if let Some(directory) = endpoint.parent()
-        && denies(pid, c"network-bind", directory)
-    {
-        refusals.push(format!("it cannot create the helper endpoint in {}", directory.display()));
-    }
-    (!refusals.is_empty()).then(|| {
-        format!(
-            "the target's sandbox would stop the helper, so nothing was loaded: {}",
-            refusals.join("; ")
-        )
-    })
+    Some(format!(
+        "the target's sandbox cannot read the helper at {}, so nothing was loaded; a sandboxed \
+         target loads the helper only from a location its sandbox reads, such as \
+         /Library/Application Support/Recon",
+        helper.display()
+    ))
 }
 
 fn denies(pid: i32, operation: &CStr, path: &Path) -> bool {
@@ -78,11 +66,11 @@ mod tests {
     struct Target(Child);
 
     impl Target {
-        /// `/bin/sleep` under a profile that allows everything except reading a file and binding a
-        /// socket inside `confined`.
+        /// `/bin/sleep` under a profile that allows everything except reading files inside
+        /// `confined`.
         fn sandboxed(confined: &Path) -> Self {
             let profile = format!(
-                "(version 1)(allow default)(deny file-read-data network-bind (subpath \"{}\"))",
+                "(version 1)(allow default)(deny file-read-data (subpath \"{}\"))",
                 confined.display()
             );
             let target = Self(
@@ -117,8 +105,8 @@ mod tests {
         }
     }
 
-    /// A helper file and an endpoint directory, each in either the confined or the open half of
-    /// one temporary directory. Sandbox rules match resolved paths, so both halves are canonical.
+    /// A helper file in each of the confined and the open half of one temporary directory.
+    /// Sandbox rules match resolved paths, so both halves are canonical.
     struct Layout {
         _root: tempfile::TempDir,
         confined: PathBuf,
@@ -132,7 +120,6 @@ mod tests {
             let (confined, open) = (base.join("confined"), base.join("open"));
             for directory in [&confined, &open] {
                 fs::create_dir(directory).expect("layout directory");
-                fs::create_dir(directory.join("endpoint")).expect("endpoint directory");
                 fs::write(directory.join("recon-helper.dylib"), b"helper").expect("helper file");
             }
             Self { _root: root, confined, open }
@@ -140,10 +127,6 @@ mod tests {
 
         fn helper(directory: &Path) -> PathBuf {
             directory.join("recon-helper.dylib")
-        }
-
-        fn socket(directory: &Path) -> PathBuf {
-            directory.join("endpoint").join("sock")
         }
     }
 
@@ -153,39 +136,17 @@ mod tests {
         let target = Target::sandboxed(&layout.confined);
         let helper = Layout::helper(&layout.confined);
 
-        let refusal = load_refusal(target.pid(), &helper, &Layout::socket(&layout.open))
-            .expect("the sandbox denies the helper");
+        let refusal = load_refusal(target.pid(), &helper).expect("the sandbox denies the helper");
 
         assert!(refusal.contains(&helper.display().to_string()), "{refusal}");
-        assert!(!refusal.contains("endpoint"), "{refusal}");
     }
 
     #[test]
-    fn names_an_endpoint_the_target_sandbox_cannot_create() {
-        let layout = Layout::new();
-        let target = Target::sandboxed(&layout.confined);
-        let endpoint = Layout::socket(&layout.confined);
-
-        let refusal = load_refusal(target.pid(), &Layout::helper(&layout.open), &endpoint)
-            .expect("the sandbox denies the endpoint");
-
-        let directory = endpoint.parent().expect("endpoint directory");
-        assert!(refusal.contains(&directory.display().to_string()), "{refusal}");
-        assert!(!refusal.contains("recon-helper.dylib"), "{refusal}");
-    }
-
-    #[test]
-    fn allows_what_the_target_sandbox_permits() {
+    fn allows_a_helper_the_target_sandbox_can_read() {
         let layout = Layout::new();
         let target = Target::sandboxed(&layout.confined);
 
-        let refusal = load_refusal(
-            target.pid(),
-            &Layout::helper(&layout.open),
-            &Layout::socket(&layout.open),
-        );
-
-        assert_eq!(refusal, None);
+        assert_eq!(load_refusal(target.pid(), &Layout::helper(&layout.open)), None);
     }
 
     #[test]
@@ -193,12 +154,6 @@ mod tests {
         let layout = Layout::new();
         let target = Target::unsandboxed();
 
-        let refusal = load_refusal(
-            target.pid(),
-            &Layout::helper(&layout.confined),
-            &Layout::socket(&layout.confined),
-        );
-
-        assert_eq!(refusal, None);
+        assert_eq!(load_refusal(target.pid(), &Layout::helper(&layout.confined)), None);
     }
 }

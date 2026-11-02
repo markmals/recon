@@ -226,7 +226,7 @@ pub fn open_session(
             "the open deadline expired before the helper loader started",
         ));
     }
-    if let Some(refusal) = sandbox::load_refusal(incarnation.pid, &artifacts.helper, &socket) {
+    if let Some(refusal) = sandbox::load_refusal(incarnation.pid, &artifacts.helper) {
         return Err(InspectionError::new(InspectionErrorCode::Unavailable, Stage::Attach, refusal));
     }
     remove_refused_endpoint(&socket)?;

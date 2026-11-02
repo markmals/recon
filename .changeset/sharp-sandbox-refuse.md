@@ -2,4 +2,4 @@
 "recon": patch
 ---
 
-`recon ui session open` now refuses an App Sandboxed target, such as TextEdit or Calculator, with `INSPECTION_UNAVAILABLE` before loading anything into it. The error names the helper path the target's sandbox cannot read and the endpoint directory where it cannot listen. Previously the helper silently failed to start, the open timed out with `INSPECTION_TIMEOUT`, and later attempts returned `INSPECTION_BUSY` until the application quit.
+`recon ui session open --profile research` now works for App Sandboxed applications such as TextEdit and Calculator. Previously the helper loaded but never answered, the open timed out with `INSPECTION_TIMEOUT`, and every retry returned `INSPECTION_BUSY` until the application quit. The sandbox still has to be able to read the helper. When it cannot, as with Homebrew's install directory, Recon now refuses with `INSPECTION_UNAVAILABLE` before loading anything, naming the helper path.

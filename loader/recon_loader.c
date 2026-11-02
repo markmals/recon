@@ -1,5 +1,6 @@
 #include <bsm/libbsm.h>
 #include <dlfcn.h>
+#include <errno.h>
 #include <mach/mach.h>
 #include <mach/mach_vm.h>
 #include <mach-o/dyld.h>
@@ -11,6 +12,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/fileport.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 extern unsigned char bootstrap[], trampoline[], bootstrap_end[];
@@ -138,6 +143,86 @@ static void release_regions(mach_port_t task, mach_vm_address_t code,
   if (storage) mach_vm_deallocate(task, storage, storage_size);
 }
 
+// Bind the helper's endpoint at `path` without listening, or return -1. The helper listens once it
+// claims the socket, so a client that connects first is refused and retries rather than queuing on
+// a listener the target does not own. Nothing but the directory protects the endpoint before it
+// exists, so that directory must be private to this user and the path must be new.
+static int bind_endpoint(const char *path) {
+  struct sockaddr_un address = {0};
+  address.sun_family = AF_UNIX;
+  if (strlen(path) >= sizeof(address.sun_path)) return -1;
+  strlcpy(address.sun_path, path, sizeof(address.sun_path));
+
+  char directory[MAX_PATH] = {0};
+  strlcpy(directory, path, sizeof(directory));
+  char *slash = strrchr(directory, '/');
+  if (slash == NULL || slash == directory) return -1;
+  *slash = '\0';
+  struct stat status;
+  if (lstat(directory, &status) != 0 || !S_ISDIR(status.st_mode) || status.st_uid != geteuid() ||
+      (status.st_mode & 0777) != 0700) return -1;
+  if (lstat(path, &status) == 0 || errno != ENOENT) return -1;
+
+  int endpoint = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (endpoint < 0) return -1;
+  if (bind(endpoint, (struct sockaddr *)&address, sizeof(address)) != 0) {
+    close(endpoint);
+    return -1;
+  }
+  if (chmod(path, 0600) != 0 || lstat(path, &status) != 0 || !S_ISSOCK(status.st_mode) ||
+      status.st_uid != geteuid()) {
+    close(endpoint);
+    unlink(path);
+    return -1;
+  }
+  return endpoint;
+}
+
+// Queue `endpoint` as a fileport on a new receive right in the target and return that right's name
+// there, which the helper's entry point receives. The target may be sandboxed and unable to create a
+// socket where Recon looks for one, but it can claim and listen on one it is given.
+static kern_return_t hand_over(mach_port_t task, int endpoint, mach_port_name_t *remote) {
+  mach_port_t fileport = MACH_PORT_NULL;
+  if (fileport_makeport(endpoint, &fileport) != 0) return KERN_FAILURE;
+  kern_return_t status = mach_port_allocate(task, MACH_PORT_RIGHT_RECEIVE, remote);
+  mach_port_t send = MACH_PORT_NULL;
+  mach_msg_type_name_t acquired = 0;
+  if (status == KERN_SUCCESS) {
+    status = mach_port_extract_right(task, *remote, MACH_MSG_TYPE_MAKE_SEND, &send, &acquired);
+  }
+  if (status == KERN_SUCCESS) {
+    struct {
+      mach_msg_header_t header;
+      mach_msg_body_t body;
+      mach_msg_port_descriptor_t endpoint;
+    } message;
+    memset(&message, 0, sizeof(message));
+    message.header.msgh_bits =
+        MACH_MSGH_BITS_SET(MACH_MSG_TYPE_MOVE_SEND, 0, 0, MACH_MSGH_BITS_COMPLEX);
+    message.header.msgh_size = sizeof(message);
+    message.header.msgh_remote_port = send;
+    message.body.msgh_descriptor_count = 1;
+    message.endpoint.name = fileport;
+    message.endpoint.disposition = MACH_MSG_TYPE_MOVE_SEND;
+    message.endpoint.type = MACH_MSG_PORT_DESCRIPTOR;
+    status = mach_msg(&message.header, MACH_SEND_MSG | MACH_SEND_TIMEOUT, sizeof(message), 0,
+        MACH_PORT_NULL, 1000, MACH_PORT_NULL);
+    if (status == KERN_SUCCESS) return KERN_SUCCESS;
+    mach_port_deallocate(mach_task_self(), send);
+  }
+  mach_port_deallocate(mach_task_self(), fileport);
+  if (*remote != MACH_PORT_NULL) mach_port_mod_refs(task, *remote, MACH_PORT_RIGHT_RECEIVE, -1);
+  *remote = MACH_PORT_NULL;
+  return status;
+}
+
+// Undo a handover the loader will not start: destroying the receive right releases the queued
+// endpoint, and the socket path goes with it.
+static void withdraw(mach_port_t task, mach_port_name_t remote, const char *path) {
+  mach_port_mod_refs(task, remote, MACH_PORT_RIGHT_RECEIVE, -1);
+  unlink(path);
+}
+
 int main(int argc, char **argv) {
   if (argc != 6) {
     fprintf(stderr, "usage: %s PID PIDVERSION HELPER_DYLIB SOCKET_PATH EXPECTED_EXECUTABLE\n", argv[0]);
@@ -200,8 +285,26 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  int endpoint = bind_endpoint(argv[4]);
+  if (endpoint < 0) {
+    fprintf(stderr, "the helper endpoint could not be bound in its private directory\n");
+    mach_port_deallocate(mach_task_self(), task);
+    return 1;
+  }
+  mach_port_name_t handoff = MACH_PORT_NULL;
+  status = hand_over(task, endpoint, &handoff);
+  close(endpoint);
+  if (status != KERN_SUCCESS) {
+    fprintf(stderr, "the helper endpoint could not be handed to the target: %d\n", status);
+    unlink(argv[4]);
+    mach_port_deallocate(mach_task_self(), task);
+    return 1;
+  }
+  char handoff_name[16] = {0};
+  snprintf(handoff_name, sizeof(handoff_name), "%u", handoff);
+
   const char *entry_name = "recon_helper_main";
-  size_t strings = strlen(argv[3]) + 1 + strlen(entry_name) + 1 + strlen(argv[4]) + 1;
+  size_t strings = strlen(argv[3]) + 1 + strlen(entry_name) + 1 + strlen(handoff_name) + 1;
   size_t storage_size = ((STACK_SIZE + sizeof(context) + strings + LOADER_PAGE_SIZE - 1) / LOADER_PAGE_SIZE) * LOADER_PAGE_SIZE;
   mach_vm_address_t code = 0, storage = 0;
   status = mach_vm_allocate(task, &code, LOADER_PAGE_SIZE, VM_FLAGS_ANYWHERE);
@@ -211,6 +314,7 @@ int main(int argc, char **argv) {
   if (status != KERN_SUCCESS) {
     fprintf(stderr, "target allocation failed: %d\n", status);
     release_regions(task, code, storage, storage_size);
+    withdraw(task, handoff, argv[4]);
     mach_port_deallocate(mach_task_self(), task);
     return 1;
   }
@@ -233,7 +337,7 @@ int main(int argc, char **argv) {
     status = mach_vm_write(task, context.symbol, (vm_offset_t)entry_name, strlen(entry_name) + 1);
   }
   if (status == KERN_SUCCESS) {
-    status = mach_vm_write(task, context.argument, (vm_offset_t)argv[4], strlen(argv[4]) + 1);
+    status = mach_vm_write(task, context.argument, (vm_offset_t)handoff_name, strlen(handoff_name) + 1);
   }
   if (status == KERN_SUCCESS) {
     status = mach_vm_protect(task, code, LOADER_PAGE_SIZE, FALSE, VM_PROT_READ | VM_PROT_EXECUTE);
@@ -241,6 +345,7 @@ int main(int argc, char **argv) {
   if (status != KERN_SUCCESS || !same_incarnation(task, expected)) {
     fprintf(stderr, "target write, protection, or incarnation validation failed\n");
     release_regions(task, code, storage, storage_size);
+    withdraw(task, handoff, argv[4]);
     mach_port_deallocate(mach_task_self(), task);
     return 1;
   }
@@ -259,6 +364,7 @@ int main(int argc, char **argv) {
   if (status != KERN_SUCCESS) {
     fprintf(stderr, "target thread start failed: %d\n", status);
     release_regions(task, code, storage, storage_size);
+    withdraw(task, handoff, argv[4]);
     mach_port_deallocate(mach_task_self(), task);
     return 1;
   }

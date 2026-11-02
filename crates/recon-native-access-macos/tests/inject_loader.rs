@@ -1,16 +1,19 @@
 #![cfg(target_os = "macos")]
-//! Proposal 0005: the shipped universal C loader binds the requested incarnation and executes the
-//! helper inside arm64 and arm64e targets.
+//! Proposal 0005: the shipped universal C loader binds the requested incarnation, hands the helper
+//! its endpoint, and executes the helper inside arm64 and arm64e targets.
 
 use std::fs;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read};
+use std::os::unix::fs::PermissionsExt;
+use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, Command, Output, Stdio};
 use std::sync::mpsc;
 use std::thread::{self, sleep};
 use std::time::{Duration, Instant};
 
 use recon_native_access_macos::inject;
+use tempfile::TempDir;
 
 fn artifact(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target").join(name)
@@ -60,29 +63,59 @@ fn wait_for_fixture(child: &mut Child) {
     assert_eq!(line.trim().parse::<u32>().ok(), Some(child.id()), "the fixture never started");
 }
 
+/// A fresh endpoint path in a directory only this user can reach, as Recon's store provides.
+fn private_endpoint() -> (TempDir, PathBuf) {
+    let directory = tempfile::tempdir().expect("endpoint directory");
+    fs::set_permissions(directory.path(), fs::Permissions::from_mode(0o700))
+        .expect("private endpoint directory");
+    let endpoint = directory.path().join("sock");
+    (directory, endpoint)
+}
+
+fn run_loader(pid: i32, pidversion: u32, endpoint: &Path, executable: &Path) -> Output {
+    Command::new("arch")
+        .arg("-arm64e")
+        .arg(artifact("recon-loader"))
+        .arg(pid.to_string())
+        .arg(pidversion.to_string())
+        .arg(artifact("fixtures/inject-helper.dylib"))
+        .arg(endpoint)
+        .arg(executable)
+        .output()
+        .expect("run the signed C loader")
+}
+
+/// The pid the helper answers with on its endpoint, once it is listening.
+fn answering_pid(endpoint: &Path) -> i32 {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let mut stream = loop {
+        match UnixStream::connect(endpoint) {
+            Ok(stream) => break stream,
+            Err(error) => {
+                assert!(Instant::now() < deadline, "the helper never listened: {error}");
+                sleep(Duration::from_millis(20));
+            }
+        }
+    };
+    let mut answer = String::new();
+    stream.read_to_string(&mut answer).expect("the helper's answer");
+    answer.trim().parse().expect("a pid")
+}
+
 #[test]
 #[ignore = "requires signed loader and cooperative fixtures; run via `vp run test:inject`"]
 fn c_loader_rejects_a_mismatched_executable_before_loading() {
     let mut fixture = Fixture::launch(true);
     let incarnation = inject::identify(fixture.pid()).expect("identify the fixture");
-    let report = std::env::temp_dir().join(format!("recon-c-loader-exec-{}.pid", fixture.pid()));
-    let _ = fs::remove_file(&report);
+    let (_directory, endpoint) = private_endpoint();
 
     // The incarnation is correct, but the expected executable names a different binary, so only
     // the loader's executable check can refuse it.
-    let output = Command::new("arch")
-        .arg("-arm64e")
-        .arg(artifact("recon-loader"))
-        .arg(fixture.pid().to_string())
-        .arg(incarnation.pidversion.to_string())
-        .arg(artifact("fixtures/inject-helper.dylib"))
-        .arg(&report)
-        .arg("/usr/bin/true")
-        .output()
-        .expect("run the signed C loader");
+    let output =
+        run_loader(fixture.pid(), incarnation.pidversion, &endpoint, Path::new("/usr/bin/true"));
+
     assert!(!output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
-    sleep(Duration::from_millis(100));
-    assert!(!report.exists(), "a mismatched executable loaded the helper");
+    assert!(!endpoint.exists(), "a mismatched executable was handed an endpoint");
     assert!(fixture.0.try_wait().expect("query fixture").is_none());
 }
 
@@ -103,51 +136,41 @@ fn c_loader_executes_inside_an_arm64e_target() {
 fn c_loader_rejects_a_reused_incarnation_before_loading() {
     let mut fixture = Fixture::launch(true);
     let incarnation = inject::identify(fixture.pid()).expect("identify the fixture");
-    let report = std::env::temp_dir().join(format!("recon-c-loader-stale-{}.pid", fixture.pid()));
-    let _ = fs::remove_file(&report);
+    let (_directory, endpoint) = private_endpoint();
 
-    let output = Command::new("arch")
-        .arg("-arm64e")
-        .arg(artifact("recon-loader"))
-        .arg(fixture.pid().to_string())
-        .arg((incarnation.pidversion + 1).to_string())
-        .arg(artifact("fixtures/inject-helper.dylib"))
-        .arg(&report)
-        .arg(fixture_executable())
-        .output()
-        .expect("run the signed C loader");
+    let output =
+        run_loader(fixture.pid(), incarnation.pidversion + 1, &endpoint, &fixture_executable());
+
     assert!(!output.status.success());
-    sleep(Duration::from_millis(100));
-    assert!(!report.exists(), "a mismatched incarnation loaded the helper");
+    assert!(!endpoint.exists(), "a mismatched incarnation was handed an endpoint");
+    assert!(fixture.0.try_wait().expect("query fixture").is_none());
+}
+
+#[test]
+#[ignore = "requires signed loader and cooperative fixtures; run via `vp run test:inject`"]
+fn c_loader_refuses_an_endpoint_directory_others_can_reach() {
+    let mut fixture = Fixture::launch(true);
+    let incarnation = inject::identify(fixture.pid()).expect("identify the fixture");
+    let (directory, endpoint) = private_endpoint();
+    fs::set_permissions(directory.path(), fs::Permissions::from_mode(0o755))
+        .expect("widen the endpoint directory");
+
+    let output =
+        run_loader(fixture.pid(), incarnation.pidversion, &endpoint, &fixture_executable());
+
+    assert!(!output.status.success(), "a shared directory was accepted for the endpoint");
+    assert!(!endpoint.exists(), "the loader bound an endpoint others could replace");
     assert!(fixture.0.try_wait().expect("query fixture").is_none());
 }
 
 fn assert_c_loader_executes(arm64e: bool) {
     let fixture = Fixture::launch(arm64e);
     let incarnation = inject::identify(fixture.pid()).expect("identify the fixture");
-    let report = std::env::temp_dir().join(format!("recon-c-loader-{}.pid", fixture.pid()));
-    let _ = fs::remove_file(&report);
+    let (_directory, endpoint) = private_endpoint();
 
-    let output = Command::new("arch")
-        .arg("-arm64e")
-        .arg(artifact("recon-loader"))
-        .arg(fixture.pid().to_string())
-        .arg(incarnation.pidversion.to_string())
-        .arg(artifact("fixtures/inject-helper.dylib"))
-        .arg(&report)
-        .arg(fixture_executable())
-        .output()
-        .expect("run the signed C loader");
+    let output =
+        run_loader(fixture.pid(), incarnation.pidversion, &endpoint, &fixture_executable());
+
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
-
-    let deadline = Instant::now() + Duration::from_secs(5);
-    let recorded = loop {
-        if let Ok(contents) = fs::read_to_string(&report) {
-            break contents;
-        }
-        assert!(Instant::now() < deadline, "the helper never ran in the target");
-        sleep(Duration::from_millis(50));
-    };
-    let _ = fs::remove_file(&report);
-    assert_eq!(recorded.trim().parse::<i32>().expect("a pid"), fixture.pid());
+    assert_eq!(answering_pid(&endpoint), fixture.pid());
 }
