@@ -19,6 +19,7 @@ use crate::access::{
 use crate::artifact::{self, Artifacts};
 use crate::identity::{AccessMode, AccessProfile, Incarnation, SessionId};
 use crate::inject;
+use crate::sandbox;
 use crate::{
     CloseOutcome, InspectionError, InspectionErrorCode, LIFECYCLE_DEADLINE, OpenRequest,
     SessionState, SessionStore, Stage, close_until, open_until,
@@ -224,6 +225,9 @@ pub fn open_session(
             Stage::Attach,
             "the open deadline expired before the helper loader started",
         ));
+    }
+    if let Some(refusal) = sandbox::load_refusal(incarnation.pid, &artifacts.helper, &socket) {
+        return Err(InspectionError::new(InspectionErrorCode::Unavailable, Stage::Attach, refusal));
     }
     remove_refused_endpoint(&socket)?;
     store.reserve_attach(incarnation, &executable)?;

@@ -39,6 +39,8 @@ mod artifact;
 mod host;
 #[cfg(target_os = "macos")]
 mod lifecycle;
+#[cfg(target_os = "macos")]
+mod sandbox;
 
 #[cfg(all(test, target_os = "macos"))]
 mod access_tests;
