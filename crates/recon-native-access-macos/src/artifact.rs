@@ -7,7 +7,11 @@ use std::thread::sleep;
 use std::time::{Duration, Instant};
 
 use crate::identity::{AccessProfile, Incarnation};
+use crate::staging;
 use crate::{InspectionError, InspectionErrorCode, Stage};
+
+pub(crate) const HELPER_FILE: &str = "recon-helper.dylib";
+pub(crate) const BUILD_FILE: &str = "recon-helper.build-id";
 
 pub(crate) struct Artifacts {
     pub helper: PathBuf,
@@ -15,7 +19,22 @@ pub(crate) struct Artifacts {
     pub loader: PathBuf,
 }
 
+/// The helper and loader a session of `profile` uses. Research prefers the copy `prepare-host`
+/// staged where sandboxed targets can read it, while that copy is the packaged build.
 pub(crate) fn locate(profile: AccessProfile) -> Result<Artifacts, InspectionError> {
+    let packaged = packaged()?;
+    if profile == AccessProfile::Research
+        && let Some(helper) =
+            staging::staged_helper(&packaged, Path::new(staging::STAGED_DIRECTORY))
+    {
+        return Ok(Artifacts { helper, ..packaged });
+    }
+    Ok(packaged)
+}
+
+/// The helper, build file and loader shipped beside this executable, or in the Cargo target
+/// directory a development build runs from.
+fn packaged() -> Result<Artifacts, InspectionError> {
     let executable = std::env::current_exe().map_err(|error| {
         InspectionError::from_io(
             InspectionErrorCode::Unavailable,
@@ -26,9 +45,6 @@ pub(crate) fn locate(profile: AccessProfile) -> Result<Artifacts, InspectionErro
     })?;
     let directory = executable.parent().unwrap_or_else(|| Path::new("."));
     let mut directories = vec![directory.to_path_buf()];
-    if profile == AccessProfile::Research {
-        directories.insert(0, PathBuf::from("/Library/Application Support/Recon"));
-    }
     if matches!(
         directory.file_name().and_then(|name| name.to_str()),
         Some("debug" | "release" | "signed")
@@ -38,9 +54,9 @@ pub(crate) fn locate(profile: AccessProfile) -> Result<Artifacts, InspectionErro
     }
 
     for directory in directories {
-        let helper = directory.join("recon-helper.dylib");
+        let helper = directory.join(HELPER_FILE);
         let loader = directory.join("recon-loader");
-        let identity = directory.join("recon-helper.build-id");
+        let identity = directory.join(BUILD_FILE);
         if helper.is_file() && loader.is_file() && identity.is_file() {
             let helper_build = fs::read_to_string(&identity)
                 .map_err(|error| {

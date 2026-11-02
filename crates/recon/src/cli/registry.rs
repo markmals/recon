@@ -351,7 +351,7 @@ pub fn registry() -> Vec<CommandSpec> {
         specification(
             &["ui", "session", "prepare-host"],
             "Prepare this host for the research access profile",
-            "Explicit, opt-in research-host preparation. With no flag it discloses the exact changes, asks for confirmation, sets the boot arguments Recon can set through sudo nvram, instructs a reboot, and prints the operator steps to disable System Integrity Protection in recovery, which Recon cannot perform itself. It never runs as a side effect of an inspection command.",
+            "Explicit, opt-in research-host preparation. With no flag it discloses the exact changes, asks for confirmation, sets the boot arguments Recon can set through sudo nvram, creates /Library/Application Support/Recon through sudo and copies Recon's research helper into it so App Sandboxed applications can load it, instructs a reboot, and prints the operator steps to disable System Integrity Protection in recovery, which Recon cannot perform itself. Run it again after upgrading Recon: research sessions use the copied helper only while it is identical to the packaged one. It never runs as a side effect of an inspection command.",
             vec![
                 Arg::new("status")
                     .long("status")
@@ -361,7 +361,7 @@ pub fn registry() -> Vec<CommandSpec> {
                     .long("revert")
                     .action(ArgAction::SetTrue)
                     .conflicts_with("status")
-                    .help("Remove the boot arguments Recon set and instruct a reboot"),
+                    .help("Remove the boot arguments and the research helper Recon installed, and instruct a reboot when boot arguments changed"),
             ],
             output_schema::<PrepareHostResponse>,
         ),

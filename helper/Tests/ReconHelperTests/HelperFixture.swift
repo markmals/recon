@@ -6,13 +6,14 @@ import Foundation
 enum FixtureFailure: Error {
     case directory
     case start
+    case handoff
     case connect
     case transport
     case malformedAnswer
 }
 
-/// A server listening on its own endpoint in a directory only this user can reach, which is
-/// what `recon_helper_main` requires of the loader.
+/// A server listening on an endpoint handed to it the way the loader hands one over: bound in a
+/// directory only this user can reach, and queued as a fileport on a receive right in this task.
 ///
 /// The server has no shutdown: the loader starts one for the life of the target process. A
 /// fixture therefore leaves its accept thread running and only removes what it put on disk.
@@ -22,13 +23,10 @@ final class HelperFixture {
     private let server: ReconHelperServer
 
     init(build: String = "fixture") throws {
-        var template = Array("/tmp/recon-helper-tests-XXXXXX".utf8CString)
-        guard let made = mkdtemp(&template) else { throw FixtureFailure.directory }
-        directory = String(cString: made)
-        guard chmod(directory, 0o700) == 0 else { throw FixtureFailure.directory }
+        directory = try privateDirectory()
         path = "\(directory)/s"
         server = ReconHelperServer(build: build)
-        guard server.start(path) == 0 else { throw FixtureFailure.start }
+        guard server.start(try handedEndpoint(at: path)) == 0 else { throw FixtureFailure.start }
     }
 
     deinit {
@@ -130,6 +128,74 @@ final class HelperFixture {
             offset += moved
         }
     }
+}
+
+/// A fresh directory only this user can reach, as Recon's descriptor root provides one.
+func privateDirectory() throws -> String {
+    var template = Array("/tmp/recon-helper-tests-XXXXXX".utf8CString)
+    guard let made = mkdtemp(&template) else { throw FixtureFailure.directory }
+    let directory = String(cString: made)
+    guard chmod(directory, 0o700) == 0 else { throw FixtureFailure.directory }
+    return directory
+}
+
+/// What the loader does before the helper runs: bind a socket of `type` at `path`, and queue it as
+/// a fileport on a new receive right in this task, whose name it then passes to the entry point.
+func handedEndpoint(at path: String, type: Int32 = SOCK_STREAM) throws -> mach_port_name_t {
+    let descriptor = socket(AF_UNIX, type, 0)
+    guard descriptor >= 0 else { throw FixtureFailure.handoff }
+    defer { close(descriptor) }
+    var address = sockaddr_un()
+    address.sun_family = sa_family_t(AF_UNIX)
+    withUnsafeMutableBytes(of: &address.sun_path) { field in
+        _ = strlcpy(
+            field.baseAddress?.assumingMemoryBound(to: CChar.self), path,
+            ReconEndpoint.maximumPathBytes)
+    }
+    let bound = withUnsafePointer(to: &address) { address in
+        address.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+            bind(descriptor, $0, socklen_t(MemoryLayout<sockaddr_un>.size))
+        }
+    }
+    guard bound == 0, chmod(path, 0o600) == 0 else { throw FixtureFailure.handoff }
+    var fileport: fileport_t = 0
+    guard fileport_makeport(descriptor, &fileport) == 0 else { throw FixtureFailure.handoff }
+    let port = try receiveRight()
+    try queue(fileport, on: port)
+    return port
+}
+
+/// A receive right in this task with nothing queued on it.
+func receiveRight() throws -> mach_port_name_t {
+    var port: mach_port_name_t = 0
+    guard mach_port_allocate(mach_task_self_, MACH_PORT_RIGHT_RECEIVE, &port) == KERN_SUCCESS
+    else { throw FixtureFailure.handoff }
+    return port
+}
+
+/// Queues one message carrying `fileport` on `port`, moving this task's send right into it.
+func queue(_ fileport: mach_port_t, on port: mach_port_name_t) throws {
+    struct Handoff {
+        var header = mach_msg_header_t()
+        var body = mach_msg_body_t()
+        var endpoint = mach_msg_port_descriptor_t()
+    }
+    var message = Handoff()
+    message.header.msgh_bits = UInt32(MACH_MSG_TYPE_MAKE_SEND) | UInt32(MACH_MSGH_BITS_COMPLEX)
+    message.header.msgh_size = mach_msg_size_t(MemoryLayout<Handoff>.size)
+    message.header.msgh_remote_port = port
+    message.body.msgh_descriptor_count = 1
+    message.endpoint.name = fileport
+    message.endpoint.disposition = mach_msg_type_name_t(MACH_MSG_TYPE_MOVE_SEND)
+    message.endpoint.type = mach_msg_descriptor_type_t(MACH_MSG_PORT_DESCRIPTOR)
+    let sent = withUnsafeMutablePointer(to: &message) { message in
+        message.withMemoryRebound(to: mach_msg_header_t.self, capacity: 1) {
+            mach_msg(
+                $0, MACH_SEND_MSG, mach_msg_size_t(MemoryLayout<Handoff>.size), 0,
+                mach_port_name_t(MACH_PORT_NULL), 0, mach_port_name_t(MACH_PORT_NULL))
+        }
+    }
+    guard sent == KERN_SUCCESS else { throw FixtureFailure.handoff }
 }
 
 /// What a refused answer says, as every test that reads one asks it.
