@@ -1,1 +1,0 @@
-import{t as e}from"./framework.bXqjz3JV.js";var t={root:()=>e(()=>import(`./@localSearchIndexroot.BiNDGaNN.js`),[])};export{t as default};
