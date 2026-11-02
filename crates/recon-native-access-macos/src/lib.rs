@@ -41,6 +41,8 @@ mod host;
 mod lifecycle;
 #[cfg(target_os = "macos")]
 mod sandbox;
+#[cfg(target_os = "macos")]
+mod staging;
 
 #[cfg(all(test, target_os = "macos"))]
 mod access_tests;

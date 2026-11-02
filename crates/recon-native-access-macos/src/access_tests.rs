@@ -506,6 +506,35 @@ fn proposal0005_revert_with_no_recon_boot_args_does_not_request_authorization() 
     assert_eq!(revert_host(&mut runner).unwrap().boot_args, "");
     assert!(runner.invocations.iter().all(|(program, _)| program != "/usr/bin/sudo"));
 }
+
+#[test]
+fn proposal0005_revert_requires_a_reboot_only_when_it_changes_boot_args() {
+    // The record names an argument the operator has already removed, so only the record goes.
+    let mut runner = FakeRunner {
+        responses: vec![
+            ok("boot-args\tkeepsyms=1\n"),
+            ok("recon-added-boot-args\t-arm64e_preview_abi\n"),
+            ok(""),
+        ],
+        ..Default::default()
+    };
+    let unchanged = revert_host(&mut runner).unwrap();
+    assert!(!unchanged.changed);
+    assert!(!unchanged.reboot_required);
+
+    let mut runner = FakeRunner {
+        responses: vec![
+            ok("boot-args\tkeepsyms=1 -arm64e_preview_abi\n"),
+            ok("recon-added-boot-args\t-arm64e_preview_abi\n"),
+            ok(""),
+            ok(""),
+        ],
+        ..Default::default()
+    };
+    let reverted = revert_host(&mut runner).unwrap();
+    assert!(reverted.changed);
+    assert!(reverted.reboot_required);
+}
 #[test]
 fn proposal0005_revert_deletes_boot_args_variable_only_when_no_unrelated_arg_remains() {
     let mut runner = FakeRunner {
@@ -695,7 +724,7 @@ fn proposal0005_prepare_host_status_is_read_only_and_reports_each_prerequisite()
         ],
         ..Default::default()
     };
-    let status = crate::access::prepare_host_status(&mut runner);
+    let status = crate::access::prepare_host_status(&mut runner, Fact::known(false, "staged"));
     assert_eq!(status.host.sip_disabled.value, Some(false));
     assert_eq!(status.host.amfi_disabled.value, Some(false));
     assert_eq!(status.host.configured_boot_args.value, Some(vec!["keepsyms=1".into()]));
@@ -912,7 +941,7 @@ fn proposal0005_kernel_signing_rejects_out_of_range_pid_without_querying_another
 #[test]
 fn proposal0005_host_preparation_status_never_turns_unreadable_security_facts_into_false() {
     let mut runner = FakeRunner::default();
-    let status = crate::access::prepare_host_status(&mut runner);
+    let status = crate::access::prepare_host_status(&mut runner, Fact::known(false, "staged"));
     assert_eq!(status.readiness, Eligibility::Unknown);
     assert_eq!(status.host.sip_disabled.value, None);
     assert_eq!(status.host.amfi_disabled.value, None);

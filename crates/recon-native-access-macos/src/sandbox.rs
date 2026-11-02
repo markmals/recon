@@ -33,9 +33,9 @@ pub(crate) fn load_refusal(pid: i32, helper: &Path) -> Option<String> {
         return None;
     }
     Some(format!(
-        "the target's sandbox cannot read the helper at {}, so nothing was loaded; a sandboxed \
-         target loads the helper only from a location its sandbox reads, such as \
-         /Library/Application Support/Recon",
+        "the target's sandbox cannot read the helper at {}, so nothing was loaded; run `recon ui \
+         session prepare-host` to install the helper in /Library/Application Support/Recon, \
+         where App Sandbox can read it",
         helper.display()
     ))
 }
