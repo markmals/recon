@@ -116,7 +116,15 @@ function stampSlice(image: Buffer, header: number, stamp: Buffer): void {
     throw new Error("the built helper has no image UUID to stamp");
 }
 
-function buildHelper(): void {
+function buildHelper(args: string[]): void {
+    let unknown = args.filter(arg => arg !== "--disable-sandbox");
+    if (unknown.length > 0) {
+        console.error(
+            `usage: node tools/build-helper.ts [--disable-sandbox]; got ${unknown.join(" ")}`,
+        );
+        process.exitCode = 1;
+        return;
+    }
     if (process.platform !== "darwin") {
         console.error(
             "The Recon helper is a native dylib; it builds only on macOS with Apple's Swift " +
@@ -154,6 +162,9 @@ function buildHelper(): void {
         "arm64",
         "--arch",
         "arm64e",
+        // A build that already runs inside a sandbox, as Homebrew's does, cannot start SwiftPM's
+        // own: macOS refuses the nested sandbox_apply. Output is the same either way.
+        ...(args.includes("--disable-sandbox") ? ["--disable-sandbox"] : []),
     ];
     execFileSync(
         "xcrun",
@@ -198,4 +209,4 @@ function buildHelper(): void {
     console.log(`Built ${path.relative(process.cwd(), dylib)} (arm64, arm64e; ${buildId})`);
 }
 
-buildHelper();
+buildHelper(process.argv.slice(2));
