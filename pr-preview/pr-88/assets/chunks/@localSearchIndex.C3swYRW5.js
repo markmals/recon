@@ -1,1 +1,0 @@
-import{t as e}from"./framework.DOTbEG4Q.js";var t={root:()=>e(()=>import(`./@localSearchIndexroot.Ctda2LVy.js`),[])};export{t as default};
