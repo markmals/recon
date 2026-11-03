@@ -1,1 +1,0 @@
-import{t as e}from"./framework.C7sb-xJh.js";var t={root:()=>e(()=>import(`./@localSearchIndexroot.BiNDGaNN.js`),[])};export{t as default};
