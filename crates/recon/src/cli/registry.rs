@@ -260,9 +260,10 @@ const SESSION_BINDING: [ErrorCode; 5] = [
 /// The failures a native read can report in addition to validating its session.
 const NATIVE_READ: [ErrorCode; 2] = [ErrorCode::InspectionBusy, ErrorCode::StaleNode];
 
-/// Every `ui` operation runs inside the no-focus guard, so any of them can report an observed
-/// disturbance of the user's foreground work, or that this Mac cannot watch one of the dimensions
-/// the guard needs to make that judgement.
+/// Every `ui` operation except host preparation runs inside the no-focus guard, so any of them can
+/// report an observed disturbance of the user's foreground work, or that this Mac cannot watch one
+/// of the dimensions the guard needs to make that judgement. Host preparation inspects nothing,
+/// and its `sudo` authentication interrupts by design, so it runs unguarded.
 const NO_FOCUS_GUARD: [ErrorCode; 2] = [ErrorCode::UiInterference, ErrorCode::InterfaceUnavailable];
 
 pub fn registry() -> Vec<CommandSpec> {
@@ -508,7 +509,9 @@ pub fn registry() -> Vec<CommandSpec> {
             command.errors.extend([NotFound, NotAnApplication, AmbiguousTarget]);
         }
         if command.path[0] == "ui" {
-            command.errors.extend(NO_FOCUS_GUARD);
+            if command.path != ["ui", "session", "prepare-host"] {
+                command.errors.extend(NO_FOCUS_GUARD);
+            }
             if targeted {
                 command.errors.extend([AmbiguousInstance, NotRunning, IdentityUnavailable]);
             }

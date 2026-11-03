@@ -172,6 +172,10 @@ impl Observation {
     /// the Mac is recorded and not reported, because a concurrent user action is not the target's
     /// doing.
     pub fn outcome(&self) -> Option<Failure> {
+        self.judged(self.scope.setup_prompts_expected)
+    }
+
+    fn judged(&self, setup_prompts_expected: bool) -> Option<Failure> {
         let Some(trace) = &self.trace else {
             return Some(Failure::internal(
                 "the no-focus guard stopped watching, so this operation cannot report that it \
@@ -186,7 +190,7 @@ impl Observation {
                 gap.at.as_millis()
             )));
         }
-        if self.scope.setup_prompts_expected {
+        if setup_prompts_expected {
             // A setup dialog may change the frontmost process and window order. It does not
             // authorize target activation, Space switches, pointer motion, or input redirection.
             return trace
@@ -215,7 +219,11 @@ impl Observation {
     }
 
     fn resolve<T>(&self, result: Result<T, Failure>) -> Result<T, Failure> {
-        match (result, self.outcome()) {
+        // An operation that failed for a missing grant asked macOS to request it, and the request
+        // dialog is a setup prompt like the ones a scope can expect.
+        let prompted = self.scope.setup_prompts_expected
+            || matches!(&result, Err(error) if error.code == ErrorCode::PermissionDenied);
+        match (result, self.judged(prompted)) {
             (Ok(value), None) => Ok(value),
             (Err(error), None) => Err(error),
             (Ok(_), Some(interference)) => Err(interference),
@@ -1358,6 +1366,42 @@ mod tests {
 
         let failure = observation.outcome().expect("target activation is still reported");
         assert_eq!(failure.code, ErrorCode::UiInterference);
+    }
+
+    fn permission_denied() -> Failure {
+        Failure::new(
+            ErrorCode::PermissionDenied,
+            "missing permission: Screen Recording",
+            Value::Null,
+        )
+    }
+
+    /// A missing grant is requested and then reported; macOS's request dialog may come forward
+    /// before the guard's last look. That dialog is the setup prompt the no-focus contract allows.
+    #[test]
+    fn a_permission_request_reports_permission_denied_rather_than_its_dialog() {
+        let before = snapshot(0);
+        let mut after = snapshot(10);
+        after.front = Some(FrontProcess { serial: 8, pid: Some(Pid(501)) });
+
+        let failure = observed(changes(&before, &after))
+            .resolve::<()>(Err(permission_denied()))
+            .expect_err("the request still fails");
+
+        assert_eq!(failure.code, ErrorCode::PermissionDenied, "{}", failure.message);
+    }
+
+    #[test]
+    fn a_permission_request_does_not_excuse_the_target_taking_the_foreground() {
+        let before = snapshot(0);
+        let mut after = snapshot(10);
+        after.front = Some(FrontProcess { serial: 8, pid: Some(TARGET) });
+
+        let failure = observed(changes(&before, &after))
+            .resolve::<()>(Err(permission_denied()))
+            .expect_err("the request still fails");
+
+        assert_eq!(failure.code, ErrorCode::UiInterference, "{}", failure.message);
     }
 
     #[test]

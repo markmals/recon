@@ -43,9 +43,13 @@ pub fn observe(request: &UiRequest) -> Result<String, Failure> {
     if needs_privacy_identity(request) {
         responsibility::take_responsibility().map_err(ResponsibilityError::into_failure)?;
     }
-    let scope = scope_of(request)?;
-    let selected_pid = scope.target;
-    guarded(scope, || dispatch(request, selected_pid))
+    match scope_of(request)? {
+        Some(scope) => {
+            let selected_pid = scope.target;
+            guarded(scope, || dispatch(request, selected_pid))
+        }
+        None => dispatch(request, None),
+    }
 }
 
 fn needs_privacy_identity(request: &UiRequest) -> bool {
@@ -54,7 +58,10 @@ fn needs_privacy_identity(request: &UiRequest) -> bool {
 
 /// What the no-focus guard watches while this request runs: the stage a disturbance is reported
 /// against, the instance it selected, and whether a setup prompt is an expected interruption.
-fn scope_of(request: &UiRequest) -> Result<Scope, Failure> {
+///
+/// Host preparation has no scope. It inspects no application and touches no window; it asks for
+/// confirmation and authenticates through `sudo`, whose dialog interrupts by design.
+fn scope_of(request: &UiRequest) -> Result<Option<Scope>, Failure> {
     let (stage, selection, setup_prompts_expected) = match request {
         UiRequest::Windows { selection, .. }
         | UiRequest::AxTree { selection, .. }
@@ -64,9 +71,7 @@ fn scope_of(request: &UiRequest) -> Result<Scope, Failure> {
         UiRequest::Session(SessionRequest::Preflight { selection }) => {
             (InspectionStage::Preflight, Some(selection), false)
         }
-        UiRequest::Session(SessionRequest::PrepareHost { .. }) => {
-            (InspectionStage::Preflight, None, false)
-        }
+        UiRequest::Session(SessionRequest::PrepareHost { .. }) => return Ok(None),
         UiRequest::Session(SessionRequest::Open { selection, allow_authorization, .. }) => {
             (InspectionStage::Open, Some(selection), *allow_authorization)
         }
@@ -92,7 +97,7 @@ fn scope_of(request: &UiRequest) -> Result<Scope, Failure> {
         (Some(selected), None) => selected.pid,
         (None, _) => None,
     };
-    Ok(Scope { stage, target, setup_prompts_expected })
+    Ok(Some(Scope { stage, target, setup_prompts_expected }))
 }
 
 fn dispatch(request: &UiRequest, selected_pid: Option<Pid>) -> Result<String, Failure> {
@@ -154,6 +159,15 @@ mod tests {
         for action in [HostPreparation::Apply, HostPreparation::Status, HostPreparation::Revert] {
             let request = UiRequest::Session(SessionRequest::PrepareHost { action });
             assert!(!needs_privacy_identity(&request), "{action:?} must remain interactive");
+        }
+    }
+
+    #[test]
+    fn host_preparation_runs_outside_the_no_focus_guard() {
+        for action in [HostPreparation::Apply, HostPreparation::Status, HostPreparation::Revert] {
+            let request = UiRequest::Session(SessionRequest::PrepareHost { action });
+            let scope = scope_of(&request).expect("host preparation resolves no target");
+            assert!(scope.is_none(), "{action:?} must not run under the no-focus guard");
         }
     }
 }
