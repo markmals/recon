@@ -20,6 +20,7 @@
 //! watched at all, the guard fails before the operation runs rather than claiming a quiet desktop
 //! it never saw.
 
+use std::collections::VecDeque;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{self, JoinHandle};
@@ -640,6 +641,7 @@ fn watch(
     let mut trace = Trace::default();
     let mut previous = Snapshot::default();
     let mut current = Snapshot::default();
+    let mut keystrokes = UnmatchedKeystrokes::default();
 
     probe.look(&keys, clock.elapsed(), None, &mut previous);
     trace.record(&previous);
@@ -649,13 +651,13 @@ fn watch(
         thread::sleep(INTERVAL);
         probe.look(&keys, clock.elapsed(), Some(&previous), &mut current);
         trace.record(&current);
-        compare(&previous, &current, target, &mut trace.disturbances);
+        compare(&previous, &current, target, &mut keystrokes, &mut trace.disturbances);
         mem::swap(&mut previous, &mut current);
     }
     // The operation has returned; whatever it did last is only visible now.
     probe.look(&keys, clock.elapsed(), Some(&previous), &mut current);
     trace.record(&current);
-    compare(&previous, &current, target, &mut trace.disturbances);
+    compare(&previous, &current, target, &mut keystrokes, &mut trace.disturbances);
     trace
 }
 
@@ -664,13 +666,14 @@ fn compare(
     previous: &Snapshot,
     current: &Snapshot,
     target: Option<Pid>,
+    keystrokes: &mut UnmatchedKeystrokes,
     found: &mut Vec<Disturbance>,
 ) {
     foreground(previous, current, target, found);
     window_order(previous, current, target, found);
     space(previous, current, target, found);
     pointer_moved(previous, current, found);
-    input_posted(previous, current, found);
+    input_posted(previous, current, keystrokes, found);
 }
 
 fn foreground(
@@ -837,16 +840,54 @@ fn pointer_moved(previous: &Snapshot, current: &Snapshot, found: &mut Vec<Distur
     );
 }
 
-fn input_posted(previous: &Snapshot, current: &Snapshot, found: &mut Vec<Disturbance>) {
+/// How long a hardware keystroke may wait for the session to count it. While someone typed on
+/// macOS 27.0.1, the session's keyboard counter trailed the hardware's by up to 50 ms, a look
+/// later; this leaves room for a busier session without letting old typing excuse input posted
+/// long after it.
+const KEYSTROKE_MATCH_WINDOW: Duration = Duration::from_millis(250);
+
+/// Hardware keystrokes the session has not counted yet, oldest first, with the look that saw them.
+#[derive(Default)]
+struct UnmatchedKeystrokes(VecDeque<(Duration, u32)>);
+
+impl UnmatchedKeystrokes {
+    /// Matches the session's new events against the hardware's recent keystrokes, oldest first,
+    /// and returns how many of them no keystroke explains.
+    fn unexplained(&mut self, at: Duration, by_hand: u32, posted: u32) -> u32 {
+        self.0.retain(|(seen, _)| at.saturating_sub(*seen) <= KEYSTROKE_MATCH_WINDOW);
+        if by_hand > 0 {
+            self.0.push_back((at, by_hand));
+        }
+        let mut unexplained = posted;
+        while unexplained > 0
+            && let Some((_, waiting)) = self.0.front_mut()
+        {
+            let matched = unexplained.min(*waiting);
+            *waiting -= matched;
+            unexplained -= matched;
+            if *waiting == 0 {
+                self.0.pop_front();
+            }
+        }
+        unexplained
+    }
+}
+
+fn input_posted(
+    previous: &Snapshot,
+    current: &Snapshot,
+    keystrokes: &mut UnmatchedKeystrokes,
+    found: &mut Vec<Disturbance>,
+) {
     let posted = delta(current.counters.session_input, previous.counters.session_input);
     let by_hand = delta(current.counters.hid_input, previous.counters.hid_input);
-    if posted <= by_hand {
+    let unexplained = keystrokes.unexplained(current.at, by_hand, posted);
+    if unexplained == 0 {
         return;
     }
     let observed = format!(
-        "{} keyboard, button or scroll events were posted into the session that the hardware did \
-         not generate",
-        posted - by_hand
+        "{unexplained} keyboard, button or scroll events were posted into the session that the \
+         hardware did not generate"
     );
     note(
         found,
@@ -935,9 +976,21 @@ mod tests {
     }
 
     fn changes(previous: &Snapshot, current: &Snapshot) -> Vec<Disturbance> {
+        changes_across(&[previous, current])
+    }
+
+    /// Compares each look with the one before it, carrying what the watcher carries between them.
+    fn changes_across(looks: &[&Snapshot]) -> Vec<Disturbance> {
+        let mut keystrokes = UnmatchedKeystrokes::default();
         let mut found = Vec::new();
-        compare(previous, current, Some(TARGET), &mut found);
+        for pair in looks.windows(2) {
+            compare(pair[0], pair[1], Some(TARGET), &mut keystrokes, &mut found);
+        }
         found
+    }
+
+    fn details(found: &[Disturbance]) -> Vec<&str> {
+        found.iter().map(|disturbance| disturbance.detail.as_str()).collect()
     }
 
     fn observed(disturbances: Vec<Disturbance>) -> Observation {
@@ -973,9 +1026,7 @@ mod tests {
         let last = snapshot(20);
         assert_eq!(first.front.expect("a front process").serial, last.front.expect("one").serial);
 
-        let mut found = Vec::new();
-        compare(&first, &middle, Some(TARGET), &mut found);
-        compare(&middle, &last, Some(TARGET), &mut found);
+        let found = changes_across(&[&first, &middle, &last]);
 
         assert_eq!(found.len(), 2);
         assert_eq!(found[0].attribution, Attribution::Target);
@@ -1182,6 +1233,55 @@ mod tests {
         assert!(changes(&before, &after).is_empty());
     }
 
+    /// Measured on macOS 27.0.1 while someone typed: the hardware counts a keystroke in one look
+    /// and the session counts the same keystroke in the next, up to 50 ms later.
+    #[test]
+    fn a_keystroke_the_session_counts_a_look_late_is_not_diverted_input() {
+        let first = snapshot(0);
+        let mut second = snapshot(10);
+        second.counters.hid_input += 1;
+        let mut third = snapshot(20);
+        third.counters.hid_input += 1;
+        third.counters.session_input += 1;
+
+        let found = changes_across(&[&first, &second, &third]);
+
+        assert!(found.is_empty(), "{:?}", details(&found));
+    }
+
+    #[test]
+    fn a_late_keystroke_does_not_excuse_more_posted_input_than_it_explains() {
+        let first = snapshot(0);
+        let mut second = snapshot(10);
+        second.counters.hid_input += 1;
+        let mut third = snapshot(20);
+        third.counters.hid_input += 1;
+        third.counters.session_input += 3;
+
+        let found = changes_across(&[&first, &second, &third]);
+
+        assert_eq!(details(&found).len(), 1, "{:?}", details(&found));
+        assert_eq!(found[0].evidence, InterferenceEvidence::InputRouting);
+        assert!(found[0].detail.contains("2 keyboard"), "{}", found[0].detail);
+    }
+
+    /// A keystroke the session never counted, such as one the system kept for itself, stops
+    /// explaining posted input once far more time has passed than the session ever lags.
+    #[test]
+    fn a_keystroke_long_past_does_not_excuse_posted_input() {
+        let first = snapshot(0);
+        let mut second = snapshot(10);
+        second.counters.hid_input += 1;
+        let mut third = snapshot(1_000);
+        third.counters.hid_input += 1;
+        third.counters.session_input += 1;
+
+        let found = changes_across(&[&first, &second, &third]);
+
+        assert_eq!(details(&found).len(), 1, "{:?}", details(&found));
+        assert!(found[0].detail.contains("1 keyboard"), "{}", found[0].detail);
+    }
+
     #[test]
     fn a_space_change_is_reported() {
         let before = snapshot(0);
@@ -1210,6 +1310,7 @@ mod tests {
 
     #[test]
     fn repeated_evidence_is_recorded_once() {
+        let mut keystrokes = UnmatchedKeystrokes::default();
         let mut found = Vec::new();
         for step in 1..4 {
             let before = snapshot(u64::from(step) * 10);
@@ -1217,7 +1318,7 @@ mod tests {
             after.pointer = Some(CGPoint::new(f64::from(step), 0.0));
             after.counters.hid_pointer += step;
             after.counters.session_pointer += step;
-            compare(&before, &after, Some(TARGET), &mut found);
+            compare(&before, &after, Some(TARGET), &mut keystrokes, &mut found);
         }
 
         assert_eq!(found.len(), 1);
