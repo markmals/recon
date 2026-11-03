@@ -6,11 +6,12 @@ Run `mise run status` at the start of every session and whenever you are unsure 
 
 ## Does this change need a proposal?
 
-Ask one question: **does this change decide something?**
+Ask one question: **does this change decide something?** Look and feel — how an interface looks and how it is operated — is the exception: the human decides it by looking at the running UI, not in a proposal.
 
 - If intent already exists — an approved proposal promises the behavior, or the correct behavior is obvious (a typo, a dead link, a bug whose fix is unambiguous) — implement it directly. Say which case it is, in one line, before you start.
+- If the human is shaping look and feel — layout, sizes, spacing, type, color, motion, which control presents a choice, how it is operated, and wording whose exact words are not themselves a requirement — make the changes directly with `.agents/skills/polishing-a-ui/`. Say so in one line before you start.
 - If the change decides something, ask the human whether they want a proposal for it. Only after an explicit yes: create a branch, push it, open a draft pull request, and write the proposal with `.agents/skills/writing-a-proposal/`. A request to "start a feature" or "write a proposal" is not that yes, and neither is `mise run status` output.
-- If a small fix turns out to need a design decision, stop and ask the proposal question then.
+- If a small fix turns out to need a design decision, or polish turns out to change what the feature does, stop and ask the proposal question then.
 
 Proposal status belongs to the human. They move a proposal from `draft` to `awaiting-implementation`, and from `active-review` to `accepted`, `returned-for-revisions`, or `rejected`. You move it to `active-review` when you hand finished work to them, and to `implemented` in the accepted pull request before merge (`.agents/skills/completing-a-feature/`).
 
@@ -31,7 +32,7 @@ Work inline by default. Use subagents only when they buy something specific: sli
 
 ## Rules
 
-- **Stay inside the proposal.** Behavior it does not describe does not get built; if it should exist, revise the proposal with the human. A defect outside its scope becomes a Beads item ([Work tracking](#work-tracking), `.agents/skills/tracking-work/`); a defect that stops the proposal from working is your work.
+- **Stay inside the proposal.** Behavior it does not describe does not get built; if it should exist, revise the proposal with the human. Look and feel is not behavior a proposal must describe: choose what the proposal leaves open to fit the project's existing interface and its platform's conventions, and let the human refine it on the running UI. A defect outside its scope becomes a Beads item ([Work tracking](#work-tracking), `.agents/skills/tracking-work/`); a defect that stops the proposal from working is your work.
 - **Raise ambiguity.** When the proposal, vision, a policy, or a decision is ambiguous or conflicts with the work in a way that changes behavior, stop and raise it rather than choosing silently.
 - **Never write production code before its failing test**, when the behavior warrants a test at all.
 - **Never write a guide from finished code.**

@@ -13,6 +13,8 @@ Proposals are for changes that decide something: new or changed behavior, a real
 
 They are not for changes whose intent already exists. A bug has its correct behavior specified already — by the proposal that promised it, or by a contract too obvious to write down. Correcting an implementation is not defining one. Fixing a typo, a dead link, or a workflow whose behavior was never in question needs no proposal and often no pull request; describing it costs more than doing it.
 
+They are not for look and feel either. How an interface looks and how it is operated is decided by the human on the running UI, so polish is never a reason to ask the proposal question; use [`.agents/skills/polishing-a-ui/`](../polishing-a-ui/SKILL.md).
+
 Say whether you think the change warrants a proposal and why. Before creating a proposal workspace, ask the human directly: "Do you want a proposal for this change?" Ask even if they said "start a feature" or "write a proposal"; only their answer to this question for this change counts as consent. Do not infer yes from scope, status output, or silence.
 
 If the answer is no, do not write a proposal or open a draft pull request for it. Correct unambiguous behavior directly. If intent needs a real design decision, explain the conflict and clarify or narrow the work with the human before implementation. If a small fix later reveals such a decision, stop and ask the proposal question then.
@@ -30,6 +32,19 @@ Create exactly one `proposals/<NNNN>-<slug>.md`. Copy [`.agents/templates/PROPOS
 - Complete every required template section: Summary, Motivation, Domain grounding, Existing baseline, Proposed solution, Detailed design, Compatibility, Implications on adoption, Scope, Out of scope, Preview, Policies and decisions checked, Future directions, Alternatives considered, and Open questions. Acknowledgments is optional.
 - **Detailed design is what tests derive from.** Write it precisely enough that someone who is not the author could implement it without asking questions.
 - Usually delete the template's Acceptance criteria section. Restating Detailed design as a checklist duplicates the specification in a form that drifts from it. Keep it only for a change with discrete outcomes the prose cannot express naturally — a structural change touching many independent things, or a migration with separable steps.
+
+## Describing a user interface
+
+Detailed design says what the feature does, never its look and feel. For an interface:
+
+- State what the user is trying to do, not the mechanics: "the user shares the document with a teammate", not "clicks Share and types an email".
+- State outcomes as what the user sees, receives, or is told: "the user is told the key was not accepted", not the alert's title and buttons.
+- Leave out layout, sizes, spacing, colors, typefaces, control types (sheet, menu, toggle), element names, and click or tap steps. Include one only when the human has made that detail a requirement.
+- Leave out a message's exact words; state what it must tell the user. Include the words only when they are themselves the requirement: legal text, text the user must type or match, or a term the project's vocabulary fixes.
+- Keep accessibility commitments, such as every action being reachable from the keyboard. They are what the feature does.
+- Apply the redesign test to each sentence: would it need to change if the screen were redesigned while the feature did the same thing? If so, cut it.
+
+Two implementations that differ only in look and feel do not make Detailed design incomplete. The human decides look and feel on the running UI: in the preview during review, and afterward through polish.
 
 ## Size before detail
 
@@ -118,6 +133,7 @@ Then enter Phase 3 — Implementation with `implementing-a-proposal`.
 | Two unrelated motivations or more than roughly six criteria | Split the proposal. |
 | A record conflicts with the change | Surface it; the human chooses revision or supersession. |
 | An unknown detail has no clarification marker | Ask or add the marker. |
+| Detailed design names sizes, colors, controls, or click steps, or quotes words that are not themselves a requirement | Rewrite it as what the user can do, find out, and is told. |
 | Preview names no exercisable artifact for a behavior change | Choose and record one before approval. |
 | A newly discovered defect expands scope | File a GitHub issue; keep the proposal bounded. |
 | Existing code suggests the design | Treat it as evidence, not authority; settle intent in the proposal. |
