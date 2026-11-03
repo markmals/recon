@@ -355,6 +355,26 @@ fn effects_and_permissions_distinguish_loading_launching_and_reading() {
     assert!(permissions.contains(&"accessibility"), "{permissions:?}");
 }
 
+/// Host preparation inspects nothing, and its sudo authentication interrupts by design, so it runs
+/// outside the no-focus guard and cannot report what only the guard reports.
+#[test]
+fn host_preparation_does_not_publish_the_no_focus_guard_errors() {
+    let declared = |path: &[&str]| -> Vec<String> {
+        specification(path)["command"]["errors"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|code| code.as_str().unwrap().to_owned())
+            .collect()
+    };
+    let prepare = declared(&["ui", "session", "prepare-host"]);
+    for code in ["UI_INTERFERENCE", "INTERFACE_UNAVAILABLE"] {
+        assert!(!prepare.iter().any(|declared| declared == code), "{code} in {prepare:?}");
+    }
+    let open = declared(&["ui", "session", "open"]);
+    assert!(open.iter().any(|declared| declared == "UI_INTERFERENCE"), "{open:?}");
+}
+
 // --------------------------------------------------------- error contract
 
 #[test]

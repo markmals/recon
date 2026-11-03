@@ -1,7 +1,7 @@
 ---
 id: policy.0003
 title: One No-Focus Contract for UI Operations
-status: active
+status: superseded
 established-by: proposal.0005
 supersedes: []
 ---

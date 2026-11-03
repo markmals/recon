@@ -71,7 +71,7 @@ fn an_implicit_attach_pid_is_the_instance_the_guard_watches() {
     });
     let watched = loop {
         match scope_of(&request) {
-            Ok(scope) => break scope.target,
+            Ok(scope) => break scope.expect("opening a session is guarded").target,
             Err(error) if Instant::now() < deadline => {
                 let _ = error;
                 sleep(Duration::from_millis(20));
@@ -177,7 +177,8 @@ fn proposal0005_session_bound_guard_watches_its_bound_pid() {
         .unwrap();
     let selection = Selection { target: bundle.to_string_lossy().into_owned(), pid: None };
     let request = UiRequest::Windows { selection: selection.clone(), session: Some(id.clone()) };
-    assert_eq!(scope_of(&request).expect("session selects an instance").target, Some(bound));
+    let scope = scope_of(&request).expect("session selects an instance");
+    assert_eq!(scope.expect("a session-bound read is guarded").target, Some(bound));
 
     let wrong = Selection { pid: Some(other), ..selection };
     for request in [
