@@ -1,5 +1,11 @@
 # recon
 
+## 0.1.5
+
+### Patch Changes
+
+- [#88](https://github.com/markmals/recon/pull/88) [`db9cc2f`](https://github.com/markmals/recon/commit/db9cc2f5bbb2a456fc66520cc3424edd215cb03b) Thanks [@markmals](https://github.com/markmals)! - `recon ui session prepare-host` no longer fails with `UI_INTERFERENCE` when `sudo` asks for your password or Touch ID. Host preparation inspects no application, so it no longer runs under the watch that keeps `ui` commands from stealing focus, and `recon schema ui session prepare-host` no longer lists `UI_INTERFERENCE` or `INTERFACE_UNAVAILABLE`. Before this release the command reported that error after it had already applied its changes; `recon ui session prepare-host --status` shows what was applied. A `ui` command that fails because a privacy permission is missing now always reports `PERMISSION_DENIED`, even if macOS's request dialog came forward while it ran.
+
 ## 0.1.4
 
 ### Patch Changes
