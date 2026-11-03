@@ -1,5 +1,11 @@
 # recon
 
+## 0.1.4
+
+### Patch Changes
+
+- [#86](https://github.com/markmals/recon/pull/86) [`5c556e8`](https://github.com/markmals/recon/commit/5c556e88b41ac064d4ef4b3cc0b7254fcadfb12a) Thanks [@markmals](https://github.com/markmals)! - `recon ui` commands no longer fail with `UI_INTERFERENCE` ("keyboard, button or scroll events were posted into the session that the hardware did not generate") because you typed while they ran. macOS sometimes counts a real keystroke a moment later in the session than in the hardware, and Recon read that delay as input something else had posted. This most often hit `recon ui session prepare-host`, whose confirmation you type while it runs; when it happened, the preparation had already been applied. Input that the hardware never generated is still reported.
+
 ## 0.1.3
 
 ### Patch Changes
