@@ -1,6 +1,8 @@
 ## Proposal
 
-- Implements: <!-- [proposal.NNNN](../proposals/NNNN-slug.md), or "none — correction with established intent" -->
+<!-- No proposal? Say why instead: a correction whose intent already exists, or look-and-feel polish. Then check only the phase items that apply. -->
+
+- Implements: <!-- [proposal.NNNN](../proposals/NNNN-slug.md), "none — correction with established intent", or "none — look-and-feel polish" -->
 
 ## Summary
 

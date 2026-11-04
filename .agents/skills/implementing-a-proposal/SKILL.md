@@ -33,6 +33,7 @@ NO TEST-WORTHY PRODUCTION BEHAVIOR WITHOUT A FAILING TEST FIRST
 - If you wrote test-worthy production code first, delete it and start from the test.
 - A claim that something holds "always", "never", "for any", or "for all" gets a property-based test that fails first, alongside example tests for named boundaries. Do not force properties onto a single mapping or constant.
 - Test real code. Isolate only what you cannot control, such as the network, time, or randomness. When a test is hard to write, simplify the interface rather than adding mocks.
+- For an interface, assert what the user can do and observe — reaching an action, seeing a state, being told about an error — not its look and feel, so polish does not break the tests.
 - When nothing can be meaningfully tested, say so and why before writing code.
 
 ## 2. Guides
@@ -41,11 +42,13 @@ Write a guide only when the change alters what a user does, sees, or must know. 
 
 Extend the guide in `guides/` that already owns the workflow; add one from [`.agents/templates/GUIDE.md`](../../templates/GUIDE.md) only when none does. Keep its frontmatter valid: `id` matches the path, `title` stays accurate, and `describes` keeps earlier proposal ids while adding the current one. Every example must run as printed.
 
+What the user does comes from the proposal. The names and placement of on-screen elements a guide mentions follow the running UI, and you update them when polish changes them; that is not writing a guide from finished code.
+
 Then compare the guide with the failing tests. Anything one describes and the other does not is a defect in one of them; resolve it by correcting the guide or the test, or by revising the proposal with the human.
 
 ## 3. Code
 
-Write the minimum production code that makes the tests pass and matches the guide. Add no behavior the proposal does not describe. When an unexplained failure appears, find its cause with [`.agents/skills/systematic-debugging/`](../systematic-debugging/SKILL.md) before changing code.
+Write the minimum production code that makes the tests pass and matches the guide. Add no behavior the proposal does not describe. Look and feel the proposal leaves open is yours to choose, fitting the project's existing interface and its platform's conventions, and the human's to refine with [`.agents/skills/polishing-a-ui/`](../polishing-a-ui/SKILL.md). When an unexplained failure appears, find its cause with [`.agents/skills/systematic-debugging/`](../systematic-debugging/SKILL.md) before changing code.
 
 ## 4. Gates and commits
 
