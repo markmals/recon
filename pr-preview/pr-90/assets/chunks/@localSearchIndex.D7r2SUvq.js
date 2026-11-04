@@ -1,1 +1,0 @@
-import{t as e}from"./framework.DZRuo-oX.js";var t={root:()=>e(()=>import(`./@localSearchIndexroot.DVGQMwbI.js`),[])};export{t as default};
