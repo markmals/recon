@@ -1,1 +1,0 @@
-import{t as e}from"./framework.SLwxmuMO.js";var t={root:()=>e(()=>import(`./@localSearchIndexroot.DSONJ854.js`),[])};export{t as default};
