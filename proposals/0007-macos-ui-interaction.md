@@ -12,7 +12,7 @@ supersedes: []
 
 ## Summary
 
-Add explicit external accessibility presses, synthetic clicks, and key chords to Recon's shared `ui` surface. Actions must reach the selected window without disturbing the user's focus, pointer, Spaces, or input. AppKit and Mac Catalyst require independent actuation evidence. Selected-window keyboard delivery is required, not replaceable by process-only posting.
+Add window-targeted clicks, scrolling, drag, hover, and key chords to Recon's shared `ui` surface without disturbing the user's focus, pointer, Spaces, or input. One click interface selects AX or mouse delivery before acting and reports the mechanism. AppKit and Mac Catalyst require independent actuation evidence, including selected-window keyboard delivery.
 
 ## Motivation
 
@@ -20,7 +20,7 @@ Recon can inspect an application's interface but cannot perform the next step in
 
 Issue [#24](https://github.com/markmals/recon/issues/24) identifies winctl as prior art and separates explicit actions from the completed observation work in #15. Its example commands express the desired workflow, not an approved grammar. Native in-process inspection is not a prerequisite for an external action. Mac Catalyst is a required target family, not an inference from an AppKit demonstration.
 
-The human selected external AX press, synthetic clicks, and key chords for this proposal, excluding text entry, scrolling, dragging, and held keys. They also required selected-window keyboard delivery, including secondary/non-key windows, rather than accepting a process-directed first version. Those decisions bound the design below. This draft does not claim that a compliant keyboard mechanism has already been found.
+The selected scope is a unified click interface with automatic mechanism selection and an explicit override, left/right/middle and double/modifier clicks, horizontal/vertical scrolling, drag, hover, and key chords. Selected-window keyboard delivery, including secondary/non-key windows, remains required rather than a process-directed substitute. Trackpad pinch/zoom, rotation, and swipe are preserved separately in [#92](https://github.com/markmals/recon/issues/92). This draft does not claim that the required external mechanisms have already been proven.
 
 ## Domain grounding
 
@@ -33,12 +33,14 @@ The human selected external AX press, synthetic clicks, and key chords for this 
 - That experiment distinguishes an unlocked session from a password-locked screen. Its synthetic input stopped arriving after lock. It also distinguishes focus-without-raise from genuinely background delivery. Neither a screensaver demonstration nor an unmoved cursor proves preservation of keyboard focus.
 - [winctl's implementation at the same revision](https://github.com/NSExceptional/winctl/blob/295a02751b2cb0c958b476e6ce6864963ee4042f/winctl.m) uses PID-only posting for `key` even after selecting a window. Its mouse path posts each event through both `SLEventPostToPid`, when available, and `CGEventPostToPid`. The former is not evidence of selected-window keyboard delivery; the latter must not be copied as a mechanism that might double-actuate.
 - The [upstream cua keyboard implementation](https://github.com/trycua/cua/blob/1759af24ec84685269529425ac42e5de964adf85/libs/cua-driver/rust/crates/platform-macos/src/input/keyboard.rs), inspected during this draft with blob identity `1553fda86e6c1bae13dbf880b5786a7ad37bf7ca`, exposes PID-directed key operations. It separately describes global-HID helpers as requiring foreground activation. Those helpers are not a compliant fallback for Recon. These are source observations, not independent execution evidence.
+- Apple's [CGEvent API](https://developer.apple.com/documentation/coregraphics/cgevent) provides mouse and scroll-wheel event constructors. The installed Xcode 27.1 `CoreGraphics/CGEvent.h`, lines 43–60 and 84–109, distinguishes mouse event type/button from line- or pixel-based scroll deltas. `CGEventTypes.h` also distinguishes click count, scroll phase, and momentum phase. Being able to construct an event does not establish selected-window routing or gesture recognition.
+- Apple's [NSEvent.EventType](https://developer.apple.com/documentation/appkit/nsevent/eventtype) distinguishes right/middle button events, mouse motion/dragging, and scroll-wheel input from touch-based magnify, rotate, and swipe events. A right-click is not an AX press; a wheel scroll is not a trackpad swipe or pinch. An application may interpret modifier flags or gesture phases differently, so event fields and resulting behavior both need evidence.
 
 ### Relevant constraints and principles
 
 An application bundle, a process incarnation, a WindowServer window, an AX element, and a native view are different things. A bundle can have several running instances; a process can own several windows; an AX label or identifier is not necessarily unique. A historical tree path is an observation location, not a durable action handle. The same numeric PID can name a different incarnation after exit/reuse, and this project's recorded research also observes an incarnation change across `exec` without a PID change.
 
-AX press is a semantic action supplied by an application. Synthetic click is a mouse gesture at a point. A key chord is keyboard input whose interpretation depends on the receiving window, responder, menu handling, and keyboard mapping. They must not become interchangeable fallbacks under a generic success flag. Selecting a window, delivering an event, invoking a callback, and achieving the caller's application-level goal are separate facts.
+AX press is a semantic action supplied by an application; a mouse click is a button gesture at a point. They can satisfy the same plain element-click intent, so they share one command, but remain distinguishable mechanisms in its explicit override and result. Right/middle clicks, double-clicks, and modifier-clicks require mouse semantics rather than repeated AX calls. Scrolling, drag, and hover likewise have different event sequences and effects. A key chord depends on the receiving window, responder, menu handling, and keyboard mapping. Selecting a window, delivering an event, invoking a callback, and achieving the caller's application-level goal remain separate facts.
 
 Target-internal responder changes can be intended consequences of an explicit action. Changing which application or window receives the person's real input is not. Application callbacks can themselves activate UI or keep executing after the requester times out; an external client cannot make arbitrary target code pure or roll it back.
 
@@ -52,7 +54,7 @@ There is no new action-execution evidence from this proposal yet. On the researc
 
 The separately installed Homebrew Recon 0.1.5 also returned a non-prompting context report, with Accessibility and Screen Recording granted to its installed executable. Those grants do not transfer to this worktree or to a new research controller, and that released executable does not implement these actions. The installed binary was not replaced or re-signed.
 
-The required selected-window keyboard mechanism, its stock-host permission requirements, its incarnation-binding limits, and the event-trace design remain research questions. Symbol availability alone cannot resolve them. The support matrix below is a required outcome, not a report of current support. The draft stays unapprovable until the Open questions are resolved with evidence and concrete design.
+The required selected-window keyboard mechanism, external routing for each pointer interaction, stock-host permission requirements, incarnation-binding limits, and the event-trace design remain research questions. In particular, context-menu tracking, drag tracking, and hover behavior must be tested for host-input capture or dependence on the real cursor. Symbol availability and the existing left-click experiment cannot resolve these questions. The support matrix below is a required outcome, not a report of current support. The draft stays unapprovable until the Open questions are resolved with evidence and concrete design.
 
 ## Existing baseline
 
@@ -66,16 +68,20 @@ The existing `ReconFixture` is AppKit. There is no Catalyst fixture or live acti
 
 ## Proposed solution
 
-Expose mechanism-specific operations under the existing shared UI namespace:
+Expose intent-oriented operations under the existing shared UI namespace, with one click command rather than separate AX and mouse commands:
 
 ```sh
-recon ui ax press "Logic Pro" --window 123 --role AXButton --title Bounce
 recon ui click "Logic Pro" --window 123 --role AXButton --title Bounce
-recon ui click "Logic Pro" --window 123 --x 160 --y 84
+recon ui click "Logic Pro" --window 123 --role AXButton --title Bounce --method mouse
+recon ui click "Logic Pro" --window 123 --x 160 --y 84 --button right
+recon ui click "Logic Pro" --window 123 --x 160 --y 84 --count 2 --modifiers shift
+recon ui scroll "Logic Pro" --window 123 --x 160 --y 84 --dy 300 --unit pixel
+recon ui drag "Logic Pro" --window 123 --from-x 40 --from-y 80 --to-x 220 --to-y 80 --duration-ms 300
+recon ui hover "Logic Pro" --window 123 --x 160 --y 84
 recon ui key "Logic Pro" "cmd+b" --window 123
 ```
 
-These are proposed spellings, not shipped commands or evidence that Logic Pro supports any particular action. AX press invokes the advertised semantic press; click sends one synthetic left click; key sends one chord to the selected window. They share selection and failure conventions, not mechanisms or implicit fallbacks.
+These are proposed spellings, not shipped commands or evidence that Logic Pro supports any particular interaction. Plain element clicks prefer supported AX press; an explicit method override or mouse-specific intent determines otherwise. All operations share selection and failure conventions. Automatic selection happens before dispatch and is disclosed in the result; it is not permission to try another mechanism after an action may have started.
 
 Prefer external APIs and runtime-resolved private interfaces where independently proven. A missing capability is an explicit failure. An injected helper, an AX focus write, global HID posting, focus-without-raise, activation followed by restoration, and cursor restoration are not alternatives that complete this proposal. A process-only keyboard command is not a substitute for its selected-window requirement.
 
@@ -83,7 +89,7 @@ Prefer external APIs and runtime-resolved private interfaces where independently
 
 ### 1. Command surface and target identity
 
-All three operations select an already-running application through the existing target grammar. `--pid` disambiguates a bundle's instances. Each requires an explicit `--window` belonging to that instance; none infers the largest, frontmost, main, or key window. No command launches the target. Existing ambiguity, missing-target, not-running, and wrong-owner failures remain failures with no input.
+Every operation selects an already-running application through the existing target grammar. `--pid` disambiguates a bundle's instances. Each requires an explicit `--window` belonging to that instance; none infers the largest, frontmost, main, or key window. No command launches the target. Existing ambiguity, missing-target, not-running, and wrong-owner failures remain failures with no input.
 
 An optional `--session` is only an additional identity assertion, following the existing shared UI contract. Without it, every supported action must work externally. A stale or mismatched supplied session fails; it is not ignored, reopened, or attached as a fallback. Reading an assertion must not dispatch an injected action.
 
@@ -91,17 +97,52 @@ Bind the selected process incarnation and window before resolving the action, an
 
 A PID check immediately before a PID-only post is not an atomic incarnation-bound dispatch. The approved design must state the actual binding mechanism and residual race boundary instead of claiming that repeated checks eliminate it. This is part of the unresolved mechanism research, not permission to omit identity checks.
 
-### 2. AX press and synthetic click
+### 2. Unified click and pointer interactions
 
-`ui ax press` takes one or more of `--identifier`, `--role`, and `--title`. Supplied filters combine with AND and match the corresponding published AX fields exactly and case-sensitively. There is no fuzzy title search, title/description fallback, or first-match behavior. Role values are the AX role strings, such as `AXButton`; this does not introduce a second role vocabulary.
+#### Shared locations and element resolution
 
-Resolve a fresh AX subtree rooted at the selected window. The entire bounded candidate search must establish one matching element: zero matches is not found, two or more is ambiguous, and an incomplete or timed-out traversal cannot establish uniqueness even if one match was seen. Reuse the existing bounded-read discipline, but never treat omitted/error subtrees as proof that no second match exists. Keep the resolved live element for this request only. Immediately before actuation, verify it still belongs to the selected window, still matches, is enabled, and advertises `AXPress`. Unknown enabled state or unverifiable membership is unavailable, not permission to guess. Invoke `AXPress` once. Unsupported press does not fall back to a synthetic click or an attribute write.
+`ui click`, `ui scroll`, and `ui hover` accept either one or more of `--identifier`, `--role`, and `--title`, or a complete `--x`/`--y` pair, never both. Supplied AX filters combine with AND and match the corresponding published fields exactly and case-sensitively. There is no fuzzy title search, title/description fallback, or first-match behavior. Roles use AX strings such as `AXButton`; the action namespace does not introduce a second role vocabulary.
 
-`ui click` accepts either the same AX filters or a complete `--x`/`--y` pair, never both. It performs exactly one left-button down/up gesture; double/right clicks, dragging, and hover are outside this proposal. Coordinate input is finite logical points relative to the top-left of the WindowServer window bounds, including the frame, not screenshot pixels or AppKit's bottom-left content coordinates. Require `0 <= x < width` and `0 <= y < height`; do not clamp or move the target. Resolve bounds freshly and preserve the selected window while converting coordinates.
+Resolve a fresh AX subtree rooted at the selected window. The bounded search must establish one matching element: zero matches is not found, two or more is ambiguous, and an incomplete or timed-out traversal cannot establish uniqueness even if one match was seen. Reuse the existing bounded-read discipline, but never treat omitted/error subtrees as proof that no second match exists. Keep the live element only for this request and revalidate its filters and selected-window membership immediately before dispatch. Historical paths and native handles do not become executable selectors.
 
-For element-form click, require one live, enabled match within the selected window and a finite, nonempty frame whose center falls inside that window. Click that center after revalidation; geometry is not a substitute for uniqueness. Missing or stale geometry fails rather than switching to AX press. Occlusion by another application's windows must not redirect the click to the covering application.
+Coordinate input is finite logical points relative to the top-left of the WindowServer window bounds, including the frame, not screenshot pixels or AppKit's bottom-left content coordinates. Require `0 <= x < width` and `0 <= y < height`; do not clamp or move the target. Use fresh bounds for conversion and preserve the selected window. Pointer interactions addressed by element use a finite, nonempty frame whose center is inside that window. A semantic AX click does not need geometry.
 
-The mouse recipe must prove window routing, correct local coordinates across display origins and scaling, and exactly one control actuation. Select one evidenced transport before dispatch. Never post through both CG and SkyLight for coverage, and never try a second transport after an uncertain first attempt. Required private interfaces are resolved at runtime and reported unavailable if absent; their presence alone does not establish support.
+Element clicks require a known enabled state; disabled or unknown state is unavailable rather than permission to guess. Scroll and hover use the selected element as a location, not as an AX action recipient, so a container need not advertise `AXPress` or a click-specific enabled attribute. Unverifiable membership or required geometry still fails. A covering window must never become the recipient.
+
+#### One click command
+
+`ui click` accepts `--method auto|ax|mouse` with default `auto`, `--button left|right|middle` with default `left`, `--count 1|2` with default `1`, and optional `--modifiers`. Modifiers are a comma-separated subset of `cmd`, `ctrl`, `alt`, and `shift`; reject duplicates and unknown names. Explicit gesture choices are requirements, not hints that an AX backend can discard.
+
+Choose the method before any mutating call:
+
+| Request | Method and behavior |
+| --- | --- |
+| `auto`, element selector, left button, count 1, no modifiers | Prefer AX only when the element advertises `AXPress` and that action/scope satisfies the evidenced support rules. If it definitively lacks supported AX press, use a supported mouse route at the element center. |
+| `auto` with coordinates, right/middle button, count 2, or modifiers | Require mouse delivery. Do not translate the gesture into an AX action. |
+| `ax` | Require an element selector, left button, count 1, no modifiers, and supported `AXPress`. Reject contradictory options as `INVALID_ARGUMENT`; unavailable AX support is `ACTION_UNAVAILABLE`, with no mouse fallback. |
+| `mouse` | Require mouse delivery even if the element advertises `AXPress`. Never invoke AX press as a fallback. AX may still be used to resolve an element selector. |
+
+Failure to read capabilities, permission denial, stale identity, or an incomplete search is not evidence that AX press is unsupported and does not authorize switching to mouse input. `auto` never probes support by performing an action. Once any AX invocation or mouse sequence has been attempted, timeout, error, or lack of observed effect never triggers the other method. Results identify the requested method, effective method, and pre-dispatch selection reason so an experiment can reproduce or explicitly override the choice.
+
+AX delivery invokes `AXPress` once. Mouse delivery emits the requested button's down/up sequence at the selected point. Right-click means actual secondary-button events, not control-left-click or `AXShowMenu`; middle-click means the corresponding other-button events. A double-click is one native double-click sequence with correct event count/timing, not two AX invocations or an unrelated pair of single-click commands. Modifier-clicks must preserve modifier semantics in the target without changing the person's hardware modifier state or leaving synthetic modifiers held.
+
+The mouse recipe must prove window routing, local coordinates across display origins/scaling, and no unintended duplicate delivery. Select one evidenced transport before dispatch. Never post through both CG and SkyLight for coverage or try a second transport after an uncertain attempt. Required private interfaces resolve at runtime and fail when absent; their presence alone does not establish support.
+
+#### Scrolling
+
+`ui scroll` requires an explicit location by element or coordinates and accepts signed `--dx` and `--dy` with `--unit pixel|line` (default `pixel`). An omitted axis is zero; at least one must be nonzero. Positive values request viewport progression right/down through the content, negative values left/up, independent of the host's natural-scrolling preference. Translate that direction into the platform event signs rather than pass an ambiguous device convention to callers.
+
+Units describe the scroll input, not a promise that rendered content moves by exactly that many screen pixels or lines. Application scaling, bounds, snapping, and clamping can change the observed displacement. An element selects the event location; do not silently substitute its ancestor or the window's main scroll area. Nested scroll regions need separate target-side evidence.
+
+Send a bounded window-routed wheel sequence without real-pointer motion or focus changes. Do not substitute AX value writes, scrollbar dragging, keyboard arrows, or global wheel input. This is explicit wheel scrolling, not trackpad swipe or pinch. Do not add synthetic inertia after the requested sequence; define any event phase requirements from the tested mechanism and ensure completion/cancellation cannot leave a gesture phase open.
+
+#### Drag and hover
+
+`ui drag` specifies complete `--from-x`/`--from-y` and `--to-x`/`--to-y` coordinates inside the same selected window, with a positive bounded `--duration-ms` and optional modifiers using the click modifier vocabulary. It means a primary-button down, a bounded ordered path of dragged events, and a matching release at the destination. It is not a click at the destination, a direct control-value mutation, or a jump of the real cursor. Record the actual timing/path parameters; interpolation cadence and duration limits must be fixed before approval. This proposal's drag is intra-window, not cross-window/application file transfer or a desktop drag-and-drop facility.
+
+`ui hover` sends target-local pointer-motion input at the selected location without button or key input and without moving the real pointer. Prove the intended target's hover/tracking effect, not just receipt of a mouse-move event. A target that requires the real global pointer at that location is unsupported; cursor warping and restoration are not alternatives. Subsequent application timers and tooltips are not proof of completed caller-level intent, nor are they automatically dismissed.
+
+Right-click may initiate context-menu tracking, and drag may initiate a tracking session. A menu, tooltip, or dragging effect is not permission to raise or make a window key, capture host input, or suppress the guard. Test those ongoing effects as well as the event sequence itself. Known focus/input-capturing routes fail before dispatch; unexpected interference fails without automatic menu dismissal or desktop restoration. Unsupported-route rejection remains necessary safety behavior, not a substitute for positive action evidence.
 
 ### 3. Selected-window key chords
 
@@ -115,15 +156,15 @@ Use one researched delivery mechanism per supported capability. If selected-wind
 
 ### 4. Permissions, interference, and execution outcomes
 
-Continue using Recon's executable-owned privacy identity. AX lookup/press requires its Accessibility permission; event synthesis requires the actual event-posting permission checks for the selected mechanism. Additional observation/listening permissions needed to establish the guard are explicit prerequisites, not assumed from another grant. Normal calls may request a missing permission under the existing setup exception, then fail with `PERMISSION_DENIED` without sending input. `context` and existing preflight commands remain non-prompting. Do not edit TCC, weaken host protections, or run injection merely to acquire permission.
+Continue using Recon's executable-owned privacy identity. AX lookup/press requires its Accessibility permission; event synthesis requires the actual event-posting permission checks for the selected mechanism. A coordinate-only mouse operation does not acquire an AX lookup requirement merely because element clicks share its command. A method override does not bypass the permissions of its chosen route, and missing grants do not select a different method. Additional observation/listening permissions needed to establish the guard are explicit prerequisites, not assumed from another grant. Normal calls may request a missing permission under the existing setup exception, then fail with `PERMISSION_DENIED` without sending input. `context` and existing preflight commands remain non-prompting. Do not edit TCC, weaken host protections, or run injection merely to acquire permission.
 
 The no-focus boundary is unchanged: no target activation or raise, key-window transfer, system keyboard-focus transfer, Space switch, real-pointer movement, or diversion of host input. All actions enter the shared guarded path. The intended change in a target's own responder state is not a broad exemption for window ordering, event counters, or target-side activation.
 
 Before action work can be approved, specify and validate an action-aware observation design that distinguishes the requested target-directed events from leaked session input. Do not merely disable the synthetic-input check or subtract the number of posted events. Evidence must observe actual key-window/focus transitions, not infer them from z-order, and retain target-caused transitions even when unrelated hardware input occurs in the same interval. If required observation is unavailable, fail before dispatch rather than advertise an unverified clean run. The existing poller remains useful evidence, not sufficient proof by itself.
 
-On detected interference, return `UI_INTERFERENCE` with stage, evidence source, affected process/window where known, and whether target execution may continue. Do not restore focus, pointer, or Spaces. Stop unsent work. For a partially sent down/up gesture, only the matching release events needed to avoid leaving synthetic input held may still be sent, through the same verified route to the same live identity; never release through the global input queue or to a replacement process. Report when release could not be established. No arbitrary callback can be cancelled or rolled back by this cleanup.
+On detected interference, return `UI_INTERFERENCE` with stage, evidence source, affected process/window where known, and whether target execution may continue. Do not restore focus, pointer, or Spaces. Stop unsent interaction steps. For a partially sent click, chord, drag, or phased scroll, only the matching release/termination events needed to avoid leaving synthetic input held or a phase open may still be sent, through the same verified route to the same live identity. Never complete a drag path merely as cleanup, release through the global queue, or post to a replacement process. Report when cleanup could not be established. Releasing a drag can itself cause a drop; it is not rollback. No arbitrary callback or already-open menu can be cancelled safely by assuming that sending Escape restores the prior state.
 
-A successful response describes what Recon established: selected bundle/process incarnation/window, requested operation, chosen mechanism, and whether an AX action returned or a synthetic sequence was posted. It does not claim that a save, bounce, dialog, or other caller-level goal completed. Report application-level outcome as unverified unless separate observation actually establishes it; the caller can use existing read commands afterward. No new automatic assertion language is introduced.
+A successful response describes what Recon established: selected bundle/process incarnation/window, requested operation and parameters, chosen mechanism, and whether an AX action returned or a synthetic sequence was posted. Click results additionally report the requested/effective method and selection reason. Scroll units/deltas, drag path/timing, and any release/phase-completion uncertainty remain explicit. A response does not claim that a save, bounce, dialog, or other caller-level goal completed. Report application-level outcome as unverified unless separate observation actually establishes it; the caller can use existing read commands afterward. No new automatic assertion language is introduced.
 
 Reuse selection, permission, interface, and interference failures where their meanings apply. Add schema-published action classifications for unavailable action/scope, ambiguous element, changed target identity, failed action, and uncertain action timeout; proposed spellings are `ACTION_UNAVAILABLE`, `AMBIGUOUS_ELEMENT`, `STALE_TARGET`, `ACTION_FAILED`, and `ACTION_TIMEOUT`. Action failure details distinguish no dispatch from partial or unknown execution and identify mechanism and selected window. Post-dispatch timeout must not reuse the currently retryable observation `TIMEOUT` classification. No mutating attempt, ambiguous completion, output-delivery failure, or interference result is automatically retried. No exactly-once guarantee is made across separate invocations.
 
@@ -135,19 +176,21 @@ The proposed initial host boundary is native Apple silicon on macOS 27, with an 
 
 | Operation | AppKit required outcome | Mac Catalyst required outcome |
 | --- | --- | --- |
-| AX press | One selected control's action occurs in the selected window | The equivalent independently instrumented UIKit control action occurs in the selected Catalyst window/scene |
-| Synthetic click | One selected control actuates at the intended window-local point | One selected Catalyst control actuates through the evidenced external route |
+| Unified click | Plain element click works by AX and forced mouse; coordinate and right/middle/double/modifier variants produce their intended behavior without duplicate dispatch | The same independently instrumented control and mouse-gesture outcomes occur in the selected Catalyst window/scene |
+| Scroll | Horizontal/vertical, both directions and both units affect the region under the selected location, including a nested region | The equivalent selected Catalyst scroll region responds without a different scene scrolling |
+| Drag | A primary-button drag changes the intended control/selection along the requested intra-window path and releases without global drag/input capture | The equivalent Catalyst control/selection responds and releases in the selected scene |
+| Hover | The selected control's hover/tracking state changes without a click or real-pointer motion | The equivalent Catalyst pointer-interaction state changes in the selected scene |
 | Key chord | The selected window's existing responder or window-scoped command acts, including a secondary/non-key window | The selected Catalyst window/scene's responder or command acts under the same scope requirement |
 
 For each row, cover an already-frontmost target, a background target, a secondary/non-key window in that process, and an occluded target on the current Space. Each target has at least two windows with independently recorded effects so incorrect-window delivery cannot pass. The required outcome includes no new activation, raise, key-window change, Space switch, real-pointer motion, or host-input diversion. Minimized/off-Space windows, locked sessions, secure-input cases, and unvalidated target/host combinations are initially unavailable; they do not trigger a focus-changing fallback. Additional states need their own evidence and explicit design revision.
 
 Build a real Mac Catalyst fixture, not a Simulator app or an AppKit fixture with a new label. Fixture-local instrumentation may report control counters, received event/window identities, responder effects, and scene/window transitions. That instrumentation is an independent test oracle, not a helper dependency of the released external action. Distinguish toolkit identity from coincidental use of an AppKit window wrapper.
 
-Use a separate foreground receiver and continuous/event-trace evidence, with an acknowledged observation start before dispatch and a defined post-dispatch observation boundary. Verify that concurrent host input remains with that receiver, requested synthetic events do not leak to it, and another target window does not act. Target counters must advance exactly once, with expected semantic state, not merely produce a log line saying a post succeeded. Capture and retain raw traces with the exact reproduction commands and environmental facts in the readiness evidence.
+Use a separate foreground receiver and continuous/event-trace evidence, with an acknowledged observation start before dispatch and a defined post-dispatch observation boundary. Verify that concurrent host input remains with that receiver, requested synthetic events do not leak to it, and another target window does not act. Check the action-specific semantic outcome: exactly one AX/single-click activation, a correctly recognized double/modifier/right/middle gesture, the intended scroll region/direction, the expected drag path/final state, and hover without a press. Post-return logs are not the oracle. Include context-menu, tooltip, and tracking behavior in the observation interval; define how persistent target effects are judged without silently dismissing them. Capture raw traces with exact reproduction commands and environmental facts in the readiness evidence.
 
 Negative controls must demonstrate that the observation setup detects a brief activate-and-restore, key-window change without raise, pointer move-and-restore, Space change, and diverted input; it must not misclassify the fixture's deliberate hardware input as target action. Test simultaneous target-caused interference and host input rather than treating hardware activity as a blanket waiver. Record the sampling/notification coverage and loss behavior; no finite trace establishes that target code can never act later.
 
-Permanent regressions cover wrong process/window, duplicate AX identifiers/titles, disabled/unsupported elements, partial AX searches, stale/replaced elements, `exec`/exit/PID reuse, missing symbols/grants, invalid coordinates/chords, wrong-window key delivery, duplicate transport delivery, action timeout after a real side effect, interrupted release, and interference. Test successful actuation and expected rejection, not just parser wiring or mock forwarding.
+Permanent regressions cover wrong process/window, duplicate AX identifiers/titles, disabled/unsupported elements, partial AX searches, stale/replaced elements, `exec`/exit/PID reuse, missing symbols/grants, invalid coordinates/chords, wrong-window delivery, and uncertain execution. Specifically prove pre-dispatch automatic method selection, forced-method refusal, contradictory AX options, no mouse retry after an AX side effect/timeout, correct button/click count/modifiers, both scroll axes/signs/units and nested-region targeting, balanced drag/scroll cleanup, hover without clicking, duplicate-transport prevention, and context-menu/tracking interference during concurrent host input. Tests assert effects and rejection boundaries, not parser wiring or mock forwarding.
 
 ### 6. Integration and delivery
 
@@ -159,7 +202,7 @@ After the human resolves this draft and sets `awaiting-implementation`, derive b
 
 ## Compatibility
 
-This is additive command behavior. `ui ax tree`, `ui view`, `ui windows`, `ui screenshot`, session lifecycle, and correlation retain their observation and identity contracts. There is no top-level `ax`, revived `ui tree`, or automatic promotion of an observation node into an action handle. Existing callers do not begin sending input. The issue's original examples were never shipped and need no aliases.
+This is additive command behavior. `ui ax tree`, `ui view`, `ui windows`, `ui screenshot`, session lifecycle, and correlation retain their observation and identity contracts. Interaction uses `ui click`, `ui scroll`, `ui drag`, `ui hover`, and `ui key`; no separate `ui ax press` command or alias is introduced. There is no top-level `ax`, revived `ui tree`, or automatic promotion of an observation node into an action handle. Existing callers do not begin sending input. Earlier draft spellings and issue examples were never shipped and need no compatibility aliases.
 
 No protocol change, new helper attachment, or stored action session is required merely to use external actions. The proposal does not grant authority to change host security settings. New action error codes and schema metadata are additive; existing observation errors retain their meaning.
 
@@ -171,13 +214,14 @@ Private input routing increases macOS compatibility maintenance. The exact suppo
 
 ## Scope
 
-- External window-scoped AX press, single left click by element or coordinate, and single key chord, with shared target identity and explicit mechanism outcomes.
+- Unified window-scoped click with automatic/forced AX or mouse delivery, left/right/middle buttons, single/double count, and modifiers; horizontal/vertical wheel scrolling; intra-window primary drag; hover; and single key chords, with shared identity and explicit mechanism outcomes.
 - AppKit and actual Mac Catalyst actuation, including selected-window key delivery to background secondary/non-key windows.
 - Permission checks, bounded failures and release behavior, action-aware no-interference evidence, registry/schema integration, guide, and private CLI preview required for these operations.
 
 ### Out of scope
 
-- Text insertion, scrolling, dragging, right/double clicks, held keys, sequences, macros, clipboard changes, and automatic retry. The human selected the smaller interaction scope explicitly.
+- Trackpad pinch/zoom, rotation, and swipe, preserved by explicit owner request in [#92](https://github.com/markmals/recon/issues/92). Wheel scrolling is in scope; it does not stand in for those gestures.
+- Text insertion, triple-clicks, right/middle-button drags, cross-window/application drag-and-drop, held keys, arbitrary input sequences/macros, clipboard changes, and automatic retry.
 - Arbitrary AX actions or attribute setters, native method invocation, injected interaction, runtime introspection, and general code evaluation.
 - Activating/reordering/focusing targets, including supposedly temporary or focus-without-raise modes.
 - Simulator, connected devices, Windows, Intel/Rosetta support, and general Catalyst native-view inspection. Catalyst external interaction remains in scope and does not wait on #55.
@@ -187,7 +231,7 @@ Private input routing increases macOS compatibility maintenance. The exact suppo
 
 - Artifact: a privately staged, installable macOS Recon executable from this branch, alongside its build identity and the AppKit and Mac Catalyst fixture applications. Preserve the normal matched-artifact layout if exercising existing native inspection regressions; interaction itself must work without a resident helper.
 - Access: use a separate local preview prefix rather than replace the user's Homebrew installation. The eventual readiness report names the exact executable path, signing/grant setup, fixture paths, reproduction commands, and recorded traces. No public release or deployment is authorized by this draft.
-- Exercise: run each proposed action against two distinguishable target windows while a separate foreground receiver retains input; observe the target effects and traces. Also exercise an explicitly unsupported scope and a controlled interference failure.
+- Exercise: run each proposed action and click-method override against two distinguishable target windows while a separate foreground receiver retains input. Include right-click/context-menu behavior, nested scrolling, drag release, and hover. Observe actual effects and traces, then exercise an unsupported scope and a controlled interference failure.
 - Cleanup: stop only preview-owned fixture processes and observers and remove only preview-owned files when review ends. Do not close unrelated applications, alter TCC directly, or restore the user's desktop through synthetic input.
 - Reason: an executable and independently instrumented real target apps are the cheapest preview that can distinguish actual actuation from a plausible command/schema design. A documentation preview alone cannot approve the implementation.
 
@@ -205,22 +249,23 @@ No existing policy is superseded by this draft. A feasibility result that requir
 
 ## Future directions
 
-Additional input gestures or supported window states could be proposed after independent mechanism and interference evidence. They are not deferred pieces of the selected click/key scope. A process-directed key command could be a distinct future capability, but cannot satisfy this proposal's required selected-window outcome.
+Trackpad pinch/zoom, rotation, and swipe are tracked separately in [#92](https://github.com/markmals/recon/issues/92), with their own phase, routing, and no-interference research. They do not block this proposal, and the pointer interactions required here are not deferred to that issue. Other supported window states could be proposed after independent evidence. A process-directed key command could be a distinct future capability, but cannot satisfy this proposal's selected-window requirement.
 
 ## Alternatives considered
 
-- **AX press only.** A useful smaller feature for controls that expose semantic actions, but excludes the issue's synthetic click and shortcut workflow. The human chose the external three-operation scope instead.
+- **Separate AX press and mouse click commands.** Exposes a backend distinction as two interfaces for the same ordinary control-click intent. Rejected in favor of one `ui click` command, a pre-dispatch automatic rule, explicit overrides, and mechanism reporting. Shared naming does not erase differences for mouse-specific gestures.
 - **Process-directed keyboard first.** Matches the known winctl key mechanism and could honestly reject `--window`. The human rejected it as sufficient: selected-window key delivery is required now, and uncertainty remains a blocker rather than a scope reduction.
-- **Broader input suite.** Text, scroll, drag, and holds each add routing, interpretation, and cleanup semantics. The human selected clicks and key chords rather than that expanded proposal.
+- **Mouse-only or mandatory explicit selection for every click.** Makes physical gesture semantics uniform, but loses the straightforward semantic-action path or burdens every ordinary element click with a backend decision. The selected automatic default remains reproducible through its reported method and explicit override.
+- **Include every input gesture now.** Trackpad gestures, text, holds, and cross-application drag-and-drop have additional interpretation, routing, and cleanup contracts. The selected scope includes usual pointer interactions; trackpad gestures have their own requested follow-up rather than being silently equated with scrolling.
 - **Copy winctl wholesale.** Its private mouse routing is useful prior art, but its target selection, PID-only keyboard path, dual-post mouse path, research-host assumptions, and endpoint-only pointer comparison do not establish Recon's contract.
 - **Activate without raise, then restore, or use global input.** Changes the user's focus/input even if the desktop looks identical later. Violates policy.0004 rather than providing a fallback.
 - **Require an injected helper for every action.** Excludes supported external use, adds unrelated access prerequisites, and conflicts with #24's separation from native inspection. Not chosen.
 
 ## Open questions
 
-- [NEEDS CLARIFICATION: Which external mechanism actually delivers a chord to the selected background secondary/non-key window in both AppKit and Mac Catalyst without key-window/system-focus changes? Record a reproducible probe, target-side semantic effects, independent interference traces, exact host/security/permission conditions, target-family detection, incarnation-binding/race limits, and the resulting supported-build matrix before approval. PID-only posting or a rejection-only implementation does not answer this question.]
-- [NEEDS CLARIFICATION: What concrete action-aware guard and trace design distinguishes intended target-directed events from diverted host input, observes transient key/focus/Space changes, and preserves attribution during concurrent hardware input? Demonstrate its positive and negative controls, startup/observation boundaries, loss handling, permissions, and limitations before treating no-interference as established.]
-- [NEEDS CLARIFICATION: Settle the key-name/layout contract and complete action response/error schemas, numeric lookup/dispatch/release deadlines, and partial-release semantics from the selected mechanisms. The draft's operation and safety requirements are fixed, but these remaining contract choices must be precise before tests and implementation can derive from them.]
+- [NEEDS CLARIFICATION: Which external mechanisms meet the full required action matrix on AppKit and Mac Catalyst, especially selected-window keyboard delivery to background secondary/non-key windows and right/middle/double/modifier click, scroll, drag, and hover routing? Record reproducible probes, semantic effects, independent interference traces, exact host/security/permission conditions, target-family detection, incarnation-binding/race limits, and the supported-build matrix. Left-click evidence, PID-only posting, and rejection-only implementations do not establish the other required actions.]
+- [NEEDS CLARIFICATION: What concrete action-aware guard and trace design distinguishes intended target-directed events from diverted host input, observes transient key/focus/Space changes, and preserves attribution during concurrent hardware input? Demonstrate positive/negative controls, including context-menu and drag tracking, tooltip/hover effects, persistent target effects after dispatch, startup/observation boundaries, loss handling, permissions, and limitations before treating no-interference as established.]
+- [NEEDS CLARIFICATION: Settle the key-name/layout contract and complete action response/error schemas, numeric lookup/dispatch/release deadlines, and partial-release semantics from the selected mechanisms. Also fix scroll delta bounds and phase encoding, double-click timing, and drag duration/interpolation limits. The unified interface, automatic click selection rule, and expanded pointer scope are selected; remaining contract choices must be precise before tests and implementation can derive from them.]
 
 ## Acknowledgments
 
