@@ -1,0 +1,1 @@
+import{t as e}from"./framework.SLwxmuMO.js";var t={root:()=>e(()=>import(`./@localSearchIndexroot.DVGQMwbI.js`),[])};export{t as default};
