@@ -4,8 +4,9 @@ import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:f
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test, type TestContext } from "node:test";
+import { fileURLToPath } from "node:url";
 
-let statusScript = new URL("./status.ts", import.meta.url).pathname;
+let statusScript = fileURLToPath(new URL("./status.ts", import.meta.url));
 
 // A git hook exports GIT_DIR, GIT_INDEX_FILE and GIT_WORK_TREE, and a child process
 // inherits them. `mise run check` runs these tests from hk's `pre-push` hook, so that
