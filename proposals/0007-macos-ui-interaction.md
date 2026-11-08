@@ -20,7 +20,7 @@ Recon can inspect an application's interface but cannot perform the next step in
 
 Issue [#24](https://github.com/markmals/recon/issues/24) identifies winctl as prior art and separates explicit actions from the completed observation work in #15. Mac Catalyst is a required target family, not an inference from an AppKit demonstration.
 
-The owner selected a unified click command with automatic mechanism selection and an explicit override; left, right, middle, double, and modifier clicks; horizontal and vertical scrolling; and key chords delivered to a selected window, including a background application's non-key window. Live feasibility spikes on 2026-11-07 then showed that hover and drag-and-drop cannot meet the no-focus contract with the mechanisms found, so the owner removed them from this proposal. The same spikes showed that Catalyst key chords need code running inside the target, and the owner chose a session-backed route: Recon's helper makes the selected window key inside UIKit, then Recon sends a real key press. Trackpad pinch, rotation, and swipe remain in [#92](https://github.com/markmals/recon/issues/92).
+The owner selected a unified click command with automatic mechanism selection and an explicit override; left, right, middle, double, and modifier clicks; horizontal and vertical scrolling; and key chords delivered to a selected window, including a background application's non-key window. Live feasibility spikes on 2026-11-07 then showed that hover and drag-and-drop cannot avoid interrupting the user with the mechanisms found, so the owner removed them from this proposal. The same spikes showed that Catalyst key chords need code running inside the target, and the owner chose a session-backed route: Recon's helper makes the selected window key inside UIKit, then Recon sends a real key press. Trackpad pinch, rotation, and swipe remain in [#92](https://github.com/markmals/recon/issues/92).
 
 ## Domain grounding
 
@@ -86,7 +86,7 @@ recon ui key "TextEdit" cmd+b --window 456
 recon ui key "Home" cmd+f --window 789 --session 0123456789abcdef0123456789abcdef
 ```
 
-Clicks and scrolling address the selected window directly and need no session. A key chord first makes the selected window key inside the background target, then sends a real key press shaped like a physical one. AppKit targets need no session; Catalyst targets require an open session whose helper makes the window key inside UIKit. Every operation runs under an interaction-aware no-focus guard and reports the mechanism it used. Hover and drag-and-drop are not offered.
+Clicks and scrolling address the selected window directly and need no session. A key chord first makes the selected window key inside the background target, then sends a real key press shaped like a physical one. AppKit targets need no session; Catalyst targets require an open session whose helper makes the window key inside UIKit. Every operation runs under an interaction-aware guard that fails it if it interrupts the user, and reports the mechanism it used. Hover and drag-and-drop are not offered.
 
 ## Detailed design
 
@@ -234,11 +234,10 @@ The routes depend on private WindowServer interfaces and field numbers; each mac
 - `ui scroll` with horizontal and vertical wheel input in pixels or lines.
 - `ui key` for AppKit targets externally and Catalyst targets through a session, including the helper's make-window-key operation and Catalyst session acceptance.
 - The interaction-aware guard, releases, errors, schemas, `context` reporting, a guide, AppKit and Catalyst fixtures, the live evidence task, and a private preview.
-- Revisions of policy.0004 and decision.0003 recording the owner's decisions below.
 
 ### Out of scope
 
-- Hover and drag-and-drop: the spikes found no mechanism that keeps the no-focus contract.
+- Hover and drag-and-drop: the spikes found no mechanism that avoids interrupting the user.
 - Trackpad pinch, rotation, and swipe ([#92](https://github.com/markmals/recon/issues/92)).
 - Text insertion, triple clicks, held keys, key sequences, macros, and automatic retry.
 - Arbitrary AX actions or attribute writes, native method calls, and general code evaluation.
@@ -257,8 +256,8 @@ The routes depend on private WindowServer interfaces and field numbers; each mac
 
 - `VISION.md` — explicit effects, evidence provenance, and honest refusals.
 - [policy.0001](../policies/0001-cli-command-and-error-contract.md) — commands through the registry and every failure with a published code.
-- [policy.0004](../policies/0004-ui-no-focus.md) — conflict: its rule forbids any `ui` operation to "make a window key". On 2026-11-07 the owner allowed a background target's own key window to change, provided the frontmost application, window order, Space, pointer, and the user's input do not. Implementation revises policy.0004 to state that distinction and the interaction guard; activation, raising, restoring, and the user's keyboard focus stay forbidden.
-- [decision.0003](../decisions/0003-recon-owned-native-loader.md) — conflict: the helper exposes only inspection operations. The owner chose session-backed Catalyst key chords on 2026-11-07; implementation records one closed interaction operation, reachable only from `ui key`, as a revision of decision.0003. No general execution endpoint is added.
+- [policy.0005](../policies/0005-ui-no-interruption.md) — no `ui` operation may interrupt what the user is doing. It supersedes policy.0004, whose list of forbidden mechanisms included making any window key; changes inside a background target that the user does not experience, such as its own key window, are outside the rule. The guard in section 6 is how this proposal meets it, and its live evidence is the proof.
+- [decision.0006](../decisions/0006-native-helper-may-manipulate-targets.md) — the helper may manipulate the target as well as inspect it. It supersedes and withdraws decision.0003, so the Catalyst make-window-key operation needs no exception.
 - [decision.0005](../decisions/0005-homebrew-ad-hoc-privacy-identity.md) and [decision.0002](../decisions/0002-macos-context-privacy-identity.md) — executable-owned identity, the setup-prompt exception, and non-prompting `context`.
 - [decision.0004](../decisions/0004-homebrew-bottle-releases.md) — no new distribution channel; the helper still ships beside the CLI.
 - [proposal.0005](0005-native-macos-inspection.md#5-shared-ui-integration-no-focus-behavior-and-ax-correlation) — fresh target and window validation, sessions as identity assertions, and a posted event distinguished from actuation. Catalyst key chords are the owner-approved exception to "no mandatory injection for external actions".
