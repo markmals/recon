@@ -2,7 +2,7 @@
 id: proposal.0007
 title: macOS UI Interaction
 authors: [Mark Malstrom, OpenAI Codex]
-status: awaiting-implementation
+status: active-review
 pull-request: https://github.com/markmals/recon/pull/91
 issues: ["https://github.com/markmals/recon/issues/24"]
 supersedes: []
