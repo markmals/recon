@@ -15,12 +15,14 @@ let package = Package(
     dependencies: [
         .package(path: "../sdks/swift"),
         .package(path: "../extensions/appkit"),
+        .package(path: "../extensions/catalyst"),
     ],
     targets: [
         .target(
             name: "ReconHelper",
             dependencies: [
                 .product(name: "ReconAppKit", package: "appkit"),
+                .product(name: "ReconCatalyst", package: "catalyst"),
                 .product(name: "ReconExtensionRuntime", package: "swift"),
                 .product(name: "ReconNativeSupport", package: "swift"),
             ]

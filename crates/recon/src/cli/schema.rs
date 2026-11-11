@@ -4,6 +4,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use super::decimal;
+use super::interaction;
 use super::native;
 use super::output_path;
 use super::registry::{CommandSpec, registry};
@@ -174,11 +175,14 @@ fn description(entry: &CommandSpec) -> Description {
             .map(ToString::to_string)
             .unwrap_or_default();
         let numeric = decimal::constraints(argument.get_value_parser());
+        let interaction_constraints = interaction::constraints(argument.get_value_parser());
         let boolean = matches!(argument.get_action(), ArgAction::SetTrue | ArgAction::SetFalse);
         let kind = if boolean {
             "boolean"
         } else if numeric.is_some() {
             "integer"
+        } else if let Some(constraints) = &interaction_constraints {
+            constraints.get("type").and_then(Value::as_str).unwrap_or("string")
         } else {
             "string"
         }
@@ -189,7 +193,8 @@ fn description(entry: &CommandSpec) -> Description {
                 serde_json::to_value(constraints).expect("numeric constraints serialize")
             })
             .or_else(|| output_path::constraints(argument.get_value_parser()))
-            .or_else(|| native::constraints(argument.get_value_parser()));
+            .or_else(|| native::constraints(argument.get_value_parser()))
+            .or(interaction_constraints);
         let accepted: Vec<String> = argument
             .get_possible_values()
             .iter()

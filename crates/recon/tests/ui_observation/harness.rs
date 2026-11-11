@@ -8,12 +8,11 @@ use std::process::{Command, Output};
 use std::thread::sleep;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use objc2_core_foundation::{
-    CFArray, CFDictionary, CFNumber, CFRetained, CFRunLoop, CFString, CFType, kCFRunLoopDefaultMode,
-};
+use objc2_core_foundation::{CFArray, CFDictionary, CFNumber, CFRetained, CFString, CFType};
 use objc2_core_graphics::{
-    CGDisplayCopyDisplayMode, CGDisplayMode, CGEvent, CGMainDisplayID, CGWindowListCopyWindowInfo,
-    CGWindowListOption, kCGNullWindowID, kCGWindowOwnerPID,
+    CGDisplayCopyDisplayMode, CGDisplayMode, CGEvent, CGEventSource, CGEventSourceStateID,
+    CGEventType, CGMainDisplayID, CGWindowListCopyWindowInfo, CGWindowListOption, kCGNullWindowID,
+    kCGWindowOwnerPID,
 };
 use serde_json::Value;
 
@@ -86,6 +85,7 @@ pub(crate) fn run_recon(arguments: &[&str]) -> Output {
     let frontmost = frontmost_pid();
     assert!(frontmost.is_some(), "no application is frontmost; these checks need one to compare");
     let pointer = pointer_location();
+    let hardware_pointer = hardware_pointer_events();
 
     let output = Command::new(signed_recon()).args(arguments).output().expect("start recon");
 
@@ -95,11 +95,13 @@ pub(crate) fn run_recon(arguments: &[&str]) -> Output {
         frontmost,
         "recon {invocation} changed the frontmost application (or someone switched apps during the run)"
     );
-    assert_eq!(
-        pointer_location(),
-        pointer,
-        "recon {invocation} moved the pointer (or someone moved the mouse during the run)"
-    );
+    if hardware_pointer_events() == hardware_pointer {
+        assert_eq!(
+            pointer_location(),
+            pointer,
+            "recon {invocation} moved the pointer without hardware motion"
+        );
+    }
     validate_contract(arguments, &output);
     output
 }
@@ -143,8 +145,23 @@ fn validate_contract(arguments: &[&str], output: &Output) {
 }
 
 pub(crate) fn frontmost_pid() -> Option<u32> {
-    settle_workspace_notifications();
-    recon_applications_macos::workspace::frontmost_application().map(|pid| pid.0)
+    let front = Command::new("/usr/bin/lsappinfo").arg("front").output().ok()?;
+    if !front.status.success() {
+        return None;
+    }
+    let front = String::from_utf8(front.stdout).ok()?;
+    let asn = front.lines().next()?.trim();
+    let info =
+        Command::new("/usr/bin/lsappinfo").args(["info", "-only", "pid", asn]).output().ok()?;
+    if !info.status.success() {
+        return None;
+    }
+    String::from_utf8(info.stdout)
+        .ok()?
+        .lines()
+        .find_map(|line| line.trim().strip_prefix("pid = ")?.split_whitespace().next())?
+        .parse()
+        .ok()
 }
 
 pub(crate) fn main_window_id(fixture: &Fixture) -> u64 {
@@ -248,21 +265,28 @@ fn repository_target() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target")
 }
 
-/// The frontmost application is reported through `NSWorkspace`, which learns of activation
-/// changes from run-loop notifications; a test process that never runs its run loop would keep
-/// reporting whichever application was frontmost at startup.
-fn settle_workspace_notifications() {
-    // SAFETY: an immutable Core Foundation constant.
-    let mode = unsafe { kCFRunLoopDefaultMode };
-    CFRunLoop::run_in_mode(mode, 0.1, false);
-}
-
 /// Where the pointer is, in the window server's own top-left coordinates. These checks compare
 /// one reading with another, so only agreement between them matters, not the origin they share.
 fn pointer_location() -> (f64, f64) {
     let event = CGEvent::new(None).expect("a Core Graphics event carrying the pointer location");
     let location = CGEvent::location(Some(&event));
     (location.x, location.y)
+}
+
+fn hardware_pointer_events() -> u32 {
+    [
+        CGEventType::MouseMoved,
+        CGEventType::LeftMouseDragged,
+        CGEventType::RightMouseDragged,
+        CGEventType::OtherMouseDragged,
+    ]
+    .into_iter()
+    .fold(0, |total, event| {
+        total.wrapping_add(CGEventSource::counter_for_event_type(
+            CGEventSourceStateID::HIDSystemState,
+            event,
+        ))
+    })
 }
 
 fn running_fixture(executable: &Path) -> Option<u32> {

@@ -8,6 +8,8 @@
 use std::path::PathBuf;
 
 use recon_applications_macos::selection::Selection;
+use recon_input_macos::chord::{Chord, Modifiers};
+use recon_input_macos::request::{ClickMethod, Location, MouseButton, ScrollUnit};
 use recon_native_access_macos::identity::{AccessMode, AccessProfile, SessionId};
 use recon_native_access_macos::request::{
     FieldSet, Filters, HostPreparation, NativeScope, NodeHandle, TraversalKind,
@@ -34,6 +36,31 @@ pub enum UiRequest {
         session: Option<SessionId>,
         window: Option<WindowId>,
         out: PathBuf,
+    },
+    Click {
+        selection: Selection,
+        session: Option<SessionId>,
+        window: WindowId,
+        location: Location,
+        method: ClickMethod,
+        button: MouseButton,
+        count: u8,
+        modifiers: Modifiers,
+    },
+    Scroll {
+        selection: Selection,
+        session: Option<SessionId>,
+        window: WindowId,
+        location: Location,
+        dx: i32,
+        dy: i32,
+        unit: ScrollUnit,
+    },
+    Key {
+        selection: Selection,
+        session: Option<SessionId>,
+        window: WindowId,
+        chord: Chord,
     },
     Session(SessionRequest),
     View(ViewRequest),

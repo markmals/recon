@@ -5,6 +5,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::context::Context;
+use crate::ui::interaction_response::{ClickResponse, KeyResponse, ScrollResponse};
 use crate::ui::response::{
     ConfirmedClose, CorrelateResponse, NativeFontsResponse, NativeNodeResponse,
     NativeNodesResponse, OpenResponse, PreflightResponse, PrepareHostResponse, ScreenshotResponse,
@@ -13,6 +14,7 @@ use crate::ui::response::{
 use recon_accessibility_macos::tree::MAX_DEPTH;
 use recon_applications_macos::response::{InspectResponse, LaunchResponse, ListResponse};
 use recon_core::error::ErrorCode;
+use recon_input_macos::request::{ClickMethod, MouseButton, ScrollUnit};
 use recon_native_access_macos::identity::{AccessMode, AccessProfile};
 use recon_native_access_macos::request::{
     DEFAULT_NATIVE_DEPTH, DEFAULT_NATIVE_LIMIT, FieldGroup, MAX_NATIVE_DEPTH, MAX_NATIVE_LIMIT,
@@ -216,6 +218,99 @@ fn filter(name: &'static str, value_name: &'static str, description: &'static st
         .help(description)
 }
 
+fn action_location() -> Vec<Arg> {
+    vec![
+        filter("identifier", "TEXT", "An exact accessibility identifier to match"),
+        filter("role", "ROLE", "An exact accessibility role such as AXButton"),
+        filter("title", "TITLE", "An exact, case-sensitive accessibility title"),
+        Arg::new("x")
+            .long("x")
+            .value_name("X")
+            .requires("y")
+            .value_parser(super::interaction::coordinate_parser())
+            .help("A finite horizontal point from the window's top-left, inside its bounds"),
+        Arg::new("y")
+            .long("y")
+            .value_name("Y")
+            .requires("x")
+            .value_parser(super::interaction::coordinate_parser())
+            .help("A finite vertical point from the window's top-left, inside its bounds"),
+    ]
+}
+
+fn click_arguments() -> Vec<Arg> {
+    let mut arguments = vec![target(), pid(), window().required(true)];
+    arguments.extend(action_location());
+    arguments.extend([
+        Arg::new("method")
+            .long("method")
+            .value_name("METHOD")
+            .default_value("auto")
+            .value_parser(ClickMethod::ALL)
+            .help("Choose AX press or window-addressed mouse events before acting"),
+        Arg::new("button")
+            .long("button")
+            .value_name("BUTTON")
+            .default_value("left")
+            .value_parser(MouseButton::ALL)
+            .help("Which mouse button to click"),
+        Arg::new("count")
+            .long("count")
+            .value_name("N")
+            .default_value("1")
+            .value_parser(Decimal::<1, 2>::parser())
+            .help("Send a single or double click"),
+        Arg::new("modifiers")
+            .long("modifiers")
+            .value_name("LIST")
+            .value_parser(super::interaction::modifiers_parser())
+            .help("A comma-separated set of cmd, ctrl, alt, and shift without duplicates"),
+        session(false),
+    ]);
+    arguments
+}
+
+fn scroll_arguments() -> Vec<Arg> {
+    let mut arguments = vec![target(), pid(), window().required(true)];
+    arguments.extend(action_location());
+    arguments.extend([
+        Arg::new("dx")
+            .long("dx")
+            .value_name("DX")
+            .allow_hyphen_values(true)
+            .value_parser(super::interaction::delta_parser())
+            .help("Signed horizontal wheel delta; positive advances content right"),
+        Arg::new("dy")
+            .long("dy")
+            .value_name("DY")
+            .allow_hyphen_values(true)
+            .value_parser(super::interaction::delta_parser())
+            .help("Signed vertical wheel delta; positive advances content down"),
+        Arg::new("unit")
+            .long("unit")
+            .value_name("UNIT")
+            .default_value("pixel")
+            .value_parser(ScrollUnit::ALL)
+            .help("Wheel input units; pixel allows 10000, line allows 1000 per axis"),
+        session(false),
+    ]);
+    arguments
+}
+
+fn key_arguments() -> Vec<Arg> {
+    vec![
+        target(),
+        Arg::new("chord")
+            .value_name("CHORD")
+            .required(true)
+            .value_parser(super::interaction::chord_parser())
+            .help("Distinct modifiers and one base key, joined with + and no whitespace"),
+        pid(),
+        window().required(true),
+        session(false),
+    ]
+}
+
 /// Clap defaults are text; these are the only numeric defaults Recon publishes.
 fn const_str(value: usize) -> &'static str {
     match value {
@@ -265,6 +360,14 @@ const NATIVE_READ: [ErrorCode; 2] = [ErrorCode::InspectionBusy, ErrorCode::Stale
 /// of the dimensions the guard needs to make that judgement. Host preparation inspects nothing,
 /// and its `sudo` authentication interrupts by design, so it runs unguarded.
 const NO_FOCUS_GUARD: [ErrorCode; 2] = [ErrorCode::UiInterference, ErrorCode::InterfaceUnavailable];
+
+const ACTION_ERRORS: [ErrorCode; 5] = [
+    ErrorCode::ActionUnavailable,
+    ErrorCode::AmbiguousElement,
+    ErrorCode::StaleTarget,
+    ErrorCode::ActionFailed,
+    ErrorCode::ActionTimeout,
+];
 
 pub fn registry() -> Vec<CommandSpec> {
     use ErrorCode::*;
@@ -341,6 +444,27 @@ pub fn registry() -> Vec<CommandSpec> {
                 session(false),
             ],
             output_schema::<ScreenshotResponse<'static>>,
+        ),
+        specification(
+            &["ui", "click"],
+            "Click one element or point in a selected window",
+            "Perform one AX press or send window-addressed mouse events without interrupting the user's foreground work. Automatic selection uses AX only for an eligible plain element click; no attempted mechanism is followed by the other.",
+            click_arguments(),
+            output_schema::<ClickResponse<'static>>,
+        ),
+        specification(
+            &["ui", "scroll"],
+            "Scroll at one element or point in a selected window",
+            "Send one horizontal and/or vertical wheel event in pixel or line units to a fresh window-local location without moving the real pointer or interrupting the user.",
+            scroll_arguments(),
+            output_schema::<ScrollResponse<'static>>,
+        ),
+        specification(
+            &["ui", "key"],
+            "Send one physical key chord to a selected window",
+            "Make the selected background window key inside its application, then send one balanced physical chord. AppKit uses external WindowServer records; Mac Catalyst requires an open session whose helper makes the UIWindow key.",
+            key_arguments(),
+            output_schema::<KeyResponse<'static>>,
         ),
         specification(
             &["ui", "session", "preflight"],
@@ -541,6 +665,71 @@ pub fn registry() -> Vec<CommandSpec> {
                 ];
                 command.errors.extend([Timeout, CaptureFailed, AlreadyExists, IoFailed]);
                 command.errors.extend(SESSION_BINDING);
+            }
+            ["ui", "click"] => {
+                command.effects = &["sends-input", "changes-target-key-window"];
+                command.permissions = &[
+                    (
+                        "accessibility",
+                        Some("for element resolution, AX press, or key-window checks"),
+                    ),
+                    ("event-posting", Some("for mouse delivery")),
+                ];
+                command.errors.extend(ACTION_ERRORS);
+                command.errors.push(Timeout);
+                command.errors.extend(SESSION_BINDING);
+                command.usage = &[
+                    UsageRule {
+                        subject: "ui click",
+                        relation: Relation::OneOf,
+                        objects: &["--identifier", "--role", "--title", "--x/--y"],
+                    },
+                    UsageRule {
+                        subject: "--method ax",
+                        relation: Relation::Forbids,
+                        objects: &[
+                            "--x/--y",
+                            "--button right",
+                            "--button middle",
+                            "--count 2",
+                            "--modifiers",
+                        ],
+                    },
+                ];
+            }
+            ["ui", "scroll"] => {
+                command.effects = &["sends-input", "changes-target-key-window"];
+                command.permissions = &[
+                    (
+                        "accessibility",
+                        Some("for element resolution and target key-window reporting"),
+                    ),
+                    ("event-posting", None),
+                ];
+                command.errors.extend(ACTION_ERRORS);
+                command.errors.push(Timeout);
+                command.errors.extend(SESSION_BINDING);
+                command.usage = &[
+                    UsageRule {
+                        subject: "ui scroll",
+                        relation: Relation::OneOf,
+                        objects: &["--identifier", "--role", "--title", "--x/--y"],
+                    },
+                    UsageRule {
+                        subject: "ui scroll",
+                        relation: Relation::OneOf,
+                        objects: &["--dx", "--dy"],
+                    },
+                ];
+            }
+            ["ui", "key"] => {
+                command.effects =
+                    &["sends-input", "changes-target-key-window", "executes-target-code"];
+                command.permissions = &[("accessibility", None), ("event-posting", None)];
+                command.errors.extend(ACTION_ERRORS);
+                command.errors.push(Timeout);
+                command.errors.extend(SESSION_BINDING);
+                command.errors.push(InspectionBusy);
             }
             ["ui", "session", "preflight"] => {
                 command.errors.push(InspectionUnavailable);

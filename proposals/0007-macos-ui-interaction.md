@@ -129,6 +129,8 @@ Mouse delivery creates events at the global point (window origin plus local poin
 
 When the target is the frontmost application and the selected window is not its key window, a mouse click is `ACTION_UNAVAILABLE`: it would move the user's keyboard focus. AX press and scrolling remain available there. When the target is in the background, a click may make the selected window key inside the target; the result reports it.
 
+Mac Catalyst limits what a background window receives. Its first click there reaches UIKit only over a control; over any other view, the click is taken as window activation and never reaches the application, and UIKit offers no way to accept it. Middle-button events never reach UIKit at all. Recon sends these clicks the same way and reports them `unverified` like every click; it neither detects nor refuses them.
+
 ### 4. Scroll
 
 `ui scroll` takes signed integer `--dx` and `--dy` (omitted is zero, at least one non-zero) and `--unit pixel|line` (default `pixel`). Positive values advance content right or down, independent of the natural-scrolling preference. Each magnitude is at most 10000 pixels or 1000 lines.
@@ -206,7 +208,7 @@ The initial host boundary is native Apple silicon on macOS 27 with an unlocked c
 
 | Operation | AppKit | Mac Catalyst |
 | --- | --- | --- |
-| Click | AX press and forced mouse on an element; coordinate left, right, middle, double, and modifier clicks each produce their own handler effect once | The same, in a real Catalyst scene |
+| Click | AX press and forced mouse on an element; coordinate left, right, middle, double, and modifier clicks each produce their own handler effect once | AX press and forced mouse on an element; coordinate left, right, double, and modifier clicks over a control each produce their own handler effect once, in a real Catalyst scene |
 | Scroll | Both axes, both directions, both units, outer and nested regions | The same |
 | Key chord | The selected window's action runs, for each of two windows, from a background target, with no repeated action | The same, through a session, with balanced press begin and end |
 

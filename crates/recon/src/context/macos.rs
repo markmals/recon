@@ -65,6 +65,7 @@ fn interfaces() -> Vec<InterfaceState> {
         .into_iter()
         .chain(recon_window_server_macos::interfaces())
         .chain(recon_accessibility_macos::interfaces())
+        .chain(recon_input_macos::interfaces())
         .map(|(interface, symbol, available)| InterfaceState {
             interface: interface.to_owned(),
             symbol: symbol.to_owned(),

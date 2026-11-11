@@ -7,6 +7,7 @@
 //! assembles what they returned into the one JSON object the command prints.
 
 mod correlate;
+mod interaction;
 mod screenshot;
 mod session;
 mod target;
@@ -22,7 +23,7 @@ use recon_core::error::{Failure, InspectionStage};
 use recon_core::process::Pid;
 use recon_native_access_macos::identity::SessionId;
 use recon_privacy_macos::responsibility::{self, ResponsibilityError};
-use recon_ui_guard_macos::{Scope, guarded};
+use recon_ui_guard_macos::{Scope, guarded, guarded_interaction};
 
 use crate::ui::request::{SessionRequest, UiRequest, ViewRequest};
 use crate::ui::response::SessionSummary;
@@ -43,7 +44,23 @@ pub fn observe(request: &UiRequest) -> Result<String, Failure> {
     if needs_privacy_identity(request) {
         responsibility::take_responsibility().map_err(ResponsibilityError::into_failure)?;
     }
+    let started = std::time::Instant::now();
+    let mut prepared_click = None;
+    if matches!(request, UiRequest::Click { .. } | UiRequest::Scroll { .. } | UiRequest::Key { .. })
+    {
+        prepared_click = interaction::preflight(request, started)?;
+    }
     match scope_of(request)? {
+        Some(scope)
+            if matches!(
+                request,
+                UiRequest::Click { .. } | UiRequest::Scroll { .. } | UiRequest::Key { .. }
+            ) =>
+        {
+            guarded_interaction(scope, |watch| {
+                interaction::run(request, watch, started, prepared_click)
+            })
+        }
         Some(scope) => {
             let selected_pid = scope.target;
             guarded(scope, || dispatch(request, selected_pid))
@@ -68,6 +85,11 @@ fn scope_of(request: &UiRequest) -> Result<Option<Scope>, Failure> {
         | UiRequest::Screenshot { selection, .. }
         | UiRequest::Correlate { selection, .. } => (InspectionStage::Read, Some(selection), false),
         UiRequest::View(view) => (InspectionStage::Read, Some(view_selection(view).0), false),
+        UiRequest::Click { selection, .. }
+        | UiRequest::Scroll { selection, .. }
+        | UiRequest::Key { selection, .. } => {
+            (InspectionStage::Interaction, Some(selection), false)
+        }
         UiRequest::Session(SessionRequest::Preflight { selection }) => {
             (InspectionStage::Preflight, Some(selection), false)
         }
@@ -80,7 +102,10 @@ fn scope_of(request: &UiRequest) -> Result<Option<Scope>, Failure> {
     let bound_session = match request {
         UiRequest::Windows { session, .. }
         | UiRequest::AxTree { session, .. }
-        | UiRequest::Screenshot { session, .. } => session.as_ref(),
+        | UiRequest::Screenshot { session, .. }
+        | UiRequest::Click { session, .. }
+        | UiRequest::Scroll { session, .. }
+        | UiRequest::Key { session, .. } => session.as_ref(),
         UiRequest::View(view) => Some(view_selection(view).1),
         UiRequest::Correlate { session, .. } => Some(session),
         UiRequest::Session(_) => None,
@@ -91,7 +116,10 @@ fn scope_of(request: &UiRequest) -> Result<Option<Scope>, Failure> {
             let record = session_record(application, selected.pid, session)?;
             Ok(Pid(record.incarnation.pid as u32))
         })?),
-        (Some(selected), None) if setup_prompts_expected && selected.pid.is_none() => {
+        (Some(selected), None)
+            if (setup_prompts_expected || stage == InspectionStage::Interaction)
+                && selected.pid.is_none() =>
+        {
             Some(with_instance(selected, None, |_, pid| Ok(pid))?)
         }
         (Some(selected), None) => selected.pid,
@@ -108,6 +136,9 @@ fn dispatch(request: &UiRequest, selected_pid: Option<Pid>) -> Result<String, Fa
         }
         UiRequest::Screenshot { selection, session, window, out } => {
             screenshot::screenshot(selection, session.as_ref(), *window, out)
+        }
+        UiRequest::Click { .. } | UiRequest::Scroll { .. } | UiRequest::Key { .. } => {
+            unreachable!("interaction requests require the interaction watch")
         }
         UiRequest::Session(request) => session::session(request, selected_pid),
         UiRequest::View(view) => view_command(view),

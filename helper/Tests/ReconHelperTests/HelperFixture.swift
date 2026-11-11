@@ -56,7 +56,7 @@ final class HelperFixture {
     private func envelope(_ operation: String) -> [String: Any] {
         let incarnation = ReconProcessIncarnation.current
         return [
-            "op": operation, "protocol": 1, "helperBuild": "fixture",
+            "op": operation, "protocol": 2, "helperBuild": "fixture",
             "clientPid": incarnation.pid, "clientPidversion": incarnation.pidversion,
             "clientUid": incarnation.uid,
         ]

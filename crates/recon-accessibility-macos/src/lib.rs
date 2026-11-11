@@ -9,6 +9,9 @@
 pub mod tree;
 
 #[cfg(target_os = "macos")]
+pub mod interaction;
+
+#[cfg(target_os = "macos")]
 mod attributes;
 #[cfg(target_os = "macos")]
 mod private;

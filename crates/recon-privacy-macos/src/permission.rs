@@ -14,11 +14,13 @@ use recon_core::error::{ErrorCode, Failure};
 pub enum Permission {
     ScreenRecording,
     Accessibility,
+    EventPosting,
 }
 
 impl Permission {
     /// Every permission Recon can need, in the order `recon context` reports them.
-    pub const ALL: [Permission; 2] = [Permission::ScreenRecording, Permission::Accessibility];
+    pub const ALL: [Permission; 3] =
+        [Permission::ScreenRecording, Permission::Accessibility, Permission::EventPosting];
 
     /// The name the schema, the context report, and the error object publish. It is the stable
     /// one: wording can change, this cannot.
@@ -26,6 +28,7 @@ impl Permission {
         match self {
             Permission::ScreenRecording => "screen-recording",
             Permission::Accessibility => "accessibility",
+            Permission::EventPosting => "event-posting",
         }
     }
 
@@ -34,6 +37,7 @@ impl Permission {
         match self {
             Permission::ScreenRecording => "Screen Recording",
             Permission::Accessibility => "Accessibility",
+            Permission::EventPosting => "Event Posting",
         }
     }
 
@@ -44,6 +48,9 @@ impl Permission {
                 "System Settings → Privacy & Security → Screen & System Audio Recording"
             }
             Permission::Accessibility => "System Settings → Privacy & Security → Accessibility",
+            Permission::EventPosting => {
+                "System Settings → Privacy & Security → Device Control & Data Access"
+            }
         }
     }
 }

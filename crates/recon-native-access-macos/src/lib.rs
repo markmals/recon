@@ -8,9 +8,10 @@
 //! leaves the descriptor, that an unacknowledged close stays uncertain until authenticated
 //! reconciliation resolves it, and that the loaded helper matches the build the host expects.
 //!
-//! [`appkit`] is the first-party extension reached through that access. It adapts action
-//! identities onto the helper's fixed wire operations; no walker, traversal, or field collection
-//! lives on this side of the process boundary.
+//! [`appkit`] is the first-party extension reached through that access, and [`catalyst`] is the
+//! one that changes a Catalyst target rather than observing it. Both adapt action identities
+//! onto the helper's fixed wire operations; no walker, traversal, field collection, or window
+//! resolution lives on this side of the process boundary.
 
 mod error;
 mod session;
@@ -27,8 +28,8 @@ pub use session::{
 };
 pub use store::{SessionRecord, SessionState, SessionStore, UnresolvedExecution};
 pub use transport::{
-    Connection, LIFECYCLE_DEADLINE, MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES, NATIVE_DEADLINE, Op,
-    PeerIdentity, current_incarnation, decode_frame_length, encode_frame,
+    Connection, HELPER_PROTOCOL, LIFECYCLE_DEADLINE, MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES,
+    NATIVE_DEADLINE, Op, PeerIdentity, current_incarnation, decode_frame_length, encode_frame,
 };
 
 #[cfg(target_os = "macos")]
@@ -48,10 +49,11 @@ mod staging;
 mod access_tests;
 
 pub mod appkit;
+pub mod catalyst;
 #[cfg(target_os = "macos")]
 pub mod inject;
 
 #[cfg(target_os = "macos")]
 pub use host::{failure, preflight, prepare_host};
 #[cfg(target_os = "macos")]
-pub use lifecycle::{close_session, open_session};
+pub use lifecycle::{close_session, open_session, running_executable};

@@ -12,7 +12,9 @@ use std::time::{Duration, Instant};
 
 use recon_native_access_macos::identity::{AccessMode, AccessProfile};
 use recon_native_access_macos::inject;
-use recon_native_access_macos::{CloseOutcome, OpenRequest, SessionStore, Stage, close, open};
+use recon_native_access_macos::{
+    CloseOutcome, HELPER_PROTOCOL, OpenRequest, SessionStore, Stage, close, open,
+};
 use tempfile::TempDir;
 
 fn artifact(name: &str) -> PathBuf {
@@ -92,7 +94,7 @@ fn opens_and_closes_a_real_helper_session() {
         mode: AccessMode::Attach,
         profile: AccessProfile::Standard,
         helper_build: &helper_build,
-        protocol: 1,
+        protocol: HELPER_PROTOCOL,
     };
     let deadline = Instant::now() + Duration::from_secs(10);
     let opened = loop {
