@@ -827,7 +827,14 @@ fn watch(
         // it, so it is recorded first and the look is compared afterwards.
         orders.announced(&mut announced);
         reported(&announced, orders.target, &previous, &current, &mut trace.disturbances);
-        compare(&previous, &current, orders.target, &mut keystrokes, &mut trace.disturbances);
+        compare(
+            &previous,
+            &current,
+            orders.target,
+            orders.interaction,
+            &mut keystrokes,
+            &mut trace.disturbances,
+        );
         if current.unreadable().is_some()
             || trace.disturbances[existing..]
                 .iter()
@@ -849,7 +856,14 @@ fn watch(
     trace.record(&current);
     orders.announced(&mut announced);
     reported(&announced, orders.target, &previous, &current, &mut trace.disturbances);
-    compare(&previous, &current, orders.target, &mut keystrokes, &mut trace.disturbances);
+    compare(
+        &previous,
+        &current,
+        orders.target,
+        orders.interaction,
+        &mut keystrokes,
+        &mut trace.disturbances,
+    );
     trace
 }
 
@@ -858,12 +872,13 @@ fn compare(
     previous: &Snapshot,
     current: &Snapshot,
     target: Option<Pid>,
+    interaction: bool,
     keystrokes: &mut UnmatchedKeystrokes,
     found: &mut Vec<Disturbance>,
 ) {
-    foreground(previous, current, target, found);
+    foreground(previous, current, target, interaction, found);
     frontmost_key_window(previous, current, target, found);
-    window_order(previous, current, target, found);
+    window_order(previous, current, target, interaction, found);
     space(previous, current, target, found);
     pointer_moved(previous, current, found);
     input_posted(previous, current, keystrokes, found);
@@ -924,6 +939,7 @@ fn foreground(
     previous: &Snapshot,
     current: &Snapshot,
     target: Option<Pid>,
+    interaction: bool,
     found: &mut Vec<Disturbance>,
 ) {
     let (Some(before), Some(after)) = (previous.front, current.front) else {
@@ -932,7 +948,7 @@ fn foreground(
     if before.serial == after.serial {
         return;
     }
-    let attribution = attribute_forward(after.pid, target, previous, current);
+    let attribution = attribute_move(interaction, after.pid, target, previous, current);
     let became = match after.pid {
         Some(pid) => format!("pid {pid}"),
         None => "another process".to_owned(),
@@ -977,6 +993,7 @@ fn window_order(
     previous: &Snapshot,
     current: &Snapshot,
     target: Option<Pid>,
+    interaction: bool,
     found: &mut Vec<Disturbance>,
 ) {
     if !previous.windows_read || !current.windows_read {
@@ -989,7 +1006,7 @@ fn window_order(
         && before.id != after.id
         && current.windows.iter().any(|window| window.id == before.id)
     {
-        let attribution = attribute_forward(Some(after.owner), target, previous, current);
+        let attribution = attribute_move(interaction, Some(after.owner), target, previous, current);
         let observed = format!(
             "window {} of pid {} came in front of window {}",
             after.id, after.owner, before.id
@@ -1003,7 +1020,8 @@ fn window_order(
     }
 
     if let Some(forward) = came_forward(previous, current) {
-        let attribution = attribute_forward(Some(forward.owner), target, previous, current);
+        let attribution =
+            attribute_move(interaction, Some(forward.owner), target, previous, current);
         note(
             found,
             Disturbance::new(
@@ -1214,6 +1232,25 @@ fn attribute_forward(
     }
 }
 
+/// How a forward move — the target coming to the front, or a window of it rising in the order — is
+/// attributed. Only an interaction posts the input that could cause such a move, so only an
+/// interaction blames the target for one that coincides with hardware input. During a read Recon
+/// sends nothing, so the same move while the person is typing or clicking is their own action and
+/// stays theirs; a move with no hardware input is still unexplained interference in either stage.
+fn attribute_move(
+    interaction: bool,
+    pid: Option<Pid>,
+    target: Option<Pid>,
+    previous: &Snapshot,
+    current: &Snapshot,
+) -> Attribution {
+    if interaction {
+        attribute_forward(pid, target, previous, current)
+    } else {
+        attribute(pid, target, previous, current)
+    }
+}
+
 /// Whether the hardware generated any input between two looks: someone is using the Mac.
 fn used_by_hand(previous: &Snapshot, current: &Snapshot) -> bool {
     used_by_hand_counters(previous.counters, current.counters)
@@ -1294,7 +1331,7 @@ mod tests {
         let mut keystrokes = UnmatchedKeystrokes::default();
         let mut found = Vec::new();
         for pair in looks.windows(2) {
-            compare(pair[0], pair[1], Some(TARGET), &mut keystrokes, &mut found);
+            compare(pair[0], pair[1], Some(TARGET), false, &mut keystrokes, &mut found);
         }
         found
     }
@@ -1319,7 +1356,7 @@ mod tests {
         let mut keystrokes = UnmatchedKeystrokes::default();
         let mut found = Vec::new();
         reported(&announced, Some(TARGET), previous, current, &mut found);
-        compare(previous, current, Some(TARGET), &mut keystrokes, &mut found);
+        compare(previous, current, Some(TARGET), true, &mut keystrokes, &mut found);
         found
     }
 
@@ -1330,6 +1367,18 @@ mod tests {
                 stage: InspectionStage::Interaction,
                 target: Some(TARGET),
                 setup_prompts_expected: true,
+            },
+            trace: Some(Trace { samples: 2, disturbances, gap: None }),
+        }
+    }
+
+    /// An interaction whose caller expects no setup prompt.
+    fn observed_interaction(disturbances: Vec<Disturbance>) -> Observation {
+        Observation {
+            scope: Scope {
+                stage: InspectionStage::Interaction,
+                target: Some(TARGET),
+                setup_prompts_expected: false,
             },
             trace: Some(Trace { samples: 2, disturbances, gap: None }),
         }
@@ -1397,7 +1446,7 @@ mod tests {
     }
 
     #[test]
-    fn a_target_activation_during_hardware_input_is_still_attributed_to_the_target() {
+    fn a_person_clicking_the_selected_target_during_a_read_is_not_blamed() {
         let before = snapshot(0);
         let mut after = snapshot(10);
         after.front = Some(FrontProcess { serial: 7, pid: Some(TARGET) });
@@ -1407,9 +1456,24 @@ mod tests {
         let found = changes(&before, &after);
 
         assert_eq!(found.len(), 1);
+        assert_eq!(found[0].attribution, Attribution::ConcurrentUser);
+        assert!(observed(found).outcome().is_none());
+    }
+
+    #[test]
+    fn a_target_activation_during_an_interaction_is_the_targets_through_hardware_input() {
+        let before = snapshot(0);
+        let mut after = snapshot(10);
+        after.front = Some(FrontProcess { serial: 7, pid: Some(TARGET) });
+        after.counters.hid_input += 1;
+        after.counters.session_input += 1;
+
+        let found = interval(&[], &before, &after);
+
+        assert_eq!(found.len(), 1);
         assert_eq!(found[0].attribution, Attribution::Target);
         assert_eq!(
-            observed(found).outcome().map(|failure| failure.code),
+            observed_interaction(found).outcome().map(|failure| failure.code),
             Some(ErrorCode::UiInterference)
         );
     }
@@ -1536,10 +1600,11 @@ mod tests {
         assert_eq!(found[0].evidence, InterferenceEvidence::KeyWindow);
     }
 
-    /// A target window rising past a window it was behind is the target's doing even while the
-    /// person is typing: the front window never moves, so only the order behind it shows it.
+    /// A target window rising past one it was behind while the person is typing is the person's
+    /// doing during a read: the read posts nothing, so a reorder that coincides with hardware input
+    /// stays theirs and does not fail the read.
     #[test]
-    fn a_target_window_rising_behind_an_unchanged_front_window_is_the_targets_doing() {
+    fn a_target_window_rising_during_a_read_with_hardware_input_is_not_blamed() {
         let mut before = snapshot(0);
         before.windows = vec![place(1, OTHER), place(3, OTHER), place(2, TARGET)];
         let mut after = snapshot(10);
@@ -1550,9 +1615,27 @@ mod tests {
 
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].evidence, InterferenceEvidence::KeyWindow);
+        assert_eq!(found[0].attribution, Attribution::ConcurrentUser);
+        assert!(observed(found).outcome().is_none());
+    }
+
+    /// The same reorder during an interaction is the target's doing even while the person types:
+    /// the operation posted the input that could have caused it.
+    #[test]
+    fn a_target_window_rising_during_an_interaction_is_the_targets_through_hardware_input() {
+        let mut before = snapshot(0);
+        before.windows = vec![place(1, OTHER), place(3, OTHER), place(2, TARGET)];
+        let mut after = snapshot(10);
+        after.counters.hid_input += 1;
+        after.counters.session_input += 1;
+
+        let found = interval(&[], &before, &after);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].evidence, InterferenceEvidence::KeyWindow);
         assert_eq!(found[0].attribution, Attribution::Target);
         assert_eq!(
-            observed(found).outcome().map(|failure| failure.code),
+            observed_interaction(found).outcome().map(|failure| failure.code),
             Some(ErrorCode::UiInterference)
         );
     }
@@ -1742,7 +1825,7 @@ mod tests {
             after.pointer = Some(CGPoint::new(f64::from(step), 0.0));
             after.counters.hid_pointer += step;
             after.counters.session_pointer += step;
-            compare(&before, &after, Some(TARGET), &mut keystrokes, &mut found);
+            compare(&before, &after, Some(TARGET), false, &mut keystrokes, &mut found);
         }
 
         assert_eq!(found.len(), 1);
