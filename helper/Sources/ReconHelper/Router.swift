@@ -25,6 +25,9 @@ struct ReconRouter: Sendable {
         case let read where ReconReadDispatch.operations.contains(read):
             return ReconReadDispatch(lifecycle: lifecycle, runtime: runtime)
                 .answer(read, request, startedAt: startedAt)
+        case let interaction where ReconInteractionDispatch.operations.contains(interaction):
+            return ReconInteractionDispatch(lifecycle: lifecycle, runtime: runtime)
+                .answer(interaction, request, startedAt: startedAt)
         default:
             return refusal("INVALID_ARGUMENT", "operation", "Unsupported closed operation")
         }

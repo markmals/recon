@@ -1,7 +1,7 @@
 ---
 id: decision.0003
 title: Recon-Owned Incarnation-Bound Native Loader
-status: accepted
+status: superseded
 established-by: proposal.0005
 supersedes: []
 ---

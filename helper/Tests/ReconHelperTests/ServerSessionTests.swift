@@ -23,7 +23,7 @@ struct ServerSessionTests {
         #expect(opened["uid"] as? UInt32 == geteuid())
         #expect(opened["pidversion"] as? UInt32 == ReconProcessIncarnation.current.pidversion)
         #expect(opened["helperBuild"] as? String == "fixture")
-        #expect(opened["protocol"] as? Int == 1)
+        #expect(opened["protocol"] as? Int == Int(ReconHelperIdentity.protocolVersion))
         #expect(opened["profile"] as? String == "standard")
         #expect(opened["mode"] as? String == "existing")
         #expect(opened["requestedMode"] as? String == "existing")

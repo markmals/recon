@@ -75,7 +75,7 @@ fn observation(fields: Value, kind: &str, scope: Value) -> Value {
         "source": "native-appkit",
         "sessionId": SESSION,
         "helperBuild": HELPER_BUILD,
-        "protocol": 1,
+        "protocol": 2,
         "identity": identity(),
         "scope": scope,
         "fields": fields,
@@ -441,7 +441,7 @@ fn accessibility_tree() -> Value {
             "id": SESSION,
             "acquired": "attach",
             "profile": "standard",
-            "protocolVersion": 1,
+            "protocolVersion": 2,
             "helperBuild": HELPER_BUILD,
         },
     })
@@ -562,7 +562,7 @@ fn proposal0005_windows_keeps_its_unbound_shape_and_accepts_native_only_records(
             "id": SESSION,
             "acquired": "existing",
             "profile": "research",
-            "protocolVersion": 1,
+            "protocolVersion": 2,
             "helperBuild": HELPER_BUILD,
         }),
     );
@@ -615,7 +615,7 @@ fn proposal0005_correlate_accepts_both_full_observations_and_an_ambiguous_candid
 
 #[test]
 fn proposal0005_session_open_accepts_a_new_session_and_a_reused_one() {
-    let opened = |reused: bool, identity: Value| {
+    let opened = |reused: bool, identity: Value, toolkit: Value| {
         json!({
             "ok": true,
             "sessionId": SESSION,
@@ -625,8 +625,9 @@ fn proposal0005_session_open_accepts_a_new_session_and_a_reused_one() {
             "uid": 501,
             "incarnation": { "pid": 4242, "pidversion": 7 },
             "identity": identity,
+            "toolkit": toolkit,
             "helperBuild": HELPER_BUILD,
-            "protocol": 1,
+            "protocol": 2,
             "profile": "standard",
             "mode": "existing",
             "requestedMode": "existing",
@@ -640,7 +641,11 @@ fn proposal0005_session_open_accepts_a_new_session_and_a_reused_one() {
     };
     validate(
         &["ui", "session", "open"],
-        &[opened(false, identity()), opened(true, unbundled_identity())],
+        &[
+            opened(false, identity(), json!("appkit")),
+            opened(true, unbundled_identity(), json!("catalyst")),
+            opened(false, identity(), Value::Null),
+        ],
     );
 }
 
@@ -656,8 +661,9 @@ fn proposal0005_session_open_never_publishes_the_capability_it_withholds() {
         "uid": 501,
         "incarnation": { "pid": 4242, "pidversion": 7 },
         "identity": identity(),
+        "toolkit": "appkit",
         "helperBuild": HELPER_BUILD,
-        "protocol": 1,
+        "protocol": 2,
         "profile": "standard",
         "mode": "attach",
         "requestedMode": "attach",
@@ -737,6 +743,7 @@ fn preflight_report(pid: Value, running: Value) -> Value {
                 "pid": pid,
                 "runningPids": running,
                 "processExecutable": unknown_fact("proc_pidpath", "no process is selected"),
+                "toolkit": unknown_fact("LC_BUILD_VERSION", "no process is selected"),
                 "architecture": unknown_fact("proc_pidinfo", "no process is selected"),
                 "executableArchitectures": fact(json!(["arm64e"]), "mach-o header"),
                 "signed": fact(json!(true), "csops"),

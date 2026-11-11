@@ -5,6 +5,7 @@ members = [
     "crates/recon-accessibility-macos",
     "crates/recon-applications-macos",
     "crates/recon-core",
+    "crates/recon-input-macos",
     "crates/recon-native-access-macos",
     "crates/recon-privacy-macos",
     "crates/recon-ui-guard-macos",

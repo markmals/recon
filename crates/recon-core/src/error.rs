@@ -4,6 +4,8 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::{Value, json};
 
+#[cfg(test)]
+mod action_tests;
 mod schema;
 #[cfg(test)]
 mod test_contract;
@@ -43,13 +45,23 @@ pub enum ErrorCode {
     StaleSession,
     /// A well-formed handle no longer names a live native object.
     StaleNode,
+    /// The action cannot be performed without violating its target or no-interruption contract.
+    ActionUnavailable,
+    /// An element selector does not identify exactly one live element.
+    AmbiguousElement,
+    /// The bound process incarnation or window changed during an action.
+    StaleTarget,
+    /// An input mechanism failed at a named action stage.
+    ActionFailed,
+    /// A mutating action exceeded its deadline and its execution is unknown.
+    ActionTimeout,
     /// Recon observed a violation of the no-focus contract while running the operation.
     UiInterference,
     Internal,
 }
 
 impl ErrorCode {
-    pub const ALL: [Self; 25] = [
+    pub const ALL: [Self; 30] = [
         Self::InvalidArgument,
         Self::UnsupportedHost,
         Self::DiscoveryUnavailable,
@@ -73,6 +85,11 @@ impl ErrorCode {
         Self::InspectionBusy,
         Self::StaleSession,
         Self::StaleNode,
+        Self::ActionUnavailable,
+        Self::AmbiguousElement,
+        Self::StaleTarget,
+        Self::ActionFailed,
+        Self::ActionTimeout,
         Self::UiInterference,
         Self::Internal,
     ];
@@ -121,6 +138,11 @@ impl ErrorCode {
             }
             Self::StaleSession => "The session identifier no longer names a live session",
             Self::StaleNode => "The handle no longer names a live native object",
+            Self::ActionUnavailable => "The requested UI action is unavailable",
+            Self::AmbiguousElement => "The accessibility selector matches multiple elements",
+            Self::StaleTarget => "The action target changed during the operation",
+            Self::ActionFailed => "The UI action mechanism failed",
+            Self::ActionTimeout => "The UI action exceeded its deadline; execution is unknown",
             Self::UiInterference => "The operation disturbed the user's foreground work",
             Self::Internal => "An unexpected internal failure occurred",
         }
@@ -238,6 +260,8 @@ pub enum InspectionStage {
     Close,
     /// Resolving an uncertain close against authenticated bootstrap state.
     Reconcile,
+    /// Delivering an explicit UI action and watching its whole interval.
+    Interaction,
 }
 
 /// The details of a native inspection failure: where it happened, which target and session it was
@@ -324,6 +348,80 @@ impl<'a> InspectionFailure<'a> {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum ActionStage {
+    Resolve,
+    KeyWindow,
+    Dispatch,
+    Release,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum DispatchState {
+    None,
+    Partial,
+    Complete,
+    Unknown,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum ReleaseState {
+    NotNeeded,
+    Complete,
+    Failed,
+    SkippedTargetChanged,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum ActionMechanism {
+    None,
+    AxPress,
+    MouseEvents,
+    ScrollWheel,
+    KeyEvents,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ActionKeyWindow {
+    pub before: Option<u32>,
+    pub after: Option<u32>,
+    pub changed: Option<bool>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ActionFailure {
+    pub stage: ActionStage,
+    pub dispatch: DispatchState,
+    pub mechanism: ActionMechanism,
+    pub pid: u32,
+    pub window_id: u32,
+    pub release: ReleaseState,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub key_window: Option<ActionKeyWindow>,
+}
+
+impl ActionFailure {
+    pub fn key_window(
+        mut self,
+        before: Option<u32>,
+        after: Option<u32>,
+        changed: Option<bool>,
+    ) -> Self {
+        self.key_window = Some(ActionKeyWindow { before, after, changed });
+        self
+    }
+
+    pub fn details(self) -> Value {
+        serde_json::to_value(self).expect("action failure details serialize")
+    }
+}
+
 /// What Recon observed when it detected a violation of the no-focus contract.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
@@ -356,6 +454,8 @@ pub struct Interference<'a> {
     pub disturbance: Option<String>,
     pub session: Option<&'a str>,
     pub target_execution_may_continue: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub release: Option<ReleaseState>,
 }
 
 impl<'a> Interference<'a> {
@@ -368,6 +468,7 @@ impl<'a> Interference<'a> {
             disturbance: None,
             session: None,
             target_execution_may_continue: false,
+            release: None,
         }
     }
 
@@ -393,6 +494,11 @@ impl<'a> Interference<'a> {
 
     pub fn target_execution_may_continue(mut self) -> Self {
         self.target_execution_may_continue = true;
+        self
+    }
+
+    pub fn release(mut self, release: ReleaseState) -> Self {
+        self.release = Some(release);
         self
     }
 

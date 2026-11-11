@@ -192,6 +192,14 @@ run = "node tools/build-fixture.ts"
 description = "Build the fixture variant used by the loader injection tests"
 run = "node tools/build-inject-fixture.ts"
 
+[tasks."fixture:catalyst"]
+description = "Build the Mac Catalyst fixture the interaction evidence acts on"
+run = "node tools/build-catalyst-fixture.ts"
+
+[tasks."fixture:receiver"]
+description = "Build the foreground receiver that keeps the user's input during interaction evidence"
+run = "node tools/build-receiver.ts"
+
 [tasks."swift:toolchain"]
 description = "Verify the exact Apple Swift compiler every Swift build requires"
 # mise cannot provision it: this is Apple's toolchain, from Xcode or the Command
@@ -200,13 +208,14 @@ description = "Verify the exact Apple Swift compiler every Swift build requires"
 run = "node tools/swift-toolchain.ts"
 
 [tasks."swift:test"]
-description = "The Swift SDK's and the AppKit extension's own test suites"
+description = "The Swift SDK's and first-party extensions' own test suites"
 # Swift Testing, run by the pinned toolchain against the packages in place. The
 # helper package has its own suites, which `test:helper` runs.
 depends = ["swift:toolchain"]
 run = [
     "xcrun swift test --package-path sdks/swift",
     "xcrun swift test --package-path extensions/appkit",
+    "xcrun swift test --package-path extensions/catalyst",
 ]
 
 [tasks."helper:build"]
@@ -231,6 +240,21 @@ description = "The no-focus evidence: a continuous out-of-process watch over a l
 # It activates nothing itself, so run it hands-off.
 depends = ["fixture:build", "recon:sign"]
 run = "cargo test -p recon --test ui_focus reading_ -- --ignored --test-threads=1"
+
+[tasks."test:interaction"]
+description = "Clicks, scrolling, and key chords against live AppKit and Mac Catalyst targets"
+# The fixtures and receiver must already be running, with the receiver frontmost; tests never
+# launch, activate, or stop them. Negative controls deliberately disturb the desktop, so run only
+# with the operator's explicit permission. The hardware-attribution row may request one real key.
+depends = [
+    "fixture:build",
+    "fixture:catalyst",
+    "fixture:receiver",
+    "helper:build",
+    "loader:build",
+    "recon:sign",
+]
+run = "cargo test -p recon --test ui_interaction -- --ignored --test-threads=1"
 
 [tasks."test:inject"]
 description = "Loader injection against the inject fixture"

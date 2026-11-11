@@ -15,7 +15,9 @@ use objc2_core_graphics::{
 };
 use recon_native_access_macos::identity::{AccessMode, AccessProfile, Incarnation};
 use recon_native_access_macos::inject;
-use recon_native_access_macos::{OpenRequest, SessionState, SessionStore, Stage, open};
+use recon_native_access_macos::{
+    HELPER_PROTOCOL, OpenRequest, SessionState, SessionStore, Stage, open,
+};
 use serde_json::{Value, json};
 
 fn artifact(name: &str) -> PathBuf {
@@ -87,7 +89,7 @@ fn an_unconfirmed_close_is_a_typed_cli_failure_not_success_json() {
         mode: AccessMode::Attach,
         profile: AccessProfile::Standard,
         helper_build: &helper_build,
-        protocol: 1,
+        protocol: HELPER_PROTOCOL,
     };
     let session = loop {
         match open(&store, &request) {

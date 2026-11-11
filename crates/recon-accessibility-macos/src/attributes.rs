@@ -77,8 +77,21 @@ pub(crate) fn text(value: &CFType) -> Option<String> {
     Some(value.downcast_ref::<CFString>()?.to_string())
 }
 
+/// A flag. Mac Catalyst answers some flags in a bulk read as the number 0 or 1 although a single
+/// read of the same attribute returns a boolean; any other number is not a flag.
 pub(crate) fn boolean(value: &CFType) -> Option<bool> {
-    Some(value.downcast_ref::<CFBoolean>()?.as_bool())
+    if let Some(flag) = value.downcast_ref::<CFBoolean>() {
+        return Some(flag.as_bool());
+    }
+    let number = value.downcast_ref::<CFNumber>()?;
+    if number.is_float_type() {
+        return None;
+    }
+    match number.as_i64()? {
+        0 => Some(false),
+        1 => Some(true),
+        _ => None,
+    }
 }
 
 /// A value Recon can report; anything else is reported as no value at all.
@@ -198,6 +211,18 @@ mod tests {
         assert_eq!(attribute_value(&CFNumber::new_i64(42)), Some(AttributeValue::Integer(42)));
         assert_eq!(attribute_value(&CFNumber::new_f64(0.5)), Some(AttributeValue::Real(0.5)));
         assert_eq!(attribute_value(&unsupported_attribute()), None);
+    }
+
+    #[test]
+    fn a_flag_answered_as_the_number_zero_or_one_is_a_known_flag() {
+        assert_eq!(boolean(CFBoolean::new(true)), Some(true));
+        assert_eq!(boolean(CFBoolean::new(false)), Some(false));
+        assert_eq!(boolean(&CFNumber::new_i64(1)), Some(true));
+        assert_eq!(boolean(&CFNumber::new_i64(0)), Some(false));
+        assert_eq!(boolean(&CFNumber::new_i64(2)), None);
+        assert_eq!(boolean(&CFNumber::new_f64(0.5)), None);
+        assert_eq!(boolean(&CFString::from_str("1")), None);
+        assert_eq!(boolean(&unsupported_attribute()), None);
     }
 
     #[test]

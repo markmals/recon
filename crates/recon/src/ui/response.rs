@@ -400,6 +400,7 @@ pub struct OpenResponse {
     pub uid: u32,
     pub incarnation: ProcessIncarnation,
     pub identity: TargetIdentity,
+    pub toolkit: Option<recon_applications_macos::toolkit::Toolkit>,
     pub helper_build: String,
     pub protocol: u32,
     /// The profile the session holds, which a later request cannot change.
@@ -488,6 +489,7 @@ pub struct TargetFacts {
     pub pid: Option<Pid>,
     pub running_pids: Vec<Pid>,
     pub process_executable: Fact<String>,
+    pub toolkit: Fact<String>,
     pub architecture: Fact<String>,
     pub executable_architectures: Fact<Vec<String>>,
     pub signed: Fact<bool>,

@@ -18,8 +18,16 @@ function buildFixture(): void {
     rmSync(bundle, { force: true, recursive: true });
     mkdirSync(executables, { recursive: true });
     execFileSync(
-        "swiftc",
-        ["-O", path.join(source, "main.swift"), "-o", path.join(executables, "ReconFixture")],
+        "xcrun",
+        [
+            "--sdk",
+            "macosx",
+            "swiftc",
+            "-O",
+            path.join(source, "main.swift"),
+            "-o",
+            path.join(executables, "ReconFixture"),
+        ],
         { stdio: "inherit" },
     );
     copyFileSync(path.join(source, "Info.plist"), path.join(bundle, "Contents", "Info.plist"));

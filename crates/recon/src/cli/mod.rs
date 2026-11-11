@@ -1,5 +1,6 @@
 mod decimal;
 mod help;
+mod interaction;
 mod native;
 mod output_path;
 mod parse_error;
@@ -109,6 +110,9 @@ fn ui_request(
             window: window(matches),
             out: PathBuf::from(&matches.get_one::<OutputPath>("out").expect("required output").0),
         }),
+        ["ui", "click"] => interaction::click(path, matches),
+        ["ui", "scroll"] => interaction::scroll(path, matches),
+        ["ui", "key"] => Ok(interaction::key(matches)),
         ["ui", "session", "preflight"] => {
             Ok(UiRequest::Session(SessionRequest::Preflight { selection: selection(matches) }))
         }

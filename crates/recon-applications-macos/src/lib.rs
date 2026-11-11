@@ -8,6 +8,7 @@
 pub mod application;
 pub mod response;
 pub mod selection;
+pub mod toolkit;
 
 #[cfg(target_os = "macos")]
 mod metadata;

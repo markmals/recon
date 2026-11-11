@@ -103,6 +103,9 @@ fn command_path(request: &Request) -> &'static [&'static str] {
         Request::Ui(UiRequest::Windows { .. }) => &["ui", "windows"],
         Request::Ui(UiRequest::AxTree { .. }) => &["ui", "ax", "tree"],
         Request::Ui(UiRequest::Screenshot { .. }) => &["ui", "screenshot"],
+        Request::Ui(UiRequest::Click { .. }) => &["ui", "click"],
+        Request::Ui(UiRequest::Scroll { .. }) => &["ui", "scroll"],
+        Request::Ui(UiRequest::Key { .. }) => &["ui", "key"],
         Request::Ui(UiRequest::Session(SessionRequest::Preflight { .. })) => {
             &["ui", "session", "preflight"]
         }

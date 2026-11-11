@@ -18,7 +18,8 @@ use objc2_core_graphics::{
 use recon_native_access_macos::identity::{AccessMode, AccessProfile};
 use recon_native_access_macos::inject;
 use recon_native_access_macos::{
-    CloseOutcome, Op, OpenRequest, SessionStore, Stage, close, native_request, open,
+    CloseOutcome, HELPER_PROTOCOL, Op, OpenRequest, SessionStore, Stage, close, native_request,
+    open,
 };
 use serde_json::json;
 use tempfile::TempDir;
@@ -104,7 +105,7 @@ fn resolves_a_window_server_id_to_a_live_native_window() {
         mode: AccessMode::Attach,
         profile: AccessProfile::Standard,
         helper_build: &helper_build,
-        protocol: 1,
+        protocol: HELPER_PROTOCOL,
     };
     let opened = loop {
         match open(&store, &request) {

@@ -10,7 +10,7 @@ use objc2_core_foundation::{CFArray, CFData, CFRetained, CFString};
 use objc2_core_graphics::CGWindowID;
 use serde_json::json;
 
-use crate::element::{MESSAGING_TIMEOUT_SECONDS, attribute};
+use crate::element::{MESSAGING_TIMEOUT_SECONDS, application_element, attribute};
 use crate::private;
 use recon_core::error::{ErrorCode, Failure, NotFound};
 use recon_core::process::Pid;
@@ -37,15 +37,25 @@ pub fn window_element(
     pid: Pid,
     window_id: WindowId,
 ) -> Result<CFRetained<AXUIElement>, Failure> {
+    window_element_within(application, pid, window_id, None)
+}
+
+pub(crate) fn window_element_within(
+    application: &AXUIElement,
+    pid: Pid,
+    window_id: WindowId,
+    deadline: Option<std::time::Instant>,
+) -> Result<CFRetained<AXUIElement>, Failure> {
+    check_deadline(deadline, pid)?;
     let get_window = window_id_lookup()?;
 
-    for element in listed_windows(application, pid)? {
-        if window_id_of(&element, get_window, pid)? == Some(window_id) {
+    for element in listed_windows(application, pid, deadline)? {
+        if window_id_of_within(&element, get_window, pid, deadline)? == Some(window_id) {
             return Ok(element);
         }
     }
-    if let Some(element) = main_window(application, pid)?
-        && window_id_of(&element, get_window, pid)? == Some(window_id)
+    if let Some(element) = main_window(application, pid, deadline)?
+        && window_id_of_within(&element, get_window, pid, deadline)? == Some(window_id)
     {
         return Ok(element);
     }
@@ -68,7 +78,7 @@ pub fn window_element(
             }),
         ));
     };
-    match scanned_window(pid, window_id, from_token, get_window)? {
+    match scanned_window(pid, window_id, from_token, get_window, deadline)? {
         Some(element) => Ok(element),
         None => Err(Failure::new(
             ErrorCode::NotFound,
@@ -89,10 +99,63 @@ pub fn window_element(
 /// An application that reports no main window needs no window ID lookup, so it is told that it
 /// has none rather than that a private interface is missing.
 pub fn main_window_id(application: &AXUIElement, pid: Pid) -> Result<Option<WindowId>, Failure> {
-    let Some(window) = main_window(application, pid)? else {
+    let Some(window) = main_window(application, pid, None)? else {
         return Ok(None);
     };
     window_id_of(&window, window_id_lookup()?, pid)
+}
+
+pub fn focused_window_id(pid: Pid) -> Result<Option<WindowId>, Failure> {
+    let application = application_element(pid)?;
+    let window = match attribute(&application, "AXFocusedWindow") {
+        Ok(window) => window,
+        Err(AXError::NoValue | AXError::AttributeUnsupported) => return Ok(None),
+        Err(error) => return Err(focused_failure(pid, error)),
+    };
+    let Ok(window) = window.downcast::<AXUIElement>() else {
+        return Ok(None);
+    };
+    let get_window = window_id_lookup()?;
+    let mut id: CGWindowID = 0;
+    // SAFETY: the private lookup writes the WindowServer identity of the focused AX window.
+    match unsafe { get_window(&window, &raw mut id) } {
+        AXError::Success => Ok(Some(WindowId(id))),
+        AXError::NoValue | AXError::AttributeUnsupported => Ok(None),
+        error => Err(focused_failure(pid, error)),
+    }
+}
+
+/// Whether the application considers itself active, from its `AXFrontmost`.
+///
+/// After a target is deactivated its `AXFocusedWindow` still names the window that was key, but
+/// AppKit has no key window until the application is active again. A caller that must tell "this
+/// window is already key" from "this window was key before the application was deactivated" reads
+/// this alongside the focused window. An application that does not report the attribute is taken
+/// to be inactive.
+pub fn application_active(pid: Pid) -> Result<bool, Failure> {
+    let application = application_element(pid)?;
+    match attribute(&application, "AXFrontmost") {
+        Ok(value) => Ok(crate::attributes::boolean(&value).unwrap_or(false)),
+        Err(AXError::NoValue | AXError::AttributeUnsupported) => Ok(false),
+        Err(error) => Err(focused_failure(pid, error)),
+    }
+}
+
+fn focused_failure(pid: Pid, error: AXError) -> Failure {
+    if error == AXError::CannotComplete {
+        return Failure::new(
+            ErrorCode::Timeout,
+            format!(
+                "process {pid} did not answer an accessibility request within {MESSAGING_TIMEOUT_SECONDS} seconds"
+            ),
+            json!({"pid":pid.0,"timeoutSeconds":MESSAGING_TIMEOUT_SECONDS}),
+        );
+    }
+    Failure::new(
+        ErrorCode::InterfaceUnavailable,
+        format!("focused-window accessibility read failed with error {}", error.0),
+        json!({"interface":"accessibility-focused-window","symbol":"AXFocusedWindow"}),
+    )
 }
 
 /// What a lookup request that did not answer means for the search.
@@ -110,6 +173,17 @@ fn lookup_outcome(error: AXError) -> Lookup {
         AXError::CannotComplete => Lookup::Unresponsive,
         _ => Lookup::Continue,
     }
+}
+
+fn check_deadline(deadline: Option<std::time::Instant>, pid: Pid) -> Result<(), Failure> {
+    if deadline.is_some_and(|deadline| std::time::Instant::now() >= deadline) {
+        return Err(Failure::new(
+            ErrorCode::Timeout,
+            format!("process {pid} did not finish the action element lookup within 5 seconds"),
+            json!({"pid":pid.0,"timeoutSeconds":5}),
+        ));
+    }
+    Ok(())
 }
 
 fn keep_looking(error: AXError, pid: Pid) -> Result<(), Failure> {
@@ -141,7 +215,9 @@ fn window_id_lookup() -> Result<GetWindow, Failure> {
 fn listed_windows(
     application: &AXUIElement,
     pid: Pid,
+    deadline: Option<std::time::Instant>,
 ) -> Result<Vec<CFRetained<AXUIElement>>, Failure> {
+    check_deadline(deadline, pid)?;
     let windows = match attribute(application, "AXWindows") {
         Ok(windows) => windows,
         Err(error) => return keep_looking(error, pid).map(|()| Vec::new()),
@@ -157,7 +233,9 @@ fn listed_windows(
 fn main_window(
     application: &AXUIElement,
     pid: Pid,
+    deadline: Option<std::time::Instant>,
 ) -> Result<Option<CFRetained<AXUIElement>>, Failure> {
+    check_deadline(deadline, pid)?;
     match attribute(application, "AXMainWindow") {
         Ok(window) => Ok(window.downcast::<AXUIElement>().ok()),
         Err(error) => keep_looking(error, pid).map(|()| None),
@@ -169,6 +247,16 @@ fn window_id_of(
     get_window: GetWindow,
     pid: Pid,
 ) -> Result<Option<WindowId>, Failure> {
+    window_id_of_within(element, get_window, pid, None)
+}
+
+fn window_id_of_within(
+    element: &AXUIElement,
+    get_window: GetWindow,
+    pid: Pid,
+    deadline: Option<std::time::Instant>,
+) -> Result<Option<WindowId>, Failure> {
+    check_deadline(deadline, pid)?;
     let mut id: CGWindowID = 0;
     // SAFETY: the private lookup writes the window ID of an accessibility window.
     let error = unsafe { get_window(element, &raw mut id) };
@@ -183,14 +271,16 @@ fn scanned_window(
     window_id: WindowId,
     from_token: CreateWithRemoteToken,
     get_window: GetWindow,
+    deadline: Option<std::time::Instant>,
 ) -> Result<Option<CFRetained<AXUIElement>>, Failure> {
     let token_pid = i32::try_from(pid.0)
         .map_err(|_| Failure::internal(format!("{pid} is not a process id")))?;
     for number in ELEMENT_NUMBERS {
+        check_deadline(deadline, pid)?;
         let Some(element) = element_from_token(token_pid, number, from_token) else {
             continue;
         };
-        if window_id_of(&element, get_window, pid)? != Some(window_id) {
+        if window_id_of_within(&element, get_window, pid, deadline)? != Some(window_id) {
             continue;
         }
         if role_of(&element, pid)?.as_deref() == Some(WINDOW_ROLE) {
