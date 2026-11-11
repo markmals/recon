@@ -94,7 +94,7 @@ pub(super) fn run(
                 (
                     KeyWindowMechanism::WindowServerRecords,
                     reported_before,
-                    confirm_appkit(&context, window, watch)?,
+                    confirm_appkit(&context, window, reported_before, watch)?,
                 )
             }
         }
@@ -162,11 +162,10 @@ pub(super) fn run(
     }
     let release = send_chord(&context.target, chord, base, || watch.interrupted())?;
     context.check(DispatchState::Complete, release, true)?;
-    let changed = if toolkit == Toolkit::Catalyst {
-        reported_before != after
-    } else {
-        context.changed(DispatchState::Complete, release)?
-    };
+    // The key window the operation reported moving from and to are both known: the chord is key
+    // input, not a key-window change, so there is no need to read the focused window again after
+    // dispatch, and reading it could misreport a delivered chord as a timeout.
+    let changed = reported_before != after;
     let encoded = crate::output::encode(&KeyResponse {
         application: context.application(),
         window,
@@ -184,6 +183,7 @@ pub(super) fn run(
 fn confirm_appkit(
     context: &Context<'_>,
     selected: WindowId,
+    reported_before: Option<WindowId>,
     watch: &Watch,
 ) -> Result<Option<WindowId>, Failure> {
     let deadline = Instant::now() + Duration::from_secs(1);
@@ -202,7 +202,7 @@ fn confirm_appkit(
                 } else {
                     error
                 };
-                with_key_window(failure, context.before, None)
+                with_key_window(failure, reported_before, None)
             })?;
         if current == Some(selected) {
             return Ok(current);
@@ -216,7 +216,7 @@ fn confirm_appkit(
                 ActionMechanism::KeyEvents,
                 ReleaseState::NotNeeded,
             );
-            return Err(with_key_window(failure, context.before, Some(current)));
+            return Err(with_key_window(failure, reported_before, Some(current)));
         }
         sleep(Duration::from_millis(40));
     }
