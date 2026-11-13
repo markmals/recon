@@ -137,6 +137,7 @@ The first research attach in each guest boot made `taskgated` evaluate `system.p
 
 - `recon-y9v`: preflight claims a dialog-free attach (above).
 - `recon-cks`: the fixture's "last ordered front is main" assumption fails on macOS 27.2.1, on the host as well.
+- `recon-h3u`: inspection store records (attaches, endpoints, sessions, locks) are keyed by pid and pidversion only and survive reboots, including three "unfinished attach" records from the taskport timeouts. A new process that reuses a recorded pair would inherit them. [INFERENCE] It would then be refused with `INSPECTION_BUSY` and have no way to reconcile.
 - With `--mode launch`, an observation started too soon after the launch reports the target's own windows appearing as `UI_INTERFERENCE`. `inspect-target.sh` waits 3 s after a launch.
 
 ## Host isolation
@@ -147,7 +148,7 @@ The first research attach in each guest boot made `taskgated` evaluate `system.p
 | `prepare-host` on the host | Never run on the host |
 | Clipboard, shared folders, guest app, audio | All off; no virtiofs mounts in the guest, no `/Volumes/Guest` ([`isolation-checks.txt`](evidence/isolation-checks.txt)) |
 | Credentials | Dedicated ed25519 key; `ssh-add -l` in the guest finds no agent; no Apple account; the Developer ID key stays on the host; the guest password is generated and lives only in `~/ReconResearchVM/ssh` |
-| Storage | The VM is in VirtualBuddy's library; the APFS-cloned baseline (installed, never booted) is in `~/ReconResearchVM/baselines`; none of it is tracked by git |
+| Storage | The VM is in VirtualBuddy's library; its snapshots (APFS clones of the bundle, see below) are in `~/ReconResearchVM/snapshots`; none of it is tracked by git |
 | Network | NAT, but **not isolated from the host or the LAN**. From the guest, host ports 22, 5000, 7000, 59917 and 62923 on 192.168.64.1, the host's LAN address, and the LAN gateway were all reachable. Loopback-only host services were not ([`guest-network-reachability.txt`](evidence/guest-network-reachability.txt)). Restricting this needs a host packet filter on `bridge100` or the host firewall, which was out of scope because it changes host configuration. |
 
 Two host-side side effects remain:
@@ -159,13 +160,54 @@ Two host-side side effects remain:
 
 | Limitation | Remedy belongs to |
 | --- | --- |
-| Per-boot `system.privilege.taskport` authentication before the first research attach; preflight misreports it | Recon (report or guide it); macOS configuration (authenticate once per boot) |
+| Per-boot `system.privilege.taskport` authentication before the first research attach; preflight misreports it | Recon (report or guide it); macOS configuration (authenticate once per boot, which `authorize-taskport.sh` does) |
 | Host input requires VirtualBuddy to be frontmost | VirtualBuddy / Virtualization.framework |
 | No modifier keys through window-addressed key events | VirtualBuddy / Virtualization.framework, or Recon's interaction event shape (not isolated) |
 | VirtualBuddy provisioning sheet not fillable while secure input is on | Recon (`ui key` secure-input refusal is deliberate); VirtualBuddy (no non-GUI provisioning input) |
 | Recovery, Setup Assistant, privacy grants need GUI interaction | macOS (by design); done through the VM window |
 | Guest can reach host and LAN services | macOS configuration on the host (packet filter or firewall) |
 | `recon:sign` needs a local signing identity | Recon tooling; worked around by host-side signing |
+
+## Reusing the configured guest
+
+A VirtualBuddy VM is one `.vbvm` bundle:
+
+- the disk image, holding the guest's SIP policy, toolchains, Recon build and signature, staged helper, and privacy grants;
+- the auxiliary storage, holding the guest NVRAM and so the boot-args;
+- the machine identity, which the guest's security policy is bound to;
+- VirtualBuddy's configuration.
+
+`vm-snapshot.sh` saves the stopped bundle as an APFS clone and puts a fresh clone back in VirtualBuddy's library on request. Both take under a second, and a snapshot uses disk space only for blocks the running copy later changes. Saving `research-ready` took 32 ms and did not change the host's free space.
+
+| Snapshot in `~/ReconResearchVM/snapshots` | State |
+| --- | --- |
+| `installed-unbooted` | macOS 27.2.1 installed by VirtualBuddy, never booted, configured by `configure-vm.sh` |
+| `research-ready` | Everything above: SIP off, research boot-args active, Recon `549a1e4` built and signed with both privacy grants, helper staged, Xcode 27.1 and mise toolchains, CotEditor and Hex Fiend, automatic login, SSH, automatic updates off, Recon's inspection store empty |
+
+```sh
+cd experiments/vm-research-environment/scripts
+./vm-snapshot.sh reset research-ready   # discard the VM, start from the snapshot
+./vm-lifecycle.sh boot
+./authorize-taskport.sh                 # once per boot, before the first research attach
+# … inspect, install, break things …
+./guest-ssh.sh 'sudo shutdown -h now'   # then quit VirtualBuddy
+./vm-snapshot.sh save my-setup          # optionally keep this state under a new name
+```
+
+A reset was tested end to end ([`snapshot-reset-check.txt`](evidence/snapshot-reset-check.txt)):
+
+1. Boot from `research-ready` and write files in `~` and `/Library`, plus an NVRAM variable.
+2. Shut down and reset.
+3. Boot again. The files and the NVRAM variable were gone, and SIP-off, the boot-args, `readiness: eligible`, the staged helper, both privacy grants, and automatic login remained.
+4. `authorize-taskport.sh` (29 s) followed by a full Calculator research inspection passed.
+
+Constraints:
+
+- **Quit VirtualBuddy first.** It holds library bundles open and rewrites the configuration of a loaded VM, so `vm-snapshot.sh` refuses while VirtualBuddy is running.
+- **Run one copy at a time.** Every copy keeps the VM's name, MAC address, and machine identifier, and the deep links, the DHCP lease, and the guest's SIP policy depend on those.
+- **Empty Recon's store before saving.** Recon's inspection records are keyed by pid and pidversion only (`recon-h3u`). Identical boots from one snapshot make a stale record's pair likely to recur, so empty `~/Library/Application Support/recon/inspection` (leave `prepare-host.lock`) before saving.
+- **The taskport authorization does not survive a reboot.** It is cached for one boot, so `authorize-taskport.sh` spends the prompt on a throwaway Chess process each boot. It answers the prompt through the VM window, which brings VirtualBuddy to the front.
+- **Updating Recon in a snapshot.** Build in the guest, run `sign-guest-recon.sh`, and save a new snapshot. The same Developer ID signature at the same path keeps the privacy grants. If the helper's build identity changes, rerun `prepare-host` so the staged copy matches.
 
 ## Reproducing
 
@@ -180,7 +222,7 @@ cd experiments/vm-research-environment/scripts
 ./summarize-inspection.sh ~/ReconResearchVM/evidence/matrix/<run>/recon-inspect-calc
 ```
 
-To recreate the guest from scratch:
+To recreate the guest from scratch, start from `installed-unbooted`, or install afresh:
 
 1. Install VirtualBuddy and run the wizard with the IPSW in `_Downloads`.
 2. Quit VirtualBuddy, run `configure-vm.sh`, boot, and complete Setup Assistant and Remote Login through `vm-click.sh` and `vm-input.sh`.
@@ -189,6 +231,6 @@ To recreate the guest from scratch:
 5. Build with the repository tasks, then run `sign-guest-recon.sh`.
 6. Grant both privacy permissions in the guest's System Settings.
 7. Run `prepare-host` and reboot.
-8. Authenticate the taskport prompt once per boot.
+8. Save it with `vm-snapshot.sh save research-ready`.
 
 [`evidence/log.txt`](evidence/log.txt) is the chronological record, including every dead end.

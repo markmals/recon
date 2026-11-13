@@ -34,3 +34,7 @@
 - Fixture: launch standard, existing standard, attach standard, attach research all PASS. Launch needed a 3 s settle before observation (else UI_INTERFERENCE: target window appeared).
 - Third party: Hex Fiend 2.18.1 (hardened, not sandboxed), CotEditor 7.1.3 (App Sandbox, hardened): standard attach -> INSPECTION_UNAVAILABLE at preflight ("target requires the research profile"); research attach -> all PASS incl. identifier lookup.
 - Guest network: from guest, host 192.168.64.1 ports 22,5000,7000,59917,62923 open; loopback-only host services closed; host LAN IP and LAN gateway reachable.
+- 14:27 Reuse: booted, emptied Recon's inspection store (stale pid-pidversion records survive reboots; filed recon-h3u), quit restored apps, set NSQuitAlwaysKeepsWindows false, automatic updates off. Shut down, quit VirtualBuddy.
+- 14:28 `vm-snapshot.sh save research-ready`: 32 ms, host free space unchanged (APFS clone). Moved the installed-unbooted baseline to snapshots/installed-unbooted.
+- Reset test: booted, wrote ~/dirty-marker, /Library/dirty-marker, `nvram recon-snapshot-test=dirty`; shut down; `vm-snapshot.sh reset research-ready` (0.38 s); booted: markers and NVRAM variable gone; SIP disabled, boot-args active, readiness eligible, staged helper, both grants, console auto-login.
+- `authorize-taskport.sh` (attach to throwaway Chess, answer the Developer Tools Access prompt through the VM window): 29 s; then full Calculator research inspection PASS. Shut down and reset to research-ready again.
