@@ -1,0 +1,451 @@
+{
+    "me": "me",
+    "contacts": [
+        {
+            "id": "me",
+            "given": "Mia",
+            "family": "Navarro",
+            "organization": "Mia Navarro Studio",
+            "jobTitle": "Photographer & Product Designer",
+            "phones": [{ "label": "mobile", "number": "+1 (213) 555-0100" }],
+            "emails": [
+                { "label": "home", "address": "mia.navarro@example.com" },
+                { "label": "work", "address": "mia@example.net" }
+            ],
+            "address": {
+                "label": "home",
+                "street": "1834 Redcliff St, Apt 4",
+                "city": "Los Angeles",
+                "state": "CA",
+                "postalCode": "90026",
+                "country": "United States"
+            },
+            "birthday": { "month": 3, "day": 8, "year": 1995 },
+            "groups": [],
+            "note": null,
+            "photo": true,
+            "isCompany": false
+        },
+        {
+            "id": "mom",
+            "given": "Lucia",
+            "family": "Navarro",
+            "organization": null,
+            "jobTitle": null,
+            "phones": [{ "label": "mobile", "number": "+1 (213) 555-0101" }],
+            "emails": [{ "label": "home", "address": "lucia.navarro@example.net" }],
+            "address": {
+                "label": "home",
+                "street": "5127 Monte Bonito Dr",
+                "city": "Los Angeles",
+                "state": "CA",
+                "postalCode": "90041",
+                "country": "United States"
+            },
+            "birthday": { "month": 9, "day": 21, "year": 1964 },
+            "groups": ["Family"],
+            "note": "Allergic to lilies — tulips or ranunculus instead 🌷",
+            "photo": true,
+            "isCompany": false
+        },
+        {
+            "id": "dad",
+            "given": "Ray",
+            "family": "Navarro",
+            "organization": null,
+            "jobTitle": null,
+            "phones": [{ "label": "mobile", "number": "+1 (213) 555-0102" }],
+            "emails": [{ "label": "home", "address": "raynavarro62@example.net" }],
+            "address": {
+                "label": "home",
+                "street": "5127 Monte Bonito Dr",
+                "city": "Los Angeles",
+                "state": "CA",
+                "postalCode": "90041",
+                "country": "United States"
+            },
+            "birthday": { "month": 1, "day": 30, "year": 1962 },
+            "groups": ["Family"],
+            "note": "Shirt size L. Printer is in the den.",
+            "photo": true,
+            "isCompany": false
+        },
+        {
+            "id": "danny",
+            "given": "Danny",
+            "family": "Navarro",
+            "organization": null,
+            "jobTitle": null,
+            "phones": [{ "label": "mobile", "number": "+1 (213) 555-0103" }],
+            "emails": [{ "label": "home", "address": "danny.navarro@example.com" }],
+            "address": {
+                "label": "home",
+                "street": "6012 Aldama St",
+                "city": "Los Angeles",
+                "state": "CA",
+                "postalCode": "90042",
+                "country": "United States"
+            },
+            "birthday": { "month": null, "day": null, "year": 1996 },
+            "groups": ["Family"],
+            "note": "Wife Camila, daughter Sofia (11). Shoe size 10.5.",
+            "photo": true,
+            "isCompany": false
+        },
+        {
+            "id": "vicki",
+            "given": "Vicki",
+            "family": "Lam",
+            "organization": null,
+            "jobTitle": null,
+            "phones": [{ "label": "mobile", "number": "+1 (415) 555-0104" }],
+            "emails": [{ "label": "home", "address": "vickilam@example.com" }],
+            "address": {
+                "label": "home",
+                "street": "1347 9th Ave, Apt 2",
+                "city": "San Francisco",
+                "state": "CA",
+                "postalCode": "94122",
+                "country": "United States"
+            },
+            "birthday": { "month": 7, "day": 2, "year": 1995 },
+            "groups": ["Friends", "Book Club"],
+            "note": "Freshman-year roommate. Always has a couch for me in the Sunset.",
+            "photo": true,
+            "isCompany": false
+        },
+        {
+            "id": "priya",
+            "given": "Priya",
+            "family": "Raman",
+            "organization": "Hyperion Hill Community Garden",
+            "jobTitle": "Garden Coordinator",
+            "phones": [{ "label": "mobile", "number": "+1 (323) 555-0105" }],
+            "emails": [
+                { "label": "home", "address": "priya.raman@example.com" },
+                { "label": "work", "address": "priya@example.org" }
+            ],
+            "address": {
+                "label": "home",
+                "street": "1621 Lemoyne St",
+                "city": "Los Angeles",
+                "state": "CA",
+                "postalCode": "90026",
+                "country": "United States"
+            },
+            "birthday": { "month": 4, "day": 12, "year": 1993 },
+            "groups": ["Friends", "Book Club"],
+            "note": "Garden gate code 4417#. Spare key under the blue planter.",
+            "photo": true,
+            "isCompany": false
+        },
+        {
+            "id": "elton",
+            "given": "Elton",
+            "family": "Hughes",
+            "organization": null,
+            "jobTitle": null,
+            "phones": [{ "label": "mobile", "number": "+1 (323) 555-0106" }],
+            "emails": [{ "label": "home", "address": "elton.hughes@example.net" }],
+            "address": {
+                "label": "home",
+                "street": "1838 Redcliff St",
+                "city": "Los Angeles",
+                "state": "CA",
+                "postalCode": "90026",
+                "country": "United States"
+            },
+            "birthday": { "month": 2, "day": 17, "year": 1957 },
+            "groups": ["Friends"],
+            "note": "Next door. Runs the garden snack sign-up (Saturdays 12–3). Dog: Biscuit.",
+            "photo": true,
+            "isCompany": false
+        },
+        {
+            "id": "pedro",
+            "given": "Pedro",
+            "family": "Alvarez",
+            "organization": "Northlight Studio",
+            "jobTitle": "Producer",
+            "phones": [{ "label": "mobile", "number": "+1 (310) 555-0107" }],
+            "emails": [{ "label": "work", "address": "pedro.alvarez@example.com" }],
+            "address": {
+                "label": "work",
+                "street": "3527 Hayden Ave",
+                "city": "Culver City",
+                "state": "CA",
+                "postalCode": "90232",
+                "country": "United States"
+            },
+            "birthday": { "month": 10, "day": 5, "year": 1987 },
+            "groups": ["Northlight Studio"],
+            "note": "Prefers a quick call over email for scheduling.",
+            "photo": true,
+            "isCompany": false
+        },
+        {
+            "id": "jordan",
+            "given": "Jordan",
+            "family": "Blake",
+            "organization": "Northlight Studio",
+            "jobTitle": "Creative Director",
+            "phones": [{ "label": "mobile", "number": "+1 (310) 555-0108" }],
+            "emails": [{ "label": "work", "address": "jordan.blake@example.com" }],
+            "address": {
+                "label": "work",
+                "street": "3527 Hayden Ave",
+                "city": "Culver City",
+                "state": "CA",
+                "postalCode": "90232",
+                "country": "United States"
+            },
+            "birthday": { "month": 6, "day": 14, "year": 1983 },
+            "groups": ["Northlight Studio"],
+            "note": null,
+            "photo": true,
+            "isCompany": false
+        },
+        {
+            "id": "grace",
+            "given": "Grace",
+            "family": "Kim",
+            "organization": null,
+            "jobTitle": null,
+            "phones": [{ "label": "mobile", "number": "+1 (626) 555-0109" }],
+            "emails": [{ "label": "home", "address": "gracekim@example.com" }],
+            "address": {
+                "label": "home",
+                "street": "455 S El Molino Ave, Apt 6",
+                "city": "Pasadena",
+                "state": "CA",
+                "postalCode": "91101",
+                "country": "United States"
+            },
+            "birthday": { "month": 12, "day": 3, "year": 1994 },
+            "groups": ["Friends", "Tahoe Crew"],
+            "note": "Vegetarian. Has the roof box.",
+            "photo": true,
+            "isCompany": false
+        },
+        {
+            "id": "sam",
+            "given": "Sam",
+            "family": "Okafor",
+            "organization": null,
+            "jobTitle": null,
+            "phones": [{ "label": "mobile", "number": "+1 (213) 555-0110" }],
+            "emails": [{ "label": "home", "address": "sam.okafor@example.net" }],
+            "address": {
+                "label": "home",
+                "street": "3127 Larga Ave",
+                "city": "Los Angeles",
+                "state": "CA",
+                "postalCode": "90039",
+                "country": "United States"
+            },
+            "birthday": { "month": 8, "day": 19, "year": 1992 },
+            "groups": ["Friends", "Tahoe Crew"],
+            "note": "Tree nut allergy — carries an EpiPen.",
+            "photo": true,
+            "isCompany": false
+        },
+        {
+            "id": "theo",
+            "given": "Theo",
+            "family": "Martin",
+            "organization": null,
+            "jobTitle": "Photographer",
+            "phones": [{ "label": "mobile", "number": "+1 (818) 555-0111" }],
+            "emails": [{ "label": "home", "address": "theo.martin@example.org" }],
+            "address": {
+                "label": "home",
+                "street": "4418 Ventura Canyon Ave",
+                "city": "Sherman Oaks",
+                "state": "CA",
+                "postalCode": "91423",
+                "country": "United States"
+            },
+            "birthday": { "month": 5, "day": 27, "year": 1990 },
+            "groups": ["Friends", "Tahoe Crew"],
+            "note": "Shoots mostly film. Great second shooter / assistant.",
+            "photo": true,
+            "isCompany": false
+        },
+        {
+            "id": "nora",
+            "given": "Nora",
+            "family": "Feld",
+            "organization": "Feld Ceramics",
+            "jobTitle": "Owner & Ceramicist",
+            "phones": [{ "label": "mobile", "number": "+1 (323) 555-0112" }],
+            "emails": [{ "label": "work", "address": "nora.feld@example.net" }],
+            "address": {
+                "label": "work",
+                "street": "2740 Gilroy St",
+                "city": "Los Angeles",
+                "state": "CA",
+                "postalCode": "90039",
+                "country": "United States"
+            },
+            "birthday": null,
+            "groups": [],
+            "note": "Loves warm morning light. Parking is in back, off the alley.",
+            "photo": true,
+            "isCompany": false
+        },
+        {
+            "id": "ava",
+            "given": "Ava",
+            "family": "Chen",
+            "organization": "Fernway Yoga",
+            "jobTitle": "Yoga Instructor",
+            "phones": [{ "label": "mobile", "number": "+1 (213) 555-0113" }],
+            "emails": [{ "label": "work", "address": "ava.chen@example.org" }],
+            "address": {
+                "label": "work",
+                "street": "3014 Sunset Blvd",
+                "city": "Los Angeles",
+                "state": "CA",
+                "postalCode": "90026",
+                "country": "United States"
+            },
+            "birthday": null,
+            "groups": ["Services"],
+            "note": null,
+            "photo": true,
+            "isCompany": false
+        },
+        {
+            "id": "lena",
+            "given": "Lena",
+            "family": "Ortiz",
+            "organization": null,
+            "jobTitle": null,
+            "phones": [{ "label": "mobile", "number": "+1 (323) 555-0114" }],
+            "emails": [{ "label": "home", "address": "lena.ortiz@example.com" }],
+            "address": {
+                "label": "home",
+                "street": "1922 N Kenmore Ave",
+                "city": "Los Angeles",
+                "state": "CA",
+                "postalCode": "90027",
+                "country": "United States"
+            },
+            "birthday": { "month": 10, "day": 22, "year": 1989 },
+            "groups": ["Friends", "Book Club"],
+            "note": "Always brings the good wine. Cat named Pico.",
+            "photo": true,
+            "isCompany": false
+        },
+        {
+            "id": "marcus",
+            "given": "Marcus",
+            "family": "Reed",
+            "organization": "Redcliff Court Apartments",
+            "jobTitle": "Building Manager",
+            "phones": [{ "label": "mobile", "number": "+1 (213) 555-0115" }],
+            "emails": [{ "label": "work", "address": "marcus.reed@example.net" }],
+            "address": {
+                "label": "work",
+                "street": "1834 Redcliff St, Office",
+                "city": "Los Angeles",
+                "state": "CA",
+                "postalCode": "90026",
+                "country": "United States"
+            },
+            "birthday": null,
+            "groups": ["Services"],
+            "note": "Office hours weekdays 9–5. Packages go to the office.",
+            "photo": true,
+            "isCompany": false
+        },
+        {
+            "id": "sarah",
+            "given": "Sarah",
+            "family": "Whitfield",
+            "organization": "Whitfield Family Dental",
+            "jobTitle": "DDS",
+            "phones": [{ "label": "work", "number": "+1 (213) 555-0116" }],
+            "emails": [{ "label": "work", "address": "frontdesk@example.org" }],
+            "address": {
+                "label": "work",
+                "street": "1813 Hillhurst Ave, Suite 200",
+                "city": "Los Angeles",
+                "state": "CA",
+                "postalCode": "90027",
+                "country": "United States"
+            },
+            "birthday": null,
+            "groups": ["Services"],
+            "note": "Cleanings every 6 months.",
+            "photo": true,
+            "isCompany": false
+        },
+        {
+            "id": "larchmont",
+            "given": null,
+            "family": null,
+            "organization": "Larchmont Coffee Co.",
+            "jobTitle": null,
+            "phones": [{ "label": "main", "number": "+1 (323) 555-0117" }],
+            "emails": [{ "label": "work", "address": "hello@example.com" }],
+            "address": {
+                "label": "work",
+                "street": "214 N Larchmont Blvd",
+                "city": "Los Angeles",
+                "state": "CA",
+                "postalCode": "90004",
+                "country": "United States"
+            },
+            "birthday": null,
+            "groups": [],
+            "note": "Usual: oat cortado + almond croissant.",
+            "photo": false,
+            "isCompany": true
+        },
+        {
+            "id": "bikes",
+            "given": null,
+            "family": null,
+            "organization": "Silver Lake Bikes",
+            "jobTitle": null,
+            "phones": [{ "label": "main", "number": "+1 (323) 555-0118" }],
+            "emails": [{ "label": "work", "address": "service@example.net" }],
+            "address": {
+                "label": "work",
+                "street": "3021 Rowena Ave",
+                "city": "Los Angeles",
+                "state": "CA",
+                "postalCode": "90039",
+                "country": "United States"
+            },
+            "birthday": null,
+            "groups": [],
+            "note": null,
+            "photo": false,
+            "isCompany": true
+        },
+        {
+            "id": "camera",
+            "given": null,
+            "family": null,
+            "organization": "Sunset Camera Repair",
+            "jobTitle": null,
+            "phones": [{ "label": "main", "number": "+1 (310) 555-0119" }],
+            "emails": [],
+            "address": {
+                "label": "work",
+                "street": "9024 W Sunset Blvd",
+                "city": "West Hollywood",
+                "state": "CA",
+                "postalCode": "90069",
+                "country": "United States"
+            },
+            "birthday": null,
+            "groups": [],
+            "note": "Sensor cleaning usually takes 2–3 days.",
+            "photo": false,
+            "isCompany": true
+        }
+    ]
+}

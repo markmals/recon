@@ -1,0 +1,434 @@
+{
+    "lists": [
+        {
+            "title": "Groceries",
+            "color": "#FF9500",
+            "items": [
+                {
+                    "title": "Castelvetrano olives",
+                    "notes": "The big jar, pitted",
+                    "dueDay": 1,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 0
+                },
+                {
+                    "title": "Kalamata olives",
+                    "notes": null,
+                    "dueDay": 1,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 0
+                },
+                {
+                    "title": "Bread flour",
+                    "notes": "2 kg bag",
+                    "dueDay": 1,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 0
+                },
+                {
+                    "title": "Instant yeast",
+                    "notes": null,
+                    "dueDay": 1,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 0
+                },
+                {
+                    "title": "Fresh rosemary",
+                    "notes": null,
+                    "dueDay": 1,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 0
+                },
+                {
+                    "title": "Extra virgin olive oil",
+                    "notes": "Get the tin, it's cheaper",
+                    "dueDay": null,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 0
+                },
+                {
+                    "title": "Flaky sea salt",
+                    "notes": null,
+                    "dueDay": null,
+                    "dueTime": null,
+                    "completed": true,
+                    "priority": 0
+                },
+                {
+                    "title": "Lemons",
+                    "notes": null,
+                    "dueDay": null,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 0
+                },
+                {
+                    "title": "Oat milk",
+                    "notes": null,
+                    "dueDay": null,
+                    "dueTime": null,
+                    "completed": true,
+                    "priority": 0
+                },
+                {
+                    "title": "Eggs",
+                    "notes": null,
+                    "dueDay": null,
+                    "dueTime": null,
+                    "completed": true,
+                    "priority": 0
+                },
+                {
+                    "title": "Coffee beans — house blend",
+                    "notes": "From Larchmont Coffee Co.",
+                    "dueDay": null,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 0
+                },
+                {
+                    "title": "Rice crackers + clementines",
+                    "notes": "For the garden snack table. Lemon bars too if there's time",
+                    "dueDay": 1,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 5
+                }
+            ]
+        },
+        {
+            "title": "Tahoe Trip",
+            "color": "#007AFF",
+            "items": [
+                {
+                    "title": "Book flight LAX → RNO",
+                    "notes": "Conf QX7M2P",
+                    "dueDay": -5,
+                    "dueTime": null,
+                    "completed": true,
+                    "priority": 0
+                },
+                {
+                    "title": "Venmo Grace for the cabin ($210)",
+                    "notes": null,
+                    "dueDay": 3,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 1
+                },
+                {
+                    "title": "Reserve snowshoe rentals",
+                    "notes": "Grace has the group booking, just send her my size",
+                    "dueDay": 14,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 5
+                },
+                {
+                    "title": "Ask Elton to water the plants",
+                    "notes": null,
+                    "dueDay": 18,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 0
+                },
+                {
+                    "title": "Download offline maps",
+                    "notes": "Tahoe City + 395 home",
+                    "dueDay": 20,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 0
+                },
+                {
+                    "title": "Charge batteries + format cards",
+                    "notes": null,
+                    "dueDay": 20,
+                    "dueTime": "21:00",
+                    "completed": false,
+                    "priority": 1
+                },
+                {
+                    "title": "Hand warmers + wool socks",
+                    "notes": null,
+                    "dueDay": 15,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 0
+                },
+                {
+                    "title": "Grab the tripod back from Theo",
+                    "notes": null,
+                    "dueDay": null,
+                    "dueTime": null,
+                    "completed": true,
+                    "priority": 0
+                },
+                {
+                    "title": "Plan one dinner for the cabin",
+                    "notes": "Thinking focaccia + big pot of soup?",
+                    "dueDay": 19,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 9
+                }
+            ]
+        },
+        {
+            "title": "Studio",
+            "color": "#AF52DE",
+            "items": [
+                {
+                    "title": "Export Sicily selects for Jordan",
+                    "notes": "40 images, sRGB, 3000px long edge",
+                    "dueDay": 2,
+                    "dueTime": "17:00",
+                    "completed": false,
+                    "priority": 1
+                },
+                {
+                    "title": "Send Nora the call sheet",
+                    "notes": null,
+                    "dueDay": 3,
+                    "dueTime": "12:00",
+                    "completed": false,
+                    "priority": 1
+                },
+                {
+                    "title": "Pick up lens from Sunset Camera Repair",
+                    "notes": null,
+                    "dueDay": 4,
+                    "dueTime": "11:00",
+                    "completed": false,
+                    "priority": 5
+                },
+                {
+                    "title": "Confirm linen backdrop rental",
+                    "notes": null,
+                    "dueDay": 2,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 5
+                },
+                {
+                    "title": "Clean sensor on the backup body",
+                    "notes": null,
+                    "dueDay": null,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 9
+                },
+                {
+                    "title": "Back up last week's cards to the RAID",
+                    "notes": null,
+                    "dueDay": -4,
+                    "dueTime": null,
+                    "completed": true,
+                    "priority": 0
+                },
+                {
+                    "title": "Send Ojai Linen moodboard",
+                    "notes": null,
+                    "dueDay": -5,
+                    "dueTime": null,
+                    "completed": true,
+                    "priority": 0
+                },
+                {
+                    "title": "Invoice Feld Ceramics",
+                    "notes": "Template in Documents › Northlight",
+                    "dueDay": 11,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 5
+                },
+                {
+                    "title": "Finish workflow write-up for Kai",
+                    "notes": "Import, culling, color, delivery",
+                    "dueDay": -4,
+                    "dueTime": null,
+                    "completed": true,
+                    "priority": 5
+                },
+                {
+                    "title": "Update portfolio site with Valley of Fire series",
+                    "notes": null,
+                    "dueDay": null,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 9
+                }
+            ]
+        },
+        {
+            "title": "Home",
+            "color": "#34C759",
+            "items": [
+                {
+                    "title": "Call Vicki",
+                    "notes": null,
+                    "dueDay": 0,
+                    "dueTime": "18:30",
+                    "completed": false,
+                    "priority": 0
+                },
+                {
+                    "title": "Tell Elton which Saturdays I can do GF snacks",
+                    "notes": "Every other Saturday until Tahoe",
+                    "dueDay": -1,
+                    "dueTime": null,
+                    "completed": true,
+                    "priority": 1
+                },
+                {
+                    "title": "Grab 35mm lens from Marcus",
+                    "notes": "Theo dropped it off at the front office",
+                    "dueDay": 0,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 0
+                },
+                {
+                    "title": "Ask Marcus about the kitchen faucet drip",
+                    "notes": null,
+                    "dueDay": -2,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 5
+                },
+                {
+                    "title": "Return library books",
+                    "notes": "3 books, the yellow tote",
+                    "dueDay": 2,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 0
+                },
+                {
+                    "title": "Book car service",
+                    "notes": null,
+                    "dueDay": -5,
+                    "dueTime": null,
+                    "completed": true,
+                    "priority": 0
+                },
+                {
+                    "title": "Schedule dentist cleaning",
+                    "notes": null,
+                    "dueDay": -4,
+                    "dueTime": null,
+                    "completed": true,
+                    "priority": 0
+                },
+                {
+                    "title": "Replace water filter",
+                    "notes": null,
+                    "dueDay": 6,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 9
+                },
+                {
+                    "title": "Drop off donation bag",
+                    "notes": "Jackets + old tripod head",
+                    "dueDay": null,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 0
+                },
+                {
+                    "title": "Pay rent",
+                    "notes": null,
+                    "dueDay": 18,
+                    "dueTime": "09:00",
+                    "completed": false,
+                    "priority": 1
+                },
+                {
+                    "title": "Repot the pothos",
+                    "notes": null,
+                    "dueDay": null,
+                    "dueTime": null,
+                    "completed": true,
+                    "priority": 0
+                }
+            ]
+        },
+        {
+            "title": "Gifts",
+            "color": "#FF3B30",
+            "items": [
+                {
+                    "title": "Danny: order framed Valley of Fire print",
+                    "notes": "16x20, black frame. Allow a week for framing",
+                    "dueDay": 4,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 1
+                },
+                {
+                    "title": "Danny: birthday card",
+                    "notes": null,
+                    "dueDay": 10,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 0
+                },
+                {
+                    "title": "Sofia: good-luck note before her debate",
+                    "notes": null,
+                    "dueDay": 8,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 0
+                },
+                {
+                    "title": "Thank-you flowers for Nora after the shoot",
+                    "notes": null,
+                    "dueDay": 6,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 9
+                },
+                {
+                    "title": "Host gift for Grace (cabin)",
+                    "notes": "Nice olive oil + a print from last year's trip?",
+                    "dueDay": 19,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 5
+                },
+                {
+                    "title": "Gift swap at the cabin (under $30)",
+                    "notes": null,
+                    "dueDay": 19,
+                    "dueTime": null,
+                    "completed": false,
+                    "priority": 0
+                },
+                {
+                    "title": "Mom: Mexico City embroidered scarf",
+                    "notes": null,
+                    "dueDay": null,
+                    "dueTime": null,
+                    "completed": true,
+                    "priority": 0
+                },
+                {
+                    "title": "Vicki: housewarming plant",
+                    "notes": null,
+                    "dueDay": -3,
+                    "dueTime": null,
+                    "completed": true,
+                    "priority": 0
+                }
+            ]
+        }
+    ]
+}

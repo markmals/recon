@@ -6,7 +6,7 @@
 - Host-to-guest keyboard input carries no modifier keys.
 - Each guest boot needs one interactive `system.privilege.taskport` authentication before the first research attach.
 
-The experiment ran on 13 November 2026 against Recon `549a1e4` (`main`). The guest it built is still on this Mac at `~/Library/Application Support/VirtualBuddy/Recon Research.vbvm`.
+The experiment ran on 13 November 2026 against Recon `549a1e4` (`main`). The guest it built is still on this Mac at `~/Library/Application Support/VirtualBuddy/Recon Research.vbvm`. A second snapshot, `demo`, fills that guest's Apple apps with a fictional person's photos, messages, calendar, contacts, notes, and reminders for realistic inspections; [`demo/README.md`](demo/README.md) describes it.
 
 ## Environment
 
@@ -133,11 +133,16 @@ The first research attach in each guest boot made `taskgated` evaluate `system.p
 - **Guest-local GUI automation over SSH is weak.** Processes started under `launchctl asuser` from SSH are attributed to `sshd-keygen-wrapper` / `com.apple.sshd-session` for privacy decisions. `osascript` and `screencapture` produced Automation and screen-capture prompts there, all declined. Recon is unaffected because it disclaims responsibility and uses its own grants.
 - **Not classified: Finder's window AX element** (`axError -25200`). It failed whether or not the helper was resident. There was no host Finder window to compare against, and opening one on the user's desktop was out of bounds.
 
+### Privacy prompts while the research boot-args are active (`recon-pr1`; macOS behaviour)
+
+With `amfi_get_out_of_my_way` active, every process carries `CS_PLATFORM_BINARY`, and `tccd` denied a Photos request from an app that Apple did not sign without showing a prompt: "CS_PLATFORM_BINARY set but not AppleSigned; prompt policy is Deny". A Developer ID signature made no difference. After `prepare-host --revert` and a reboot, the same app got the Contacts, Calendar, Reminders, Photos, and Automation prompts ([`demo-seeding.txt`](evidence/demo-seeding.txt)). This fits an earlier observation: this guest's grants were set up after `prepare-host`, and Recon's Screen Recording request left that pane's list empty until Recon was added with "+" ([`log.txt`](evidence/log.txt)). Recon's guide says macOS "may show its prompt" when a grant is missing; on a prepared research host, expect to grant Accessibility and Screen Recording in System Settings instead.
+
 ### Recon findings independent of virtualization
 
 - `recon-y9v`: preflight claims a dialog-free attach (above).
 - `recon-cks`: the fixture's "last ordered front is main" assumption fails on macOS 27.2.1, on the host as well.
 - `recon-h3u`: inspection store records (attaches, endpoints, sessions, locks) are keyed by pid and pidversion only and survive reboots, including three "unfinished attach" records from the taskport timeouts. A new process that reuses a recorded pair would inherit them. [INFERENCE] It would then be refused with `INSPECTION_BUSY` and have no way to reconcile.
+- `recon-efk`: a research session in Messages times out at `handshake` (launch) or `connect` (attach). The helper is resident, but Messages' sandbox denies its `listen` and the unlink of its endpoint socket, so Recon reports a timeout rather than the cause. Photos, Notes, Contacts, and Calendar pass ([`demo-seeding.txt`](evidence/demo-seeding.txt)).
 - With `--mode launch`, an observation started too soon after the launch reports the target's own windows appearing as `UI_INTERFERENCE`. `inspect-target.sh` waits 3 s after a launch.
 
 ## Host isolation
@@ -167,6 +172,8 @@ Two host-side side effects remain:
 | Recovery, Setup Assistant, privacy grants need GUI interaction | macOS (by design); done through the VM window |
 | Guest can reach host and LAN services | macOS configuration on the host (packet filter or firewall) |
 | `recon:sign` needs a local signing identity | Recon tooling; worked around by host-side signing |
+| No privacy prompts for apps Apple did not sign while the AMFI boot-arg is active | macOS; demo seeding reverts the boot-args first (`recon-pr1` covers Recon's guidance) |
+| Research sessions in Messages time out | Recon (`recon-efk`) |
 
 ## Reusing the configured guest
 
@@ -183,6 +190,7 @@ A VirtualBuddy VM is one `.vbvm` bundle:
 | --- | --- |
 | `installed-unbooted` | macOS 27.2.1 installed by VirtualBuddy, never booted, configured by `configure-vm.sh` |
 | `research-ready` | Everything above: SIP off, research boot-args active, Recon `549a1e4` built and signed with both privacy grants, helper staged, Xcode 27.1 and mise toolchains, CotEditor and Hex Fiend, automatic login, SSH, automatic updates off, Recon's inspection store empty |
+| `demo` | `research-ready` plus the fictional persona's data in Contacts, Calendar, Reminders, Notes, Photos, Messages, and Finder ([`demo/README.md`](demo/README.md)) |
 
 ```sh
 cd experiments/vm-research-environment/scripts

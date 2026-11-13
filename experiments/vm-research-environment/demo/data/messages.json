@@ -1,0 +1,1608 @@
+{
+    "conversations": [
+        {
+            "id": "priya",
+            "participants": ["priya"],
+            "name": null,
+            "messages": [
+                {
+                    "from": "priya",
+                    "day": -12,
+                    "time": "19:08",
+                    "text": "Tomatoes are officially done 🍅 pulling them out this weekend so we can get the garlic and favas in",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -12,
+                    "time": "19:15",
+                    "text": "Noooo RIP to the sungolds. I'll come help",
+                    "photo": null
+                },
+                {
+                    "from": "priya",
+                    "day": -12,
+                    "time": "19:16",
+                    "text": "Bring gloves, the bed by the fence has nettles again",
+                    "photo": null
+                },
+                {
+                    "from": "priya",
+                    "day": -9,
+                    "time": "08:12",
+                    "text": "Did you finish the book?? I need to talk about the ending with someone who isn't my cat",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -9,
+                    "time": "08:40",
+                    "text": "50 pages left. DO NOT spoil it",
+                    "photo": null
+                },
+                {
+                    "from": "priya",
+                    "day": -9,
+                    "time": "08:41",
+                    "text": "my lips are sealed 🤐",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -6,
+                    "time": "17:32",
+                    "text": "Can I borrow your oatmeal linen tablecloth for a shoot? It's perfect for Nora's ceramics",
+                    "photo": null
+                },
+                {
+                    "from": "priya",
+                    "day": -6,
+                    "time": "17:50",
+                    "text": "Of course! Grab it whenever, spare key's in the usual spot",
+                    "photo": null
+                },
+                {
+                    "from": "priya",
+                    "day": -2,
+                    "time": "10:41",
+                    "text": "At the garden! come through?",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -2,
+                    "time": "10:44",
+                    "text": "Yes!! leaving in 10, need anything?",
+                    "photo": null
+                },
+                {
+                    "from": "priya",
+                    "day": -2,
+                    "time": "10:45",
+                    "text": "Iced coffe and your muscles 💪",
+                    "photo": null
+                },
+                { "from": "me", "day": -2, "time": "10:45", "text": "On it", "photo": null },
+                {
+                    "from": "priya",
+                    "day": -2,
+                    "time": "13:20",
+                    "text": "Garlic is in!! Look at our little rows",
+                    "photo": "LA"
+                },
+                {
+                    "from": "me",
+                    "day": -2,
+                    "time": "13:24",
+                    "text": "Gorgeous. So proud of us 🧄",
+                    "photo": null
+                },
+                {
+                    "from": "priya",
+                    "day": 0,
+                    "time": "08:05",
+                    "text": "Still on for drinks tonight? 8?",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": 0,
+                    "time": "08:09",
+                    "text": "Yes!! Heading to the studio this morning so I'll definitely need it by then 😩",
+                    "photo": null
+                },
+                {
+                    "from": "priya",
+                    "day": 0,
+                    "time": "08:10",
+                    "text": "Perfect, I'll grab us a table 🍷",
+                    "photo": null
+                }
+            ]
+        },
+        {
+            "id": "elton",
+            "participants": ["elton"],
+            "name": null,
+            "messages": [
+                {
+                    "from": "elton",
+                    "day": -11,
+                    "time": "18:30",
+                    "text": "Hi Mia, it's Elton from next door. I'm putting together the snack schedule for the garden volunteers. Which Saturdays can you bring gluten-free snacks, 12–3?",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -11,
+                    "time": "18:52",
+                    "text": "Hi Elton! Happy to help. Put me down for every other Saturday until the Tahoe trip? I'll be out of town that weekend",
+                    "photo": null
+                },
+                {
+                    "from": "elton",
+                    "day": -11,
+                    "time": "18:55",
+                    "text": "Perfect, I'll pencil you in. Any ideas for something everyone can eat?",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -11,
+                    "time": "19:03",
+                    "text": "Rice crackers, a big fruit plate, and maybe the almond flour lemon bars from last time?",
+                    "photo": null
+                },
+                {
+                    "from": "elton",
+                    "day": -11,
+                    "time": "19:04",
+                    "text": "The lemon bars were a hit. Three people asked me for the recipe 😄",
+                    "photo": null
+                },
+                {
+                    "from": "elton",
+                    "day": -5,
+                    "time": "16:40",
+                    "text": "Biscuit slipped out again and is sitting on your doormat like he pays rent. Coming to grab him, sorry!",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -5,
+                    "time": "16:44",
+                    "text": "Haha he's welcome anytime. He looked very at home 🐶",
+                    "photo": null
+                },
+                {
+                    "from": "elton",
+                    "day": -1,
+                    "time": "19:20",
+                    "text": "Friendly reminder: you're on snacks this Saturday, 12–3. Priya says we're expecting a big group, maybe 20",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -1,
+                    "time": "19:31",
+                    "text": "Got it! Fruit, rice crackers, and lemon bars 🍋",
+                    "photo": null
+                },
+                {
+                    "from": "elton",
+                    "day": -1,
+                    "time": "19:33",
+                    "text": "You're a gem. Thank you, Mia",
+                    "photo": null
+                }
+            ]
+        },
+        {
+            "id": "pedro",
+            "participants": ["pedro"],
+            "name": null,
+            "messages": [
+                {
+                    "from": "pedro",
+                    "day": -13,
+                    "time": "14:02",
+                    "text": "Hey! Locking the call sheet for the Feld Ceramics shoot. Can you send your gear list when you get a sec?",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -13,
+                    "time": "14:30",
+                    "text": "Sending tonight! Do we have the big softbox or should I rent one?",
+                    "photo": null
+                },
+                {
+                    "from": "pedro",
+                    "day": -13,
+                    "time": "14:31",
+                    "text": "We have two. You can grab the 5' octa from the cage",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -13,
+                    "time": "21:47",
+                    "text": "Gear list is in the shared folder 📁",
+                    "photo": null
+                },
+                { "from": "pedro", "day": -13, "time": "21:50", "text": "legend", "photo": null },
+                {
+                    "from": "pedro",
+                    "day": -7,
+                    "time": "11:05",
+                    "text": "Also, Kai (our new junior retoucher) is getting settled in. Jordan was wondering if you could write up your photography workflow for them? Ingest → selects → edit → delivery",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -7,
+                    "time": "11:20",
+                    "text": "Love that. I'll put something together this week: folder structure, file naming, export settings, the whole thing",
+                    "photo": null
+                },
+                { "from": "pedro", "day": -7, "time": "11:21", "text": "🙏🙏", "photo": null },
+                {
+                    "from": "me",
+                    "day": -4,
+                    "time": "16:12",
+                    "text": "Workflow write-up is in Notes, shared with you + Jordan. Lmk if anything's unclear",
+                    "photo": null
+                },
+                {
+                    "from": "pedro",
+                    "day": -4,
+                    "time": "16:40",
+                    "text": "This is SO good. Kai's going to love the naming cheat sheet",
+                    "photo": null
+                },
+                {
+                    "from": "pedro",
+                    "day": -1,
+                    "time": "17:15",
+                    "text": "Feld shoot is locked: crew call 8:30, Nora arrives at 9 with ~30 pieces. Theo's assisting 🙌",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -1,
+                    "time": "17:18",
+                    "text": "Perfect. I'll come in early to prelight",
+                    "photo": null
+                },
+                {
+                    "from": "pedro",
+                    "day": -1,
+                    "time": "17:20",
+                    "text": "Can you swing by tomorrow morning to walk the space w/ Jordan and grab the octa? 9:30ish",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -1,
+                    "time": "17:22",
+                    "text": "Yep! Then coffee at Larchmont the day after to lock the shot list?",
+                    "photo": null
+                },
+                {
+                    "from": "pedro",
+                    "day": -1,
+                    "time": "17:23",
+                    "text": "Already in your calendar 😉",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": 0,
+                    "time": "09:08",
+                    "text": "On my way! ETA 9:35, Glendale Blvd is a parking lot 🙃",
+                    "photo": null
+                },
+                {
+                    "from": "pedro",
+                    "day": 0,
+                    "time": "09:10",
+                    "text": "No rush, Jordan's still on a call. Want a coffee?",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": 0,
+                    "time": "09:11",
+                    "text": "Oat cortado pls ☕️ you're the best",
+                    "photo": null
+                }
+            ]
+        },
+        {
+            "id": "vicki",
+            "participants": ["vicki"],
+            "name": null,
+            "messages": [
+                {
+                    "from": "vicki",
+                    "day": -14,
+                    "time": "20:12",
+                    "text": "ok I'm finally reading the book club pick and why is chapter 3 making me cry on BART",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -14,
+                    "time": "20:30",
+                    "text": "Told you!! Just wait",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -10,
+                    "time": "12:44",
+                    "text": "Finally edited the Marin set from your visit 🌁",
+                    "photo": "Marin"
+                },
+                {
+                    "from": "vicki",
+                    "day": -10,
+                    "time": "12:50",
+                    "text": "STOP. new lock screen",
+                    "photo": null
+                },
+                {
+                    "from": "vicki",
+                    "day": -10,
+                    "time": "12:51",
+                    "text": "the fog rolling over the hills?? frame it",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -10,
+                    "time": "12:53",
+                    "text": "Already ordered you a print 🖼️",
+                    "photo": null
+                },
+                {
+                    "from": "vicki",
+                    "day": -5,
+                    "time": "22:03",
+                    "text": "Can we FaceTime soon? Need your opinion on something (good news!!)",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -5,
+                    "time": "22:15",
+                    "text": "Yes! Tomorrow night?",
+                    "photo": null
+                },
+                {
+                    "from": "vicki",
+                    "day": -5,
+                    "time": "22:16",
+                    "text": "cant, work dinner. weekend?",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -5,
+                    "time": "22:20",
+                    "text": "Weekend works, I'll call you",
+                    "photo": null
+                },
+                {
+                    "from": "vicki",
+                    "day": -1,
+                    "time": "21:40",
+                    "text": "reminder you owe me a call 👀 I'm bursting",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -1,
+                    "time": "21:44",
+                    "text": "I know I know 😩 calling you tomorrow after my meeting, promise",
+                    "photo": null
+                },
+                {
+                    "from": "vicki",
+                    "day": 0,
+                    "time": "07:52",
+                    "text": "ok fine. hint: it's a job thing. that's all you get",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": 0,
+                    "time": "07:55",
+                    "text": "VICKI. Now I'm dying",
+                    "photo": null
+                },
+                { "from": "vicki", "day": 0, "time": "07:56", "text": "🤐🤐", "photo": null }
+            ]
+        },
+        {
+            "id": "mom",
+            "participants": ["mom"],
+            "name": null,
+            "messages": [
+                {
+                    "from": "mom",
+                    "day": -13,
+                    "time": "18:22",
+                    "text": "Mija did you eat? I made too much albóndigas soup, come get some",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -13,
+                    "time": "18:40",
+                    "text": "Coming by after I finish this edit! Save me a big container 🙏",
+                    "photo": null
+                },
+                {
+                    "from": "mom",
+                    "day": -13,
+                    "time": "18:41",
+                    "text": "Already in the fridge with your name on it ❤️",
+                    "photo": null
+                },
+                {
+                    "from": "mom",
+                    "day": -9,
+                    "time": "10:15",
+                    "text": "Your dad wants to know if you can help with the printer again",
+                    "photo": null
+                },
+                {
+                    "from": "mom",
+                    "day": -9,
+                    "time": "10:16",
+                    "text": "He says it's \"acting up\"",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -9,
+                    "time": "10:30",
+                    "text": "Lol tell him to turn it off and on again. I'll look at it this weekend",
+                    "photo": null
+                },
+                {
+                    "from": "mom",
+                    "day": -6,
+                    "time": "15:02",
+                    "text": "What should we get Danny for his 30th? He says he doesn't want anything, which means he wants something",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -6,
+                    "time": "15:20",
+                    "text": "What if I frame one of my Valley of Fire prints for him? He keeps saying it's his favorite",
+                    "photo": null
+                },
+                {
+                    "from": "mom",
+                    "day": -6,
+                    "time": "15:22",
+                    "text": "He would love that 🥹 Let me pay for the frame at least",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -6,
+                    "time": "15:40",
+                    "text": "Deal. Going with a simple oak one",
+                    "photo": null
+                },
+                {
+                    "from": "mom",
+                    "day": -3,
+                    "time": "11:00",
+                    "text": "Do you want your abuela's quilt for the cabin trip? It's so warm",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -3,
+                    "time": "11:20",
+                    "text": "Yes please!! Tahoe is supposed to be freezing",
+                    "photo": null
+                },
+                {
+                    "from": "mom",
+                    "day": 0,
+                    "time": "07:30",
+                    "text": "Good morning sweetheart ☀️ drive safe today",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": 0,
+                    "time": "07:41",
+                    "text": "Morning mama! Will do. Love you",
+                    "photo": null
+                }
+            ]
+        },
+        {
+            "id": "danny",
+            "participants": ["danny"],
+            "name": null,
+            "messages": [
+                {
+                    "from": "danny",
+                    "day": -12,
+                    "time": "20:05",
+                    "text": "Sofia's running for 6th grade class rep 😭 the debate is in a couple weeks",
+                    "photo": null
+                },
+                {
+                    "from": "danny",
+                    "day": -12,
+                    "time": "20:06",
+                    "text": "she wants to practice with \"the cool aunt\"",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -12,
+                    "time": "20:10",
+                    "text": "AHHH I'm so proud. Tell her I'm in!! What's her platform?",
+                    "photo": null
+                },
+                {
+                    "from": "danny",
+                    "day": -12,
+                    "time": "20:11",
+                    "text": "Longer recess and a school garden",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -12,
+                    "time": "20:12",
+                    "text": "A garden?? She's my niece through and through 🌱",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -8,
+                    "time": "18:40",
+                    "text": "Watched her speech video 3 times. SO good. Tell her to slow down on the second point and look at the back row",
+                    "photo": null
+                },
+                {
+                    "from": "danny",
+                    "day": -8,
+                    "time": "18:45",
+                    "text": "she made me wirte that on an index card lol",
+                    "photo": null
+                },
+                {
+                    "from": "danny",
+                    "day": -4,
+                    "time": "19:02",
+                    "text": "Campaign poster is done 🗳️",
+                    "photo": "LA"
+                },
+                {
+                    "from": "me",
+                    "day": -4,
+                    "time": "19:05",
+                    "text": "The glitter!! She's winning this",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -2,
+                    "time": "20:30",
+                    "text": "Ok what do you actually want for the big 3-0? Don't say nothing",
+                    "photo": null
+                },
+                {
+                    "from": "danny",
+                    "day": -2,
+                    "time": "20:41",
+                    "text": "honestly? a full night of sleep",
+                    "photo": null
+                },
+                {
+                    "from": "danny",
+                    "day": -2,
+                    "time": "20:41",
+                    "text": "Camila booked Casa Verde for my birthday dinner btw. 7pm, you're coming",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -2,
+                    "time": "20:43",
+                    "text": "Wouldn't miss it 🎉",
+                    "photo": null
+                },
+                {
+                    "from": "danny",
+                    "day": 0,
+                    "time": "08:20",
+                    "text": "Sofia wants one more practice run before the debate. FaceTime tonight?",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": 0,
+                    "time": "08:31",
+                    "text": "Yes! 7? Tell her to have her talking points ready 😤",
+                    "photo": null
+                },
+                {
+                    "from": "danny",
+                    "day": 0,
+                    "time": "08:32",
+                    "text": "She already color-coded them",
+                    "photo": null
+                }
+            ]
+        },
+        {
+            "id": "jordan",
+            "participants": ["jordan"],
+            "name": null,
+            "messages": [
+                {
+                    "from": "jordan",
+                    "day": -10,
+                    "time": "10:02",
+                    "text": "Hi Mia! Loved the Sicily set you sent over. Can we do a portfolio review soon? Want to talk about bringing you on for the next campaign",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -10,
+                    "time": "10:30",
+                    "text": "Absolutely, I'd love that!",
+                    "photo": null
+                },
+                {
+                    "from": "jordan",
+                    "day": -10,
+                    "time": "10:32",
+                    "text": "Great. I'll have Pedro find a time",
+                    "photo": null
+                },
+                {
+                    "from": "jordan",
+                    "day": -6,
+                    "time": "13:15",
+                    "text": "Pedro put us down for the review. Bring 20–25 images, prints or iPad, whatever you prefer",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -6,
+                    "time": "13:40",
+                    "text": "Will do. Thinking Sicily, Valley of Fire, and some of the Mexico City street work",
+                    "photo": null
+                },
+                {
+                    "from": "jordan",
+                    "day": -6,
+                    "time": "13:42",
+                    "text": "Perfect mix. Tighten the edit more than you think you need to",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -2,
+                    "time": "16:05",
+                    "text": "Too much for an opener or just right?",
+                    "photo": "ValleyOfFire"
+                },
+                {
+                    "from": "jordan",
+                    "day": -2,
+                    "time": "16:30",
+                    "text": "Just right. That color is unreal 🔥",
+                    "photo": null
+                },
+                {
+                    "from": "jordan",
+                    "day": -2,
+                    "time": "16:31",
+                    "text": "Lead with it",
+                    "photo": null
+                },
+                {
+                    "from": "jordan",
+                    "day": -1,
+                    "time": "09:10",
+                    "text": "Also, thank you for the workflow write-up. Kai has read it twice already",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -1,
+                    "time": "09:15",
+                    "text": "So glad it's helpful!",
+                    "photo": null
+                },
+                {
+                    "from": "jordan",
+                    "day": 0,
+                    "time": "08:45",
+                    "text": "See you at 9:30. And still good for the portfolio review in a few days?",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": 0,
+                    "time": "08:47",
+                    "text": "Yes! Prints are at the lab",
+                    "photo": null
+                }
+            ]
+        },
+        {
+            "id": "ava",
+            "participants": ["ava"],
+            "name": null,
+            "messages": [
+                {
+                    "from": "ava",
+                    "day": -13,
+                    "time": "07:05",
+                    "text": "Hi Mia! Quick heads up: Thursday morning class is moving from 6:00 to 7:15 starting next week, same time as Tuesdays now 🧘‍♀️",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -13,
+                    "time": "07:40",
+                    "text": "Thanks Ava! 7:15 is so much more humane 😅",
+                    "photo": null
+                },
+                {
+                    "from": "ava",
+                    "day": -13,
+                    "time": "07:41",
+                    "text": "Yay! See you on the mat",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -6,
+                    "time": "12:10",
+                    "text": "Still feeling that last class in the best way. My hips have never been happier",
+                    "photo": null
+                },
+                {
+                    "from": "ava",
+                    "day": -6,
+                    "time": "12:14",
+                    "text": "That pigeon hold was a long one 😅 so proud of you",
+                    "photo": null
+                },
+                {
+                    "from": "ava",
+                    "day": -3,
+                    "time": "12:20",
+                    "text": "Random q: I'm leading a slow flow + sound bath this weekend. Would you be up for taking photos for the studio site? Paid of course!",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -3,
+                    "time": "12:41",
+                    "text": "Ooh yes, I'd love to. What time? Midday is tricky, I'm on garden snacks",
+                    "photo": null
+                },
+                {
+                    "from": "ava",
+                    "day": -3,
+                    "time": "12:43",
+                    "text": "Sunday 10am!",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -3,
+                    "time": "12:44",
+                    "text": "Perfect, I'll be there with a camera 📷",
+                    "photo": null
+                }
+            ]
+        },
+        {
+            "id": "theo",
+            "participants": ["theo"],
+            "name": null,
+            "messages": [
+                {
+                    "from": "theo",
+                    "day": -11,
+                    "time": "22:10",
+                    "text": "Valley of Fire raws look insane btw. You shot that at f/8?",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -11,
+                    "time": "22:14",
+                    "text": "f/11, 1/250, right at golden hour",
+                    "photo": null
+                },
+                {
+                    "from": "theo",
+                    "day": -11,
+                    "time": "22:15",
+                    "text": "teach me ur ways",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -7,
+                    "time": "20:02",
+                    "text": "Hey any chance I can get my 35mm back before Tahoe? 🙏",
+                    "photo": null
+                },
+                {
+                    "from": "theo",
+                    "day": -7,
+                    "time": "20:30",
+                    "text": "Omg yes, sorry!! I'll drop it at yours this weekend",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -7,
+                    "time": "20:31",
+                    "text": "No rush, just want it for the cabin",
+                    "photo": null
+                },
+                {
+                    "from": "theo",
+                    "day": -4,
+                    "time": "13:15",
+                    "text": "Film scans from Amalfi finally came back 🎞️",
+                    "photo": "Amalfi"
+                },
+                {
+                    "from": "me",
+                    "day": -4,
+                    "time": "13:22",
+                    "text": "Theo. The grain. Is this the expired roll you were nervous about?",
+                    "photo": null
+                },
+                {
+                    "from": "theo",
+                    "day": -4,
+                    "time": "13:25",
+                    "text": "Yes!! Happy accident",
+                    "photo": null
+                },
+                {
+                    "from": "theo",
+                    "day": -3,
+                    "time": "10:05",
+                    "text": "Pedro just booked me to assist on the Feld shoot 🙌",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -3,
+                    "time": "10:09",
+                    "text": "Best news. I'm going to need your steady hands around 30 pieces of ceramics 😅",
+                    "photo": null
+                },
+                {
+                    "from": "theo",
+                    "day": -1,
+                    "time": "18:00",
+                    "text": "Left your 35mm with Marcus in the building office 👍",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -1,
+                    "time": "18:20",
+                    "text": "Got it, thank you!! Also are you in for jazz at The Velvet Note with Sam?",
+                    "photo": null
+                },
+                {
+                    "from": "theo",
+                    "day": -1,
+                    "time": "18:22",
+                    "text": "Obviously 🎷",
+                    "photo": null
+                }
+            ]
+        },
+        {
+            "id": "nora",
+            "participants": ["nora"],
+            "name": null,
+            "messages": [
+                {
+                    "from": "nora",
+                    "day": -14,
+                    "time": "11:30",
+                    "text": "Hi Mia! It's Nora from Feld Ceramics. Pedro passed along your number. So excited to shoot the new collection with you",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -14,
+                    "time": "11:45",
+                    "text": "Hi Nora! Likewise. I've been admiring your glazes for ages",
+                    "photo": null
+                },
+                {
+                    "from": "nora",
+                    "day": -9,
+                    "time": "15:10",
+                    "text": "Pulled together a little mood board: warm, earthy, lots of hands-in-clay moments. Morning light if we can",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -9,
+                    "time": "15:30",
+                    "text": "Love it. Something like this light? From a shoot in Mexico City",
+                    "photo": "MexicoCity"
+                },
+                {
+                    "from": "nora",
+                    "day": -9,
+                    "time": "15:35",
+                    "text": "YES. Exactly that. Those shadows!!",
+                    "photo": null
+                },
+                {
+                    "from": "nora",
+                    "day": -5,
+                    "time": "10:20",
+                    "text": "Should I bring the new speckled mugs too or just the dinnerware?",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -5,
+                    "time": "10:28",
+                    "text": "Bring everything! We'll build a few still lifes and pick favorites on set",
+                    "photo": null
+                },
+                {
+                    "from": "nora",
+                    "day": -1,
+                    "time": "14:02",
+                    "text": "Started wrapping pieces for the shoot, about 30 so far 😅",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -1,
+                    "time": "14:10",
+                    "text": "Amazing. I'll have coffee waiting, and I'm bringing a linen tablecloth that's going to look so good with the blue glaze",
+                    "photo": null
+                },
+                {
+                    "from": "nora",
+                    "day": -1,
+                    "time": "14:11",
+                    "text": "Can't wait!! See you at 9 🏺",
+                    "photo": null
+                }
+            ]
+        },
+        {
+            "id": "sam",
+            "participants": ["sam"],
+            "name": null,
+            "messages": [
+                {
+                    "from": "sam",
+                    "day": -13,
+                    "time": "17:45",
+                    "text": "Gym reset the cave. Wednesday?",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -13,
+                    "time": "17:50",
+                    "text": "Obviously. 7?",
+                    "photo": null
+                },
+                { "from": "sam", "day": -13, "time": "17:50", "text": "7 👍", "photo": null },
+                {
+                    "from": "sam",
+                    "day": -6,
+                    "time": "21:30",
+                    "text": "Still thinking about that V4 you sent last week. So clean",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -6,
+                    "time": "21:35",
+                    "text": "Took me 9 tries but who's counting 😂",
+                    "photo": null
+                },
+                {
+                    "from": "sam",
+                    "day": -3,
+                    "time": "18:10",
+                    "text": "Joshua Tree after Tahoe? This line has your name on it",
+                    "photo": "SoCal"
+                },
+                {
+                    "from": "me",
+                    "day": -3,
+                    "time": "18:20",
+                    "text": "Yes yes yes. Need new shoes first though",
+                    "photo": null
+                },
+                {
+                    "from": "sam",
+                    "day": -3,
+                    "time": "18:22",
+                    "text": "Also Grace and I are driving all the gear up to Tahoe. Toss your stuff in my car and fly light?",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -3,
+                    "time": "18:25",
+                    "text": "Yes please!! Theo and I are on the early flight to Reno. And I'm riding back with you",
+                    "photo": null
+                },
+                {
+                    "from": "sam",
+                    "day": -3,
+                    "time": "18:26",
+                    "text": "Deal. Road trip playlist is your job",
+                    "photo": null
+                },
+                {
+                    "from": "sam",
+                    "day": 0,
+                    "time": "07:15",
+                    "text": "Found your chalk bag in my car btw",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": 0,
+                    "time": "07:20",
+                    "text": "Ah thank you! Hang onto it till climbing 🙏",
+                    "photo": null
+                },
+                {
+                    "from": "sam",
+                    "day": 0,
+                    "time": "07:21",
+                    "text": "Also got us a table at The Velvet Note a week from tomorrow 🎷",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": 0,
+                    "time": "07:24",
+                    "text": "Yesss. Jazz night!!",
+                    "photo": null
+                }
+            ]
+        },
+        {
+            "id": "marcus",
+            "participants": ["marcus"],
+            "name": null,
+            "messages": [
+                {
+                    "from": "marcus",
+                    "day": -12,
+                    "time": "09:30",
+                    "text": "Hi Mia, Marcus here (building manager). Heads up: water will be shut off tomorrow from 10am to 12pm for a valve repair.",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -12,
+                    "time": "09:45",
+                    "text": "Thanks for the heads up, Marcus!",
+                    "photo": null
+                },
+                {
+                    "from": "marcus",
+                    "day": -7,
+                    "time": "14:20",
+                    "text": "A package was delivered for you. Large box marked FRAGILE. It's in the office whenever you're ready.",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -7,
+                    "time": "17:55",
+                    "text": "That's my new backdrop stand! I'll grab it tonight, thank you",
+                    "photo": null
+                },
+                {
+                    "from": "marcus",
+                    "day": -1,
+                    "time": "18:05",
+                    "text": "Your friend Theo dropped off a camera lens for you. I've got it in the office.",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -1,
+                    "time": "18:30",
+                    "text": "Perfect, I'll grab it in the morning on my way out",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": 0,
+                    "time": "08:50",
+                    "text": "Got the lens, thanks Marcus! Have a good one",
+                    "photo": null
+                },
+                { "from": "marcus", "day": 0, "time": "08:52", "text": "You too 👍", "photo": null }
+            ]
+        },
+        {
+            "id": "larchmont",
+            "participants": ["larchmont"],
+            "name": null,
+            "messages": [
+                {
+                    "from": "larchmont",
+                    "day": -11,
+                    "time": "08:14",
+                    "text": "Larchmont Coffee Co.: Hi Mia! Your order (oat cortado, almond croissant) is ready at the pickup counter ☕️",
+                    "photo": null
+                },
+                {
+                    "from": "larchmont",
+                    "day": -7,
+                    "time": "08:02",
+                    "text": "Larchmont Coffee Co.: Your order (oat cortado, cardamom bun) is ready. Have a great morning!",
+                    "photo": null
+                },
+                {
+                    "from": "larchmont",
+                    "day": -4,
+                    "time": "08:30",
+                    "text": "Larchmont Coffee Co.: Thanks for being a regular! Your next drink is on us. Just show this text at the register 🎉",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -4,
+                    "time": "08:42",
+                    "text": "Oh that's so nice, thank you!!",
+                    "photo": null
+                },
+                {
+                    "from": "larchmont",
+                    "day": -4,
+                    "time": "08:50",
+                    "text": "Of course! See you soon 😊",
+                    "photo": null
+                },
+                {
+                    "from": "larchmont",
+                    "day": -1,
+                    "time": "08:10",
+                    "text": "Larchmont Coffee Co.: Hi Mia! Your order (oat cortado, olive focaccia) is ready at the pickup counter ☕️",
+                    "photo": null
+                }
+            ]
+        },
+        {
+            "id": "tahoe-crew",
+            "participants": ["grace", "sam", "theo"],
+            "name": "Tahoe Crew",
+            "messages": [
+                {
+                    "from": "grace",
+                    "day": -14,
+                    "time": "19:00",
+                    "text": "Ok team, the cabin is BOOKED 🏔️❄️ 3 nights, hot tub, wood stove, the works. Five weeks!!",
+                    "photo": null
+                },
+                { "from": "sam", "day": -14, "time": "19:02", "text": "LET'S GOOO", "photo": null },
+                {
+                    "from": "theo",
+                    "day": -14,
+                    "time": "19:03",
+                    "text": "hot tub 🙌",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -14,
+                    "time": "19:05",
+                    "text": "Screaming. Same cabin as last year?",
+                    "photo": null
+                },
+                {
+                    "from": "grace",
+                    "day": -14,
+                    "time": "19:06",
+                    "text": "Same one! Here's the view to get you hyped",
+                    "photo": null
+                },
+                { "from": "grace", "day": -14, "time": "19:06", "text": "", "photo": "Tahoe" },
+                {
+                    "from": "theo",
+                    "day": -14,
+                    "time": "19:10",
+                    "text": "Bringing the tripod for star photos this time",
+                    "photo": null
+                },
+                {
+                    "from": "grace",
+                    "day": -10,
+                    "time": "12:15",
+                    "text": "Cabin math: $210 each. Venmo me whenever, no rush",
+                    "photo": null
+                },
+                { "from": "me", "day": -10, "time": "12:30", "text": "Sent! 💸", "photo": null },
+                { "from": "sam", "day": -10, "time": "13:02", "text": "sent", "photo": null },
+                {
+                    "from": "theo",
+                    "day": -10,
+                    "time": "18:44",
+                    "text": "Sent, sorry, was on a shoot",
+                    "photo": null
+                },
+                {
+                    "from": "grace",
+                    "day": -6,
+                    "time": "20:00",
+                    "text": "Meal plan: I'm doing a big pot of chili night 1. Who wants breakfast duty?",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -6,
+                    "time": "20:05",
+                    "text": "Me! Breakfast burritos, and I'll bake a focaccia with olives for when we get in",
+                    "photo": null
+                },
+                {
+                    "from": "sam",
+                    "day": -6,
+                    "time": "20:06",
+                    "text": "Mia's focaccia 🤤",
+                    "photo": null
+                },
+                {
+                    "from": "theo",
+                    "day": -6,
+                    "time": "20:08",
+                    "text": "I'll handle drinks + a cheese board",
+                    "photo": null
+                },
+                {
+                    "from": "grace",
+                    "day": -6,
+                    "time": "20:09",
+                    "text": "No nuts on the board for Sam pls!",
+                    "photo": null
+                },
+                {
+                    "from": "sam",
+                    "day": -3,
+                    "time": "18:30",
+                    "text": "Travel plan: Grace and I are driving up with all the gear. Mia + Theo flying into Reno?",
+                    "photo": null
+                },
+                {
+                    "from": "theo",
+                    "day": -3,
+                    "time": "18:34",
+                    "text": "Yep, booked the early flight ✈️ can someone grab us at RNO?",
+                    "photo": null
+                },
+                {
+                    "from": "grace",
+                    "day": -3,
+                    "time": "18:40",
+                    "text": "We'll swing by and get you, text when you land",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -3,
+                    "time": "18:41",
+                    "text": "You're the best. Coffee's on me",
+                    "photo": null
+                },
+                {
+                    "from": "theo",
+                    "day": 0,
+                    "time": "07:10",
+                    "text": "Lake cam this morning. Snow's already stacking up ❄️",
+                    "photo": "Tahoe"
+                },
+                {
+                    "from": "grace",
+                    "day": 0,
+                    "time": "07:22",
+                    "text": "Three weeks!!! Bring your real boots. Lockbox code is 2468, saving it here so nobody has to ask me",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": 0,
+                    "time": "07:25",
+                    "text": "Do we need chains?",
+                    "photo": null
+                },
+                {
+                    "from": "sam",
+                    "day": 0,
+                    "time": "07:30",
+                    "text": "Already bought them 😎",
+                    "photo": null
+                }
+            ]
+        },
+        {
+            "id": "navarro-family",
+            "participants": ["mom", "dad", "danny"],
+            "name": "Navarro Family",
+            "messages": [
+                {
+                    "from": "dad",
+                    "day": -13,
+                    "time": "19:30",
+                    "text": "Who took my good hat. The blue one",
+                    "photo": null
+                },
+                {
+                    "from": "danny",
+                    "day": -13,
+                    "time": "19:32",
+                    "text": "wasn't me",
+                    "photo": null
+                },
+                {
+                    "from": "mom",
+                    "day": -13,
+                    "time": "19:33",
+                    "text": "It's on your head, Ray",
+                    "photo": null
+                },
+                { "from": "me", "day": -13, "time": "19:33", "text": "😂😂😂", "photo": null },
+                {
+                    "from": "mom",
+                    "day": -9,
+                    "time": "18:00",
+                    "text": "Look what I found. Our Sicily trip 🥹",
+                    "photo": "Sicily"
+                },
+                {
+                    "from": "danny",
+                    "day": -9,
+                    "time": "18:05",
+                    "text": "Dad's sunburn in this 😂",
+                    "photo": null
+                },
+                {
+                    "from": "dad",
+                    "day": -9,
+                    "time": "18:06",
+                    "text": "That was a tan",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -9,
+                    "time": "18:10",
+                    "text": "Printing this one for the hallway",
+                    "photo": null
+                },
+                {
+                    "from": "mom",
+                    "day": -5,
+                    "time": "12:00",
+                    "text": "Family dinner here before Danny's birthday? Dad wants to make his pozole",
+                    "photo": null
+                },
+                {
+                    "from": "danny",
+                    "day": -5,
+                    "time": "12:15",
+                    "text": "We're in. Sofia wants to make dessert",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -5,
+                    "time": "12:20",
+                    "text": "I'll bring focaccia 🫒",
+                    "photo": null
+                },
+                {
+                    "from": "dad",
+                    "day": -5,
+                    "time": "12:22",
+                    "text": "Bring ice. Ice maker is broken again",
+                    "photo": null
+                },
+                {
+                    "from": "dad",
+                    "day": -2,
+                    "time": "21:00",
+                    "text": "Printer works now. Mia fixed it. 👍",
+                    "photo": null
+                },
+                {
+                    "from": "mom",
+                    "day": -2,
+                    "time": "21:05",
+                    "text": "Thank you mija ❤️",
+                    "photo": null
+                },
+                {
+                    "from": "dad",
+                    "day": 0,
+                    "time": "07:45",
+                    "text": "Morning. Reminder Danny's birthday is in under two weeks. Ideas?",
+                    "photo": null
+                },
+                {
+                    "from": "danny",
+                    "day": 0,
+                    "time": "07:46",
+                    "text": "Dad I'm in this chat",
+                    "photo": null
+                },
+                { "from": "dad", "day": 0, "time": "07:47", "text": "Never mind", "photo": null },
+                { "from": "me", "day": 0, "time": "07:47", "text": "😂😂", "photo": null },
+                { "from": "mom", "day": 0, "time": "07:50", "text": "Ray 🤦‍♀️", "photo": null }
+            ]
+        },
+        {
+            "id": "book-club",
+            "participants": ["priya", "vicki", "lena"],
+            "name": "Book Club",
+            "messages": [
+                {
+                    "from": "lena",
+                    "day": -12,
+                    "time": "20:00",
+                    "text": "Reminder: book club is at my place in three weeks! Plenty of time to finish The Salt Orchard 📚",
+                    "photo": null
+                },
+                {
+                    "from": "vicki",
+                    "day": -12,
+                    "time": "20:04",
+                    "text": "I'm on chapter 4 and already emotionally compromised",
+                    "photo": null
+                },
+                {
+                    "from": "priya",
+                    "day": -12,
+                    "time": "20:06",
+                    "text": "Wait til you meet the grandmother 😭",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -12,
+                    "time": "20:10",
+                    "text": "I'll bring snacks. Vicki, calling in?",
+                    "photo": null
+                },
+                {
+                    "from": "vicki",
+                    "day": -12,
+                    "time": "20:11",
+                    "text": "FaceTiming in from SF as always 💻",
+                    "photo": null
+                },
+                {
+                    "from": "priya",
+                    "day": -8,
+                    "time": "19:00",
+                    "text": "My mom sent this from Chennai and it looks exactly like the market scene in chapter 12",
+                    "photo": "India"
+                },
+                {
+                    "from": "lena",
+                    "day": -8,
+                    "time": "19:03",
+                    "text": "Okay that's uncanny",
+                    "photo": null
+                },
+                {
+                    "from": "vicki",
+                    "day": -8,
+                    "time": "19:04",
+                    "text": "no spoilers!! im only on 7",
+                    "photo": null
+                },
+                {
+                    "from": "priya",
+                    "day": -8,
+                    "time": "19:05",
+                    "text": "It's a market. That's not a spoiler 😂",
+                    "photo": null
+                },
+                {
+                    "from": "lena",
+                    "day": -4,
+                    "time": "21:15",
+                    "text": "Time to vote on the next pick: Every Window Facing West or Small Hours on Calle Luna?",
+                    "photo": null
+                },
+                {
+                    "from": "me",
+                    "day": -4,
+                    "time": "21:18",
+                    "text": "Small Hours! Also the book festival is this weekend, anyone want to go? Author panels + food trucks",
+                    "photo": null
+                },
+                { "from": "lena", "day": -4, "time": "21:22", "text": "I'm in!", "photo": null },
+                {
+                    "from": "priya",
+                    "day": -4,
+                    "time": "21:25",
+                    "text": "Can't, garden workday 🌱 but bring me back a signed copy of anything",
+                    "photo": null
+                },
+                {
+                    "from": "vicki",
+                    "day": -4,
+                    "time": "21:30",
+                    "text": "So jealous. Send pics",
+                    "photo": null
+                },
+                {
+                    "from": "lena",
+                    "day": -1,
+                    "time": "20:40",
+                    "text": "Votes are in: Small Hours wins 3–1 🎉",
+                    "photo": null
+                },
+                {
+                    "from": "priya",
+                    "day": -1,
+                    "time": "20:42",
+                    "text": "Who voted Every Window 👀",
+                    "photo": null
+                },
+                {
+                    "from": "vicki",
+                    "day": -1,
+                    "time": "20:43",
+                    "text": "...me. The cover has a lighthouse!!",
+                    "photo": null
+                },
+                {
+                    "from": "lena",
+                    "day": 0,
+                    "time": "08:15",
+                    "text": "Also I'm making lemon olive oil cake for book club, plan accordingly 🍋",
+                    "photo": null
+                },
+                {
+                    "from": "priya",
+                    "day": 0,
+                    "time": "08:18",
+                    "text": "I'll bring the good tea",
+                    "photo": null
+                }
+            ]
+        }
+    ]
+}
