@@ -1,0 +1,31 @@
+{
+    "bootstrapActive": true,
+    "capabilities": ["windows", "tree", "node", "find", "fonts"],
+    "effects": ["helper-bootstrap-resident"],
+    "establishedMode": "attach",
+    "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+    "helperResident": true,
+    "identity": {
+        "architecture": "arm64e",
+        "bundleId": "com.apple.finder",
+        "bundlePath": "/System/Library/CoreServices/Finder.app",
+        "executablePath": "/System/Library/CoreServices/Finder.app/Contents/MacOS/Finder",
+        "osBuild": "26B131",
+        "osVersion": "Version 27.2.1 (Build 26B131)",
+        "pid": 2012,
+        "pidversion": 4855,
+        "uid": 501
+    },
+    "incarnation": { "pid": 2012, "pidversion": 4855 },
+    "mode": "attach",
+    "ok": true,
+    "pid": 2012,
+    "pidversion": 4855,
+    "profile": "research",
+    "protocol": 1,
+    "requestedMode": "attach",
+    "requestedProfile": "research",
+    "reused": false,
+    "sessionId": "5da189313ee6ea274ea305e6ce450bec",
+    "uid": 501
+}

@@ -1,0 +1,102 @@
+{
+    "application": { "path": "/System/Applications/TextEdit.app", "pid": 1739 },
+    "windowId": 120,
+    "truncated": false,
+    "narrowed": false,
+    "root": {
+        "role": "AXWindow",
+        "subrole": "AXStandardWindow",
+        "title": "recon-probe.txt",
+        "identifier": "_NS:31",
+        "focused": false,
+        "frame": { "x": 147.0, "y": 86.0, "width": 673.0, "height": 439.0 },
+        "actions": ["AXRaise"],
+        "children": [
+            {
+                "role": "AXScrollArea",
+                "identifier": "_NS:8",
+                "focused": false,
+                "frame": { "x": 147.0, "y": 118.0, "width": 673.0, "height": 407.0 },
+                "actions": [
+                    "AXScrollLeftByPage",
+                    "AXScrollRightByPage",
+                    "AXScrollUpByPage",
+                    "AXScrollDownByPage"
+                ],
+                "children": [
+                    { "error": "read-failed", "axError": -25200 },
+                    {
+                        "role": "AXScrollBar",
+                        "value": 0.18518517911434174,
+                        "identifier": "_NS:24",
+                        "enabled": false,
+                        "focused": false,
+                        "frame": { "x": 153.5, "y": 507.0, "width": 650.5, "height": 19.0 }
+                    },
+                    {
+                        "role": "AXScrollBar",
+                        "value": 0.0,
+                        "identifier": "_NS:27",
+                        "enabled": false,
+                        "focused": false,
+                        "frame": { "x": 802.0, "y": 117.0, "width": 19.0, "height": 392.0 }
+                    }
+                ]
+            },
+            {
+                "role": "AXButton",
+                "subrole": "AXCloseButton",
+                "enabled": true,
+                "focused": false,
+                "frame": { "x": 155.0, "y": 94.0, "width": 16.0, "height": 16.0 },
+                "actions": ["AXPress"]
+            },
+            {
+                "role": "AXButton",
+                "subrole": "AXFullScreenButton",
+                "enabled": true,
+                "focused": false,
+                "frame": { "x": 201.0, "y": 94.0, "width": 16.0, "height": 16.0 },
+                "actions": ["AXPress", "AXZoomWindow", "AXShowMenu"],
+                "children": [
+                    {
+                        "role": "AXGroup",
+                        "focused": false,
+                        "frame": { "x": 202.0, "y": 95.0, "width": 14.0, "height": 14.0 }
+                    }
+                ]
+            },
+            {
+                "role": "AXButton",
+                "subrole": "AXMinimizeButton",
+                "enabled": true,
+                "focused": false,
+                "frame": { "x": 178.0, "y": 94.0, "width": 16.0, "height": 16.0 },
+                "actions": ["AXPress"]
+            },
+            {
+                "role": "AXMenuButton",
+                "title": "",
+                "description": "document actions",
+                "enabled": false,
+                "focused": false,
+                "frame": { "x": 354.0, "y": 93.0, "width": 12.0, "height": 18.0 },
+                "actions": ["AXPress", "AXShowMenu"]
+            },
+            {
+                "role": "AXImage",
+                "title": "recon-probe.txt",
+                "enabled": true,
+                "focused": false,
+                "frame": { "x": 228.0, "y": 92.0, "width": 18.0, "height": 18.0 }
+            },
+            {
+                "role": "AXStaticText",
+                "value": "recon-probe.txt",
+                "enabled": true,
+                "focused": false,
+                "frame": { "x": 247.0, "y": 94.0, "width": 108.0, "height": 16.0 }
+            }
+        ]
+    }
+}

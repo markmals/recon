@@ -1,0 +1,256 @@
+{
+    "application": { "path": "/Applications/CotEditor.app", "pid": 2641 },
+    "windowId": 181,
+    "truncated": false,
+    "narrowed": true,
+    "root": {
+        "role": "AXWindow",
+        "subrole": "AXStandardWindow",
+        "title": "Untitled",
+        "focused": false,
+        "frame": { "x": 320.0, "y": 30.0, "width": 640.0, "height": 705.0 },
+        "actions": ["AXRaise"],
+        "children": [
+            {
+                "role": "AXSplitGroup",
+                "identifier": "WindowContentSplitView",
+                "focused": false,
+                "frame": { "x": 320.0, "y": 30.0, "width": 640.0, "height": 705.0 },
+                "children": [
+                    {
+                        "role": "AXSplitGroup",
+                        "focused": false,
+                        "frame": { "x": 320.0, "y": 30.0, "width": 640.0, "height": 705.0 },
+                        "children": [
+                            {
+                                "role": "AXGroup",
+                                "description": "Editor",
+                                "focused": false,
+                                "frame": { "x": 320.0, "y": 30.0, "width": 640.0, "height": 705.0 },
+                                "children": [
+                                    {
+                                        "role": "AXSplitGroup",
+                                        "focused": false,
+                                        "frame": {
+                                            "x": 320.0,
+                                            "y": 30.0,
+                                            "width": 640.0,
+                                            "height": 705.0
+                                        },
+                                        "children": [
+                                            {
+                                                "role": "AXGroup",
+                                                "subrole": "AXHostingView",
+                                                "focused": false,
+                                                "frame": {
+                                                    "x": 320.0,
+                                                    "y": 30.0,
+                                                    "width": 640.0,
+                                                    "height": 90.0
+                                                },
+                                                "children": [
+                                                    {
+                                                        "role": "AXGroup",
+                                                        "description": "Navigation Bar",
+                                                        "enabled": true,
+                                                        "frame": {
+                                                            "x": 320.0,
+                                                            "y": 30.0,
+                                                            "width": 640.0,
+                                                            "height": 90.0
+                                                        },
+                                                        "depthLimited": true
+                                                    }
+                                                ]
+                                            },
+                                            { "error": "read-failed", "axError": -25200 },
+                                            {
+                                                "role": "AXScrollArea",
+                                                "identifier": "EditorScrollView",
+                                                "focused": false,
+                                                "frame": {
+                                                    "x": 320.0,
+                                                    "y": 128.0,
+                                                    "width": 640.0,
+                                                    "height": 576.0
+                                                },
+                                                "actions": [
+                                                    "AXScrollLeftByPage",
+                                                    "AXScrollRightByPage",
+                                                    "AXScrollUpByPage",
+                                                    "AXScrollDownByPage"
+                                                ],
+                                                "children": [
+                                                    { "error": "read-failed", "axError": -25200 },
+                                                    {
+                                                        "role": "AXScrollBar",
+                                                        "value": 0.0,
+                                                        "enabled": false,
+                                                        "focused": false,
+                                                        "frame": {
+                                                            "x": 942.0,
+                                                            "y": 127.0,
+                                                            "width": 19.0,
+                                                            "height": 578.0
+                                                        }
+                                                    },
+                                                    {
+                                                        "role": "AXRuler",
+                                                        "description": "Line Numbers",
+                                                        "focused": false,
+                                                        "frame": {
+                                                            "x": 320.0,
+                                                            "y": 121.0,
+                                                            "width": 32.0,
+                                                            "height": 614.0
+                                                        },
+                                                        "actions": ["AXPress"]
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "role": "AXGroup",
+                        "subrole": "AXHostingView",
+                        "focused": false,
+                        "frame": { "x": 330.0, "y": 713.0, "width": 620.0, "height": 13.0 },
+                        "children": [
+                            {
+                                "role": "AXGroup",
+                                "description": "Status Bar",
+                                "enabled": true,
+                                "frame": { "x": 330.0, "y": 712.5, "width": 620.0, "height": 14.0 },
+                                "children": [
+                                    {
+                                        "role": "AXStaticText",
+                                        "value": "Lines: 0, Characters: 0, Location: 0, Line: 1",
+                                        "enabled": true,
+                                        "frame": {
+                                            "x": 330.0,
+                                            "y": 712.5,
+                                            "width": 231.0,
+                                            "height": 14.0
+                                        }
+                                    },
+                                    {
+                                        "role": "AXStaticText",
+                                        "value": "None",
+                                        "enabled": true,
+                                        "frame": {
+                                            "x": 767.5,
+                                            "y": 712.5,
+                                            "width": 6.5,
+                                            "height": 14.0
+                                        }
+                                    },
+                                    {
+                                        "role": "AXPopUpButton",
+                                        "value": "Unicode (UTF-8)",
+                                        "enabled": true,
+                                        "focused": false,
+                                        "frame": {
+                                            "x": 787.0,
+                                            "y": 712.5,
+                                            "width": 106.0,
+                                            "height": 14.0
+                                        },
+                                        "actions": ["AXPress"]
+                                    },
+                                    {
+                                        "role": "AXPopUpButton",
+                                        "description": "Line Endings",
+                                        "value": "LF",
+                                        "enabled": true,
+                                        "focused": false,
+                                        "frame": {
+                                            "x": 902.0,
+                                            "y": 712.5,
+                                            "width": 48.0,
+                                            "height": 14.0
+                                        },
+                                        "actions": ["AXShowMenu", "AXPress"]
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    { "error": "read-failed", "axError": -25200 }
+                ]
+            },
+            {
+                "role": "AXToolbar",
+                "focused": false,
+                "frame": { "x": 320.0, "y": 30.0, "width": 640.0, "height": 66.0 },
+                "actions": ["AXShowMenu"],
+                "children": [
+                    {
+                        "role": "AXPopUpButton",
+                        "value": "Plain Text",
+                        "enabled": true,
+                        "focused": false,
+                        "frame": { "x": 732.5, "y": 30.0, "width": 147.5, "height": 66.0 },
+                        "actions": [
+                            "AXShowMenu",
+                            "AXPress",
+                            "Name:Move next\nTarget:0x0\nSelector:(null)",
+                            "Name:Remove from toolbar\nTarget:0x0\nSelector:(null)"
+                        ]
+                    },
+                    {
+                        "role": "AXButton",
+                        "title": "Inspector",
+                        "description": "Inspector",
+                        "enabled": true,
+                        "focused": false,
+                        "frame": { "x": 888.0, "y": 30.0, "width": 68.0, "height": 66.0 },
+                        "actions": ["AXPress"]
+                    }
+                ]
+            },
+            {
+                "role": "AXButton",
+                "subrole": "AXCloseButton",
+                "enabled": true,
+                "focused": false,
+                "frame": { "x": 338.0, "y": 48.0, "width": 16.0, "height": 16.0 },
+                "actions": ["AXPress"]
+            },
+            {
+                "role": "AXButton",
+                "subrole": "AXFullScreenButton",
+                "enabled": true,
+                "focused": false,
+                "frame": { "x": 384.0, "y": 48.0, "width": 16.0, "height": 16.0 },
+                "actions": ["AXPress", "AXZoomWindow", "AXShowMenu"],
+                "children": [
+                    {
+                        "role": "AXGroup",
+                        "focused": false,
+                        "frame": { "x": 385.0, "y": 49.0, "width": 14.0, "height": 14.0 }
+                    }
+                ]
+            },
+            {
+                "role": "AXButton",
+                "subrole": "AXMinimizeButton",
+                "enabled": true,
+                "focused": false,
+                "frame": { "x": 361.0, "y": 48.0, "width": 16.0, "height": 16.0 },
+                "actions": ["AXPress"]
+            },
+            {
+                "role": "AXStaticText",
+                "value": "Untitled",
+                "enabled": true,
+                "focused": false,
+                "frame": { "x": 412.0, "y": 30.0, "width": 320.5, "height": 66.0 },
+                "actions": ["AXPress"]
+            }
+        ]
+    }
+}

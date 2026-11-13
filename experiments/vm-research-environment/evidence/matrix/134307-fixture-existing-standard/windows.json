@@ -1,0 +1,548 @@
+{
+    "application": { "path": "/Users/recon/recon/target/fixtures/ReconFixture.app", "pid": 2214 },
+    "coverage": { "complete": true, "narrowed": [], "returned": 7, "truncated": [], "visited": 62 },
+    "nativeWindows": [
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXWindow"
+                },
+                "childWindows": [],
+                "class": "NSStatusBarWindow",
+                "contentView": "0000000000000038",
+                "frame": {
+                    "height": 30,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 100,
+                    "x": 950,
+                    "y": 770
+                },
+                "identifier": { "status": "absent" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screenTopLeft": {
+                        "height": 30,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 100,
+                        "x": 950,
+                        "y": 0
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": ["NSWindow", "NSResponder", "NSObject"],
+                "title": { "status": "value", "value": "Item-0" },
+                "topmostView": "0000000000000039",
+                "visible": true,
+                "windowNumber": { "status": "value", "value": 4294967296 }
+            },
+            "handle": "0000000000000037",
+            "kind": "window",
+            "relationships": {
+                "contentView": "0000000000000038",
+                "parentWindow": { "status": "absent" }
+            },
+            "windowId": { "status": "unavailable" }
+        },
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXWindow"
+                },
+                "childWindows": [],
+                "class": "NSKVONotifying_NSWindow",
+                "contentView": "000000000000003b",
+                "frame": {
+                    "height": 252,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 320,
+                    "x": 700,
+                    "y": 300
+                },
+                "identifier": { "status": "absent" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screenTopLeft": {
+                        "height": 252,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 320,
+                        "x": 700,
+                        "y": 248
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": ["NSWindow", "NSResponder", "NSObject"],
+                "title": { "status": "value", "value": "Recon Fixture — Inspector" },
+                "topmostView": "000000000000003c",
+                "visible": true,
+                "windowNumber": { "status": "value", "value": 145 }
+            },
+            "handle": "000000000000003a",
+            "kind": "window",
+            "mapping": {
+                "evidence": "WindowServer-owner-pid-and-NSApp-windows-membership",
+                "method": "NSApplication.windowWithWindowNumber"
+            },
+            "relationships": {
+                "contentView": "000000000000003b",
+                "parentWindow": { "status": "absent" }
+            },
+            "windowId": 145
+        },
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXWindow"
+                },
+                "childWindows": [],
+                "class": "NSKVONotifying_NSWindow",
+                "contentView": "000000000000003e",
+                "frame": {
+                    "height": 352,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 480,
+                    "x": 160,
+                    "y": 240
+                },
+                "identifier": { "status": "absent" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screenTopLeft": {
+                        "height": 352,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 480,
+                        "x": 160,
+                        "y": 208
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": ["NSWindow", "NSResponder", "NSObject"],
+                "title": { "status": "value", "value": "Recon Fixture — Main" },
+                "topmostView": "000000000000003f",
+                "visible": true,
+                "windowNumber": { "status": "value", "value": 146 }
+            },
+            "handle": "000000000000003d",
+            "kind": "window",
+            "mapping": {
+                "evidence": "WindowServer-owner-pid-and-NSApp-windows-membership",
+                "method": "NSApplication.windowWithWindowNumber"
+            },
+            "relationships": {
+                "contentView": "000000000000003e",
+                "parentWindow": { "status": "absent" }
+            },
+            "windowId": 146
+        },
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXWindow"
+                },
+                "childWindows": [],
+                "class": "TUINSWindow",
+                "contentView": "0000000000000041",
+                "frame": {
+                    "height": 500,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 500,
+                    "x": 0,
+                    "y": 0
+                },
+                "identifier": { "status": "absent" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screenTopLeft": {
+                        "height": 500,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 500,
+                        "x": 0,
+                        "y": 300
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": ["NSWindow", "NSResponder", "NSObject"],
+                "title": { "status": "value", "value": "" },
+                "topmostView": "0000000000000042",
+                "visible": false,
+                "windowNumber": { "status": "value", "value": 147 }
+            },
+            "handle": "0000000000000040",
+            "kind": "window",
+            "relationships": {
+                "contentView": "0000000000000041",
+                "parentWindow": { "status": "absent" }
+            },
+            "windowId": { "status": "unavailable" }
+        },
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXWindow"
+                },
+                "childWindows": [],
+                "class": "NSStatusBarWindow",
+                "contentView": "0000000000000044",
+                "frame": {
+                    "height": 30,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 100,
+                    "x": 0,
+                    "y": -30
+                },
+                "identifier": { "status": "absent" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": { "status": "absent" },
+                    "screenTopLeft": {
+                        "height": 30,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 100,
+                        "x": 0,
+                        "y": 800
+                    },
+                    "transform": {
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": ["NSWindow", "NSResponder", "NSObject"],
+                "title": { "status": "value", "value": "" },
+                "topmostView": "0000000000000045",
+                "visible": true,
+                "windowNumber": { "status": "value", "value": 8589934592 }
+            },
+            "handle": "0000000000000043",
+            "kind": "window",
+            "relationships": {
+                "contentView": "0000000000000044",
+                "parentWindow": { "status": "absent" }
+            },
+            "windowId": { "status": "unavailable" }
+        },
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXWindow"
+                },
+                "childWindows": [],
+                "class": "NSStatusBarWindow",
+                "contentView": "0000000000000047",
+                "frame": {
+                    "height": 30,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 100,
+                    "x": 0,
+                    "y": -30
+                },
+                "identifier": { "status": "absent" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": { "status": "absent" },
+                    "screenTopLeft": {
+                        "height": 30,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 100,
+                        "x": 0,
+                        "y": 800
+                    },
+                    "transform": {
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": ["NSWindow", "NSResponder", "NSObject"],
+                "title": { "status": "value", "value": "" },
+                "topmostView": "0000000000000048",
+                "visible": true,
+                "windowNumber": { "status": "value", "value": 12884901888 }
+            },
+            "handle": "0000000000000046",
+            "kind": "window",
+            "relationships": {
+                "contentView": "0000000000000047",
+                "parentWindow": { "status": "absent" }
+            },
+            "windowId": { "status": "unavailable" }
+        },
+        {
+            "basic": {
+                "accessibilityIdentifier": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "SafariPlatformSupportAutoCompleteWindow"
+                },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXWindow"
+                },
+                "childWindows": [],
+                "class": "NSKVONotifying_SPRoundedWindow",
+                "contentView": "000000000000004a",
+                "frame": {
+                    "height": 237,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 312,
+                    "x": 172,
+                    "y": 174
+                },
+                "identifier": { "status": "absent" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screenTopLeft": {
+                        "height": 237,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 312,
+                        "x": 172,
+                        "y": 389
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": ["SPRoundedWindow", "NSWindow", "NSResponder", "NSObject"],
+                "title": { "status": "value", "value": "" },
+                "topmostView": "000000000000004b",
+                "visible": false,
+                "windowNumber": { "status": "value", "value": 149 }
+            },
+            "handle": "0000000000000049",
+            "kind": "window",
+            "relationships": {
+                "contentView": "000000000000004a",
+                "parentWindow": { "status": "absent" }
+            },
+            "windowId": { "status": "unavailable" }
+        }
+    ],
+    "observation": {
+        "consistency": "main-thread-best-effort",
+        "endTime": 1794598987.425248,
+        "fields": ["basic"],
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+        "identity": {
+            "architecture": "arm64",
+            "bundleId": "me.malstrom.recon.fixture",
+            "bundlePath": "/Users/recon/recon/target/fixtures/ReconFixture.app",
+            "executablePath": "/Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture",
+            "osBuild": "26B131",
+            "osVersion": "Version 27.2.1 (Build 26B131)",
+            "pid": 2214,
+            "pidversion": 5282,
+            "uid": 501
+        },
+        "kind": "window",
+        "layerState": "model",
+        "observationId": "95eb2f80faf97b8fa9d68a241b71a8b7010ceeae0f28d645334ceb86203f29d4",
+        "protocol": 1,
+        "scope": { "depth": 3, "limit": 200, "root": null, "windowId": null },
+        "sessionId": "8b23ca6534600efa0d98ddc277c9d425",
+        "source": "native-appkit",
+        "startTime": 1794598987.424467
+    },
+    "session": {
+        "acquired": "existing",
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+        "id": "8b23ca6534600efa0d98ddc277c9d425",
+        "profile": "standard",
+        "protocolVersion": 1
+    },
+    "windows": [
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 30.0, "width": 1280.0, "x": 0.0, "y": 0.0 },
+            "id": 153,
+            "layer": 0,
+            "onScreen": false,
+            "title": null
+        },
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 30.0, "width": 1280.0, "x": 0.0, "y": 0.0 },
+            "id": 152,
+            "layer": 0,
+            "onScreen": false,
+            "title": null
+        },
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 30.0, "width": 1280.0, "x": 0.0, "y": 0.0 },
+            "id": 151,
+            "layer": 0,
+            "onScreen": false,
+            "title": null
+        },
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 30.0, "width": 1280.0, "x": 0.0, "y": 0.0 },
+            "id": 150,
+            "layer": 0,
+            "onScreen": false,
+            "title": null
+        },
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 237.0, "width": 312.0, "x": 172.0, "y": 389.0 },
+            "id": 149,
+            "layer": 101,
+            "onScreen": false,
+            "title": null
+        },
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 500.0, "width": 500.0, "x": 0.0, "y": 300.0 },
+            "id": 147,
+            "layer": 0,
+            "onScreen": false,
+            "title": null
+        },
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 352.0, "width": 480.0, "x": 160.0, "y": 208.0 },
+            "id": 146,
+            "layer": 0,
+            "onScreen": true,
+            "title": "Recon Fixture — Main"
+        },
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 252.0, "width": 320.0, "x": 700.0, "y": 248.0 },
+            "id": 145,
+            "layer": 0,
+            "onScreen": true,
+            "title": "Recon Fixture — Inspector"
+        }
+    ]
+}

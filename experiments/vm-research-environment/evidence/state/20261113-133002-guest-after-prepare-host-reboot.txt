@@ -1,0 +1,16 @@
+# recons-Virtual-Machine 2026-11-13T19:30:02Z
+ProductName:		macOS
+ProductVersion:		27.2.1
+BuildVersion:		26B131
+--- csrutil status
+System Integrity Protection status: disabled.
+--- csrutil authenticated-root status
+Authenticated Root status: enabled
+--- sysctl -n kern.bootargs
+amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0
+--- nvram boot-args
+boot-args	amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0
+--- nvram recon-added-boot-args
+recon-added-boot-args	amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0
+--- recon ui session prepare-host --status
+{"action":"status","host":{"activeBootArgs":{"detail":null,"source":"sysctl kern.bootargs (current boot)","value":["amfi_get_out_of_my_way=0x1","-arm64e_preview_abi","tss_should_crash=0"]},"amfiDisabled":{"detail":null,"source":"sysctl kern.bootargs (current boot, AMFI boot setting)","value":true},"architecture":{"detail":null,"source":"/usr/bin/uname -m","value":"arm64"},"configuredBootArgs":{"detail":null,"source":"nvram boot-args (next boot)","value":["amfi_get_out_of_my_way=0x1","-arm64e_preview_abi","tss_should_crash=0"]},"osVersion":{"detail":null,"source":"/usr/bin/sw_vers -productVersion","value":"27.2.1"},"sipDisabled":{"detail":null,"source":"/usr/bin/csrutil status","value":true}},"operatorSteps":"To disable SIP: shut down the Mac; press and hold the power button until startup options appear; choose Options > Continue to enter macOS Recovery; from Utilities open Terminal; run `csrutil disable`; reboot normally. Boot-arg changes also require a reboot. To re-enable SIP later, return to Recovery, run `csrutil enable`, and reboot.","readiness":"eligible","requiredBootArgs":"amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0","stagedHelper":{"detail":null,"source":"/Library/Application Support/Recon/recon-helper.dylib compared with /Users/recon/recon/target/recon-helper.dylib","value":true}}

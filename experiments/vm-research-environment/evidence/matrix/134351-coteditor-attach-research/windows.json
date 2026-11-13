@@ -1,0 +1,146 @@
+{
+    "application": { "path": "/Applications/CotEditor.app", "pid": 2641 },
+    "coverage": { "complete": true, "narrowed": [], "returned": 1, "truncated": [], "visited": 65 },
+    "nativeWindows": [
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXWindow"
+                },
+                "childWindows": [],
+                "class": "..NSKVONotifying_CotEditor.DocumentWindow",
+                "contentView": "0000000000000002",
+                "frame": {
+                    "height": 705,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 640,
+                    "x": 320,
+                    "y": 65
+                },
+                "identifier": { "status": "absent" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screenTopLeft": {
+                        "height": 705,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 640,
+                        "x": 320,
+                        "y": 30
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": ["CotEditor.DocumentWindow", "NSWindow", "NSResponder", "NSObject"],
+                "title": { "status": "value", "value": "Untitled" },
+                "topmostView": "0000000000000003",
+                "visible": true,
+                "windowNumber": { "status": "value", "value": 181 }
+            },
+            "handle": "0000000000000001",
+            "kind": "window",
+            "mapping": {
+                "evidence": "WindowServer-owner-pid-and-NSApp-windows-membership",
+                "method": "NSApplication.windowWithWindowNumber"
+            },
+            "relationships": {
+                "contentView": "0000000000000002",
+                "parentWindow": { "status": "absent" }
+            },
+            "windowId": 181
+        }
+    ],
+    "observation": {
+        "consistency": "main-thread-best-effort",
+        "endTime": 1794599031.7913442,
+        "fields": ["basic"],
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+        "identity": {
+            "architecture": "arm64",
+            "bundleId": "com.coteditor.CotEditor",
+            "bundlePath": "/Applications/CotEditor.app",
+            "executablePath": "/Applications/CotEditor.app/Contents/MacOS/CotEditor",
+            "osBuild": "26B131",
+            "osVersion": "Version 27.2.1 (Build 26B131)",
+            "pid": 2641,
+            "pidversion": 6174,
+            "uid": 501
+        },
+        "kind": "window",
+        "layerState": "model",
+        "observationId": "35e2e1a53927c2b39f14552a39df856477976f122fbda08f910400b63fcafb40",
+        "protocol": 1,
+        "scope": { "depth": 3, "limit": 200, "root": null, "windowId": null },
+        "sessionId": "f54d799e369fdef6c112252d5c9c5da8",
+        "source": "native-appkit",
+        "startTime": 1794599031.780964
+    },
+    "session": {
+        "acquired": "attach",
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+        "id": "f54d799e369fdef6c112252d5c9c5da8",
+        "profile": "research",
+        "protocolVersion": 1
+    },
+    "windows": [
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 30.0, "width": 1280.0, "x": 0.0, "y": 0.0 },
+            "id": 189,
+            "layer": 0,
+            "onScreen": false,
+            "title": null
+        },
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 30.0, "width": 1280.0, "x": 0.0, "y": 0.0 },
+            "id": 188,
+            "layer": 0,
+            "onScreen": false,
+            "title": null
+        },
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 30.0, "width": 1280.0, "x": 0.0, "y": 0.0 },
+            "id": 187,
+            "layer": 0,
+            "onScreen": false,
+            "title": null
+        },
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 30.0, "width": 1280.0, "x": 0.0, "y": 0.0 },
+            "id": 186,
+            "layer": 0,
+            "onScreen": false,
+            "title": null
+        },
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 705.0, "width": 640.0, "x": 320.0, "y": 30.0 },
+            "id": 181,
+            "layer": 0,
+            "onScreen": true,
+            "title": "Untitled"
+        }
+    ]
+}

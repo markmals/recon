@@ -1,0 +1,11 @@
+{
+    "application": {
+        "name": "TextEdit",
+        "bundleId": "com.apple.TextEdit",
+        "path": "/System/Applications/TextEdit.app",
+        "version": "1.21",
+        "build": "419",
+        "executablePath": "/System/Applications/TextEdit.app/Contents/MacOS/TextEdit",
+        "runningPids": [1739]
+    }
+}

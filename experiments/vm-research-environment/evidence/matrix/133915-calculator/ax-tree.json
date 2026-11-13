@@ -1,0 +1,395 @@
+{
+    "application": { "path": "/System/Applications/Calculator.app", "pid": 1564 },
+    "windowId": 98,
+    "truncated": false,
+    "narrowed": false,
+    "root": {
+        "role": "AXWindow",
+        "subrole": "AXStandardWindow",
+        "title": "Calculator",
+        "identifier": "main",
+        "focused": false,
+        "frame": { "x": 190.0, "y": 296.0, "width": 230.0, "height": 408.0 },
+        "actions": ["AXRaise"],
+        "children": [
+            {
+                "role": "AXGroup",
+                "subrole": "AXHostingView",
+                "focused": false,
+                "frame": { "x": 190.0, "y": 296.0, "width": 230.0, "height": 408.0 },
+                "children": [
+                    {
+                        "role": "AXSplitGroup",
+                        "identifier": "main, SidebarNavigationSplitView",
+                        "focused": false,
+                        "frame": { "x": 190.0, "y": 296.0, "width": 230.0, "height": 408.0 },
+                        "children": [
+                            { "error": "read-failed", "axError": -25200 },
+                            {
+                                "role": "AXGroup",
+                                "subrole": "AXHostingView",
+                                "focused": true,
+                                "frame": {
+                                    "x": 190.0,
+                                    "y": 296.0,
+                                    "width": 230.0,
+                                    "height": 408.0
+                                },
+                                "children": [
+                                    {
+                                        "role": "AXGroup",
+                                        "identifier": "CalculatorKeypadView",
+                                        "enabled": true,
+                                        "focused": true,
+                                        "frame": {
+                                            "x": 190.0,
+                                            "y": 349.0,
+                                            "width": 230.0,
+                                            "height": 354.0
+                                        },
+                                        "children": [
+                                            {
+                                                "role": "AXScrollArea",
+                                                "subrole": "AXScrollAreaAutoFocus",
+                                                "identifier": "StandardInputView;value:0",
+                                                "focused": false,
+                                                "frame": {
+                                                    "x": 200.0,
+                                                    "y": 382.0,
+                                                    "width": 210.0,
+                                                    "height": 42.0
+                                                },
+                                                "actions": [
+                                                    "AXScrollLeftByPage",
+                                                    "AXScrollRightByPage",
+                                                    "AXScrollUpByPage",
+                                                    "AXScrollDownByPage",
+                                                    "Name:Copy\nTarget:0x0\nSelector:(null)"
+                                                ],
+                                                "children": [
+                                                    {
+                                                        "role": "AXStaticText",
+                                                        "description": "Edit field",
+                                                        "value": "0",
+                                                        "enabled": true,
+                                                        "frame": {
+                                                            "x": 391.0,
+                                                            "y": 385.0,
+                                                            "width": 19.0,
+                                                            "height": 36.0
+                                                        }
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "role": "AXButton",
+                                                "description": "Delete",
+                                                "identifier": "Delete",
+                                                "enabled": true,
+                                                "frame": {
+                                                    "x": 200.0,
+                                                    "y": 429.0,
+                                                    "width": 48.0,
+                                                    "height": 48.0
+                                                },
+                                                "actions": ["AXPress"]
+                                            },
+                                            {
+                                                "role": "AXButton",
+                                                "description": "All Clear",
+                                                "identifier": "AllClear",
+                                                "enabled": true,
+                                                "frame": {
+                                                    "x": 254.0,
+                                                    "y": 429.0,
+                                                    "width": 48.0,
+                                                    "height": 48.0
+                                                },
+                                                "actions": ["AXPress"]
+                                            },
+                                            {
+                                                "role": "AXButton",
+                                                "description": "Percent",
+                                                "identifier": "Percent",
+                                                "enabled": true,
+                                                "frame": {
+                                                    "x": 308.0,
+                                                    "y": 429.0,
+                                                    "width": 48.0,
+                                                    "height": 48.0
+                                                },
+                                                "actions": ["AXPress"]
+                                            },
+                                            {
+                                                "role": "AXButton",
+                                                "description": "Divide",
+                                                "identifier": "Divide",
+                                                "enabled": true,
+                                                "frame": {
+                                                    "x": 362.0,
+                                                    "y": 429.0,
+                                                    "width": 48.0,
+                                                    "height": 48.0
+                                                },
+                                                "actions": ["AXPress"]
+                                            },
+                                            {
+                                                "role": "AXButton",
+                                                "description": "7",
+                                                "identifier": "Seven",
+                                                "enabled": true,
+                                                "frame": {
+                                                    "x": 200.0,
+                                                    "y": 483.0,
+                                                    "width": 48.0,
+                                                    "height": 48.0
+                                                },
+                                                "actions": ["AXPress"]
+                                            },
+                                            {
+                                                "role": "AXButton",
+                                                "description": "8",
+                                                "identifier": "Eight",
+                                                "enabled": true,
+                                                "frame": {
+                                                    "x": 254.0,
+                                                    "y": 483.0,
+                                                    "width": 48.0,
+                                                    "height": 48.0
+                                                },
+                                                "actions": ["AXPress"]
+                                            },
+                                            {
+                                                "role": "AXButton",
+                                                "description": "9",
+                                                "identifier": "Nine",
+                                                "enabled": true,
+                                                "frame": {
+                                                    "x": 308.0,
+                                                    "y": 483.0,
+                                                    "width": 48.0,
+                                                    "height": 48.0
+                                                },
+                                                "actions": ["AXPress"]
+                                            },
+                                            {
+                                                "role": "AXButton",
+                                                "description": "Multiply",
+                                                "identifier": "Multiply",
+                                                "enabled": true,
+                                                "frame": {
+                                                    "x": 362.0,
+                                                    "y": 483.0,
+                                                    "width": 48.0,
+                                                    "height": 48.0
+                                                },
+                                                "actions": ["AXPress"]
+                                            },
+                                            {
+                                                "role": "AXButton",
+                                                "description": "4",
+                                                "identifier": "Four",
+                                                "enabled": true,
+                                                "frame": {
+                                                    "x": 200.0,
+                                                    "y": 537.0,
+                                                    "width": 48.0,
+                                                    "height": 48.0
+                                                },
+                                                "actions": ["AXPress"]
+                                            },
+                                            {
+                                                "role": "AXButton",
+                                                "description": "5",
+                                                "identifier": "Five",
+                                                "enabled": true,
+                                                "frame": {
+                                                    "x": 254.0,
+                                                    "y": 537.0,
+                                                    "width": 48.0,
+                                                    "height": 48.0
+                                                },
+                                                "actions": ["AXPress"]
+                                            },
+                                            {
+                                                "role": "AXButton",
+                                                "description": "6",
+                                                "identifier": "Six",
+                                                "enabled": true,
+                                                "frame": {
+                                                    "x": 308.0,
+                                                    "y": 537.0,
+                                                    "width": 48.0,
+                                                    "height": 48.0
+                                                },
+                                                "actions": ["AXPress"]
+                                            },
+                                            {
+                                                "role": "AXButton",
+                                                "description": "Subtract",
+                                                "identifier": "Subtract",
+                                                "enabled": true,
+                                                "frame": {
+                                                    "x": 362.0,
+                                                    "y": 537.0,
+                                                    "width": 48.0,
+                                                    "height": 48.0
+                                                },
+                                                "actions": ["AXPress"]
+                                            },
+                                            {
+                                                "role": "AXButton",
+                                                "description": "1",
+                                                "identifier": "One",
+                                                "enabled": true,
+                                                "frame": {
+                                                    "x": 200.0,
+                                                    "y": 591.0,
+                                                    "width": 48.0,
+                                                    "height": 48.0
+                                                },
+                                                "actions": ["AXPress"]
+                                            },
+                                            {
+                                                "role": "AXButton",
+                                                "description": "2",
+                                                "identifier": "Two",
+                                                "enabled": true,
+                                                "frame": {
+                                                    "x": 254.0,
+                                                    "y": 591.0,
+                                                    "width": 48.0,
+                                                    "height": 48.0
+                                                },
+                                                "actions": ["AXPress"]
+                                            },
+                                            {
+                                                "role": "AXButton",
+                                                "description": "3",
+                                                "identifier": "Three",
+                                                "enabled": true,
+                                                "frame": {
+                                                    "x": 308.0,
+                                                    "y": 591.0,
+                                                    "width": 48.0,
+                                                    "height": 48.0
+                                                },
+                                                "actions": ["AXPress"]
+                                            },
+                                            {
+                                                "role": "AXButton",
+                                                "description": "Add",
+                                                "identifier": "Add",
+                                                "enabled": true,
+                                                "frame": {
+                                                    "x": 362.0,
+                                                    "y": 591.0,
+                                                    "width": 48.0,
+                                                    "height": 48.0
+                                                },
+                                                "actions": ["AXPress"]
+                                            },
+                                            {
+                                                "role": "AXButton",
+                                                "description": "Change Sign",
+                                                "identifier": "Negate",
+                                                "enabled": true,
+                                                "frame": {
+                                                    "x": 200.0,
+                                                    "y": 645.0,
+                                                    "width": 48.0,
+                                                    "height": 48.0
+                                                },
+                                                "actions": ["AXPress"]
+                                            },
+                                            {
+                                                "role": "AXButton",
+                                                "description": "0",
+                                                "identifier": "Zero",
+                                                "enabled": true,
+                                                "frame": {
+                                                    "x": 254.0,
+                                                    "y": 645.0,
+                                                    "width": 48.0,
+                                                    "height": 48.0
+                                                },
+                                                "actions": ["AXPress"]
+                                            },
+                                            {
+                                                "role": "AXButton",
+                                                "description": "Point",
+                                                "identifier": "Decimal",
+                                                "enabled": true,
+                                                "frame": {
+                                                    "x": 308.0,
+                                                    "y": 645.0,
+                                                    "width": 48.0,
+                                                    "height": 48.0
+                                                },
+                                                "actions": ["AXPress"]
+                                            },
+                                            {
+                                                "role": "AXButton",
+                                                "description": "Equals",
+                                                "identifier": "Equals",
+                                                "enabled": true,
+                                                "frame": {
+                                                    "x": 362.0,
+                                                    "y": 645.0,
+                                                    "width": 48.0,
+                                                    "height": 48.0
+                                                },
+                                                "actions": ["AXPress"]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "role": "AXToolbar",
+                "focused": false,
+                "frame": { "x": 190.0, "y": 296.0, "width": 230.0, "height": 52.0 },
+                "actions": ["AXShowMenu"],
+                "children": [
+                    { "error": "read-failed", "axError": -25200 },
+                    { "error": "read-failed", "axError": -25200 }
+                ]
+            },
+            {
+                "role": "AXButton",
+                "subrole": "AXCloseButton",
+                "enabled": true,
+                "focused": false,
+                "frame": { "x": 208.0, "y": 314.0, "width": 16.0, "height": 16.0 },
+                "actions": ["AXPress"]
+            },
+            {
+                "role": "AXButton",
+                "subrole": "AXZoomButton",
+                "enabled": false,
+                "focused": false,
+                "frame": { "x": 254.0, "y": 314.0, "width": 16.0, "height": 16.0 },
+                "actions": ["AXPress", "AXShowMenu"],
+                "children": [
+                    {
+                        "role": "AXGroup",
+                        "focused": false,
+                        "frame": { "x": 255.0, "y": 315.0, "width": 14.0, "height": 14.0 }
+                    }
+                ]
+            },
+            {
+                "role": "AXButton",
+                "subrole": "AXMinimizeButton",
+                "enabled": true,
+                "focused": false,
+                "frame": { "x": 231.0, "y": 314.0, "width": 16.0, "height": 16.0 },
+                "actions": ["AXPress"]
+            }
+        ]
+    }
+}

@@ -1,0 +1,2 @@
+standard attach exit=1
+{"code":"INSPECTION_UNAVAILABLE","message":"inspection access is Blocked: local helper is unknown (/Users/recon/recon/target/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed): the packaged build identity does not prove target-side protocol compatibility); target requires the research profile and recon ui session prepare-host","stage":"preflight"}

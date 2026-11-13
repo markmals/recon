@@ -1,0 +1,11 @@
+{
+    "application": {
+        "name": "Hex Fiend",
+        "bundleId": "com.ridiculousfish.HexFiend",
+        "path": "/Applications/Hex Fiend.app",
+        "version": "2.18.1",
+        "build": "1728795549",
+        "executablePath": "/Applications/Hex Fiend.app/Contents/MacOS/Hex Fiend",
+        "runningPids": [2639]
+    }
+}

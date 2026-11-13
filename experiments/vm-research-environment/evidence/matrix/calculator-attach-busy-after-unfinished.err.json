@@ -1,0 +1,19 @@
+{
+    "error": {
+        "code": "INSPECTION_BUSY",
+        "message": "the helper for pid 1212 generation 3103 is unreachable after an unfinished attach; Recon will not remove its endpoint or load another helper until authenticated reconciliation or verified process exit",
+        "retryable": false,
+        "command": ["ui", "session", "open"],
+        "details": {
+            "detail": "the helper for pid 1212 generation 3103 is unreachable after an unfinished attach; Recon will not remove its endpoint or load another helper until authenticated reconciliation or verified process exit",
+            "helperMayRemainResident": true,
+            "node": null,
+            "pid": null,
+            "recovery": null,
+            "session": null,
+            "stage": "attach",
+            "targetExecutionMayContinue": true,
+            "windowId": null
+        }
+    }
+}

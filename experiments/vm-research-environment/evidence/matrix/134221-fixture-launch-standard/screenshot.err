@@ -1,0 +1,1 @@
+{"error":{"code":"INVALID_ARGUMENT","message":"--window expects a window id written as decimal digits; got \"\"","retryable":false,"command":["ui","screenshot"],"details":{"accepted":null,"argument":"--window","expected":"a window id written as decimal digits","value":""}}}

@@ -1,0 +1,31 @@
+{
+    "bootstrapActive": true,
+    "capabilities": ["windows", "tree", "node", "find", "fonts"],
+    "effects": ["helper-bootstrap-resident"],
+    "establishedMode": "attach",
+    "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+    "helperResident": true,
+    "identity": {
+        "architecture": "arm64e",
+        "bundleId": "com.apple.TextEdit",
+        "bundlePath": "/System/Applications/TextEdit.app",
+        "executablePath": "/System/Applications/TextEdit.app/Contents/MacOS/TextEdit",
+        "osBuild": "26B131",
+        "osVersion": "Version 27.2.1 (Build 26B131)",
+        "pid": 1739,
+        "pidversion": 4274,
+        "uid": 501
+    },
+    "incarnation": { "pid": 1739, "pidversion": 4274 },
+    "mode": "attach",
+    "ok": true,
+    "pid": 1739,
+    "pidversion": 4274,
+    "profile": "research",
+    "protocol": 1,
+    "requestedMode": "attach",
+    "requestedProfile": "research",
+    "reused": false,
+    "sessionId": "ff84c3b1c664c132189c1f3511906dd3",
+    "uid": 501
+}

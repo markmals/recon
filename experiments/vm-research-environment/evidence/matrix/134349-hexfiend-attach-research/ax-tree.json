@@ -1,0 +1,189 @@
+{
+    "application": { "path": "/Applications/Hex Fiend.app", "pid": 2639 },
+    "windowId": 180,
+    "truncated": false,
+    "narrowed": false,
+    "root": {
+        "role": "AXWindow",
+        "subrole": "AXStandardWindow",
+        "title": "Untitled",
+        "identifier": "_NS:12",
+        "focused": true,
+        "frame": { "x": 113.0, "y": 179.0, "width": 383.0, "height": 448.0 },
+        "actions": ["AXRaise"],
+        "children": [
+            {
+                "role": "AXScrollBar",
+                "value": 0.0,
+                "enabled": false,
+                "focused": false,
+                "frame": { "x": 480.0, "y": 206.0, "width": 17.0, "height": 381.0 }
+            },
+            {
+                "role": "AXScrollArea",
+                "identifier": "_NS:8",
+                "focused": false,
+                "frame": { "x": 113.0, "y": 586.0, "width": 383.0, "height": 24.0 },
+                "actions": [
+                    "AXScrollLeftByPage",
+                    "AXScrollRightByPage",
+                    "AXScrollUpByPage",
+                    "AXScrollDownByPage"
+                ],
+                "children": [
+                    {
+                        "role": "AXTable",
+                        "identifier": "_NS:14",
+                        "enabled": true,
+                        "focused": false,
+                        "frame": { "x": 114.0, "y": 587.0, "width": 381.0, "height": 22.0 },
+                        "children": [
+                            {
+                                "role": "AXRow",
+                                "subrole": "AXTableRow",
+                                "frame": { "x": 115.0, "y": 588.0, "width": 379.0, "height": 20.0 },
+                                "children": [
+                                    {
+                                        "role": "AXPopUpButton",
+                                        "value": "Signed Int",
+                                        "enabled": true,
+                                        "focused": false,
+                                        "frame": {
+                                            "x": 121.0,
+                                            "y": 589.0,
+                                            "width": 90.0,
+                                            "height": 18.0
+                                        },
+                                        "actions": ["AXShowMenu", "AXPress"]
+                                    },
+                                    {
+                                        "role": "AXMenuButton",
+                                        "title": "le, dec",
+                                        "enabled": true,
+                                        "focused": false,
+                                        "frame": {
+                                            "x": 214.0,
+                                            "y": 589.0,
+                                            "width": 55.0,
+                                            "height": 18.0
+                                        },
+                                        "actions": ["AXShowMenu", "AXPress"]
+                                    },
+                                    {
+                                        "role": "AXTextField",
+                                        "value": "(select some data)",
+                                        "enabled": true,
+                                        "focused": false,
+                                        "frame": {
+                                            "x": 272.0,
+                                            "y": 589.0,
+                                            "width": 178.0,
+                                            "height": 18.0
+                                        },
+                                        "actions": ["AXShowMenu", "AXConfirm"]
+                                    },
+                                    {
+                                        "role": "AXButton",
+                                        "title": "-",
+                                        "enabled": true,
+                                        "focused": false,
+                                        "frame": {
+                                            "x": 453.0,
+                                            "y": 589.0,
+                                            "width": 16.0,
+                                            "height": 18.0
+                                        },
+                                        "actions": ["AXPress"]
+                                    },
+                                    {
+                                        "role": "AXButton",
+                                        "title": "+",
+                                        "enabled": true,
+                                        "focused": false,
+                                        "frame": {
+                                            "x": 472.0,
+                                            "y": 589.0,
+                                            "width": 16.0,
+                                            "height": 18.0
+                                        },
+                                        "actions": ["AXPress"]
+                                    }
+                                ]
+                            },
+                            {
+                                "role": "AXColumn",
+                                "identifier": "inspector_type",
+                                "frame": { "x": 115.0, "y": 588.0, "width": 98.0, "height": 20.0 }
+                            },
+                            {
+                                "role": "AXColumn",
+                                "identifier": "inspector_subtype",
+                                "frame": { "x": 213.0, "y": 588.0, "width": 58.0, "height": 20.0 }
+                            },
+                            {
+                                "role": "AXColumn",
+                                "identifier": "inspected_value",
+                                "frame": { "x": 271.0, "y": 588.0, "width": 181.0, "height": 20.0 }
+                            },
+                            {
+                                "role": "AXColumn",
+                                "identifier": "subtract_button",
+                                "frame": { "x": 452.0, "y": 588.0, "width": 19.0, "height": 20.0 }
+                            },
+                            {
+                                "role": "AXColumn",
+                                "identifier": "add_button",
+                                "frame": { "x": 471.0, "y": 588.0, "width": 23.0, "height": 20.0 }
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "role": "AXStaticText",
+                "value": "0 out of 0 bytes",
+                "enabled": true,
+                "focused": false,
+                "frame": { "x": 114.0, "y": 611.0, "width": 381.0, "height": 15.0 }
+            },
+            {
+                "role": "AXButton",
+                "subrole": "AXCloseButton",
+                "enabled": true,
+                "focused": false,
+                "frame": { "x": 123.0, "y": 186.0, "width": 12.0, "height": 14.0 },
+                "actions": ["AXPress"]
+            },
+            {
+                "role": "AXButton",
+                "subrole": "AXFullScreenButton",
+                "enabled": true,
+                "focused": false,
+                "frame": { "x": 163.0, "y": 186.0, "width": 12.0, "height": 14.0 },
+                "actions": ["AXPress", "AXZoomWindow", "AXShowMenu"],
+                "children": [
+                    {
+                        "role": "AXGroup",
+                        "focused": false,
+                        "frame": { "x": 162.0, "y": 185.0, "width": 14.0, "height": 16.0 }
+                    }
+                ]
+            },
+            {
+                "role": "AXButton",
+                "subrole": "AXMinimizeButton",
+                "enabled": true,
+                "focused": false,
+                "frame": { "x": 143.0, "y": 186.0, "width": 12.0, "height": 14.0 },
+                "actions": ["AXPress"]
+            },
+            {
+                "role": "AXStaticText",
+                "value": "Untitled",
+                "enabled": true,
+                "focused": false,
+                "frame": { "x": 276.0, "y": 184.0, "width": 56.0, "height": 16.0 }
+            }
+        ]
+    }
+}

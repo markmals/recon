@@ -1,0 +1,117 @@
+{
+    "coverage": { "complete": true, "narrowed": [], "returned": 5, "truncated": [], "visited": 33 },
+    "fonts": [
+        {
+            "descriptor": {
+                "descriptor": ".SFNS-Regular",
+                "family": ".AppleSystemUIFont",
+                "pointSize": 13,
+                "postScriptName": ".AppleSystemUIFont",
+                "status": "value",
+                "symbolicTraits": 0,
+                "weight": 0
+            },
+            "sources": [
+                { "handle": "0000000000000016", "kind": "view", "source": "view" },
+                { "handle": "0000000000000017", "kind": "view", "source": "view" },
+                {
+                    "handle": "0000000000000017",
+                    "kind": "view",
+                    "range": { "length": 13, "location": 0 },
+                    "source": "attributed-run"
+                },
+                { "handle": "0000000000000018", "kind": "view", "source": "view" },
+                { "handle": "000000000000001e", "kind": "view", "source": "view" }
+            ]
+        }
+    ],
+    "observation": {
+        "consistency": "main-thread-best-effort",
+        "endTime": 1794598965.693784,
+        "fields": ["font"],
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+        "identity": {
+            "architecture": "arm64",
+            "bundleId": "me.malstrom.recon.fixture",
+            "bundlePath": "/Users/recon/recon/target/fixtures/ReconFixture.app",
+            "executablePath": "/Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture",
+            "osBuild": "26B131",
+            "osVersion": "Version 27.2.1 (Build 26B131)",
+            "pid": 2214,
+            "pidversion": 5282,
+            "uid": 501
+        },
+        "kind": "view",
+        "layerState": "model",
+        "observationId": "997cf3cd989358d753aa486dce81d254348585f4af358ad6319595f18cbde72a",
+        "protocol": 1,
+        "scope": { "depth": 64, "limit": 200, "root": null, "windowId": 146 },
+        "sessionId": "71e523d79bd49b6109deeb085d24c6a2",
+        "source": "native-appkit",
+        "startTime": 1794598965.692813
+    },
+    "ok": true,
+    "windowRoots": [
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXWindow"
+                },
+                "childWindows": [],
+                "class": "NSKVONotifying_NSWindow",
+                "contentView": "0000000000000008",
+                "frame": {
+                    "height": 352,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 480,
+                    "x": 160,
+                    "y": 240
+                },
+                "identifier": { "status": "absent" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screenTopLeft": {
+                        "height": 352,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 480,
+                        "x": 160,
+                        "y": 208
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": ["NSWindow", "NSResponder", "NSObject"],
+                "title": { "status": "value", "value": "Recon Fixture — Main" },
+                "topmostView": "0000000000000009",
+                "visible": true,
+                "windowNumber": { "status": "value", "value": 146 }
+            },
+            "handle": "0000000000000007",
+            "kind": "window",
+            "relationships": {
+                "contentView": "0000000000000008",
+                "parentWindow": { "status": "absent" }
+            }
+        }
+    ]
+}

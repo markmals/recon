@@ -1,0 +1,11 @@
+Recon will set these research boot-args through sudo nvram: amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0
+It will also create /Library/Application Support/Recon through sudo, owned by you, and copy its research helper (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed) into it, because App Sandboxed applications can load a helper only from a location like it.
+To disable SIP: shut down the Mac; press and hold the power button until startup options appear; choose Options > Continue to enter macOS Recovery; from Utilities open Terminal; run `csrutil disable`; reboot normally. Boot-arg changes also require a reboot. To re-enable SIP later, return to Recovery, run `csrutil enable`, and reboot.
+Type `prepare-host` to apply these changes: {"action":"apply","changed":true,"operatorSteps":["To disable SIP: shut down the Mac; press and hold the power button until startup options appear; choose Options > Continue to enter macOS Recovery; from Utilities open Terminal; run `csrutil disable`; reboot normally. Boot-arg changes also require a reboot. To re-enable SIP later, return to Recovery, run `csrutil enable`, and reboot."],"rebootRequired":true,"reconBootArgs":["amfi_get_out_of_my_way=0x1","-arm64e_preview_abi","tss_should_crash=0"],"stagedHelper":"/Library/Application Support/Recon/recon-helper.dylib"}
+exit=0
+boot-args	amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0
+recon-added-boot-args	amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0
+total 5760
+drwxr-xr-x   3 recon  staff       96 Nov 13 11:29 .
+drwxr-xr-x  12 root   admin      384 Nov 13 11:29 ..
+-rwxr-xr-x   1 recon  staff  2947440 Nov 13 11:29 recon-helper.dylib

@@ -1,0 +1,856 @@
+{
+    "coverage": {
+        "complete": true,
+        "narrowed": ["depth"],
+        "returned": 21,
+        "truncated": [],
+        "visited": 42
+    },
+    "nodes": [
+        {
+            "basic": {
+                "bounds": {
+                    "height": 407,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 673,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 1,
+                "class": "NSViewBackingLayer",
+                "frame": {
+                    "height": 407,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 673,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": false,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["CALayer", "NSObject"],
+                "superlayer": "0000000000000066"
+            },
+            "depth": 0,
+            "handle": "0000000000000065",
+            "kind": "layer",
+            "relationships": { "superlayer": "0000000000000066" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 407,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 673,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 7,
+                "class": "NSViewBackingLayer",
+                "frame": {
+                    "height": 407,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 673,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": false,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["CALayer", "NSObject"],
+                "superlayer": "0000000000000065"
+            },
+            "depth": 1,
+            "handle": "0000000000000067",
+            "kind": "layer",
+            "relationships": { "superlayer": "0000000000000065" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 407,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 673,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 1,
+                "class": "NSViewBackingLayer",
+                "frame": {
+                    "height": 407,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 673,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": false,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["CALayer", "NSObject"],
+                "superlayer": "0000000000000067"
+            },
+            "depth": 2,
+            "handle": "0000000000000068",
+            "kind": "layer",
+            "relationships": { "superlayer": "0000000000000067" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 0,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 0,
+                "class": "CABackdropLayer",
+                "frame": {
+                    "height": 0,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": false,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["CALayer", "NSObject"],
+                "superlayer": "0000000000000067"
+            },
+            "depth": 2,
+            "handle": "0000000000000069",
+            "kind": "layer",
+            "relationships": { "superlayer": "0000000000000067" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 390,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 656,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 1,
+                "class": "NSViewBackingLayer",
+                "frame": {
+                    "height": 390,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 656,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": false,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["CALayer", "NSObject"],
+                "superlayer": "0000000000000067"
+            },
+            "depth": 2,
+            "handle": "000000000000006a",
+            "kind": "layer",
+            "relationships": { "superlayer": "0000000000000067" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 0,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 5,
+                "class": "NSViewBackingLayer",
+                "frame": {
+                    "height": 0,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": false,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["CALayer", "NSObject"],
+                "superlayer": "0000000000000067"
+            },
+            "depth": 2,
+            "handle": "000000000000006b",
+            "kind": "layer",
+            "relationships": { "superlayer": "0000000000000067" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 390,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 17,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 2,
+                "class": "NSKVONotifying_NSViewBackingLayer",
+                "frame": {
+                    "height": 390,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 17,
+                    "x": 656,
+                    "y": 0
+                },
+                "hidden": false,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["NSViewBackingLayer", "CALayer", "NSObject"],
+                "superlayer": "0000000000000067"
+            },
+            "depth": 2,
+            "handle": "000000000000006c",
+            "kind": "layer",
+            "relationships": { "superlayer": "0000000000000067" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 17,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 648.5,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 2,
+                "class": "NSKVONotifying_NSViewBackingLayer",
+                "frame": {
+                    "height": 17,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 648.5,
+                    "x": 7.5,
+                    "y": 390
+                },
+                "hidden": false,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["NSViewBackingLayer", "CALayer", "NSObject"],
+                "superlayer": "0000000000000067"
+            },
+            "depth": 2,
+            "handle": "000000000000006d",
+            "kind": "layer",
+            "relationships": { "superlayer": "0000000000000067" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 17,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 17,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 1,
+                "class": "NSViewBackingLayer",
+                "frame": {
+                    "height": 17,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 17,
+                    "x": 656,
+                    "y": 390
+                },
+                "hidden": false,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["CALayer", "NSObject"],
+                "superlayer": "0000000000000067"
+            },
+            "depth": 2,
+            "handle": "000000000000006e",
+            "kind": "layer",
+            "relationships": { "superlayer": "0000000000000067" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 407,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 673,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 1,
+                "class": "NSViewBackingLayer",
+                "frame": {
+                    "height": 407,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 673,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": false,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["CALayer", "NSObject"],
+                "superlayer": "0000000000000068"
+            },
+            "depth": 3,
+            "handle": "000000000000006f",
+            "kind": "layer",
+            "relationships": { "superlayer": "0000000000000068" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 384,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 656,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 4,
+                "class": "NSViewBackingLayer",
+                "frame": {
+                    "height": 384,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 656,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": false,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["CALayer", "NSObject"],
+                "superlayer": "000000000000006a"
+            },
+            "depth": 3,
+            "handle": "0000000000000070",
+            "kind": "layer",
+            "relationships": { "superlayer": "000000000000006a" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 0,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 0,
+                "class": "CALayer",
+                "frame": {
+                    "height": 0,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": false,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 0 },
+                "status": "value",
+                "superclasses": ["NSObject"],
+                "superlayer": "000000000000006b"
+            },
+            "depth": 3,
+            "handle": "0000000000000071",
+            "kind": "layer",
+            "relationships": { "superlayer": "000000000000006b" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 0,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 1,
+                "class": "NSViewBackingLayer",
+                "frame": {
+                    "height": 0,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": true,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["CALayer", "NSObject"],
+                "superlayer": "000000000000006b"
+            },
+            "depth": 3,
+            "handle": "0000000000000072",
+            "kind": "layer",
+            "relationships": { "superlayer": "000000000000006b" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 0,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 1,
+                "class": "CABackdropLayer",
+                "frame": {
+                    "height": 0,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": true,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["CALayer", "NSObject"],
+                "superlayer": "000000000000006b"
+            },
+            "depth": 3,
+            "handle": "0000000000000073",
+            "kind": "layer",
+            "relationships": { "superlayer": "000000000000006b" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 0,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 2,
+                "class": "NSViewBackingLayer",
+                "frame": {
+                    "height": 0,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": true,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["CALayer", "NSObject"],
+                "superlayer": "000000000000006b"
+            },
+            "depth": 3,
+            "handle": "0000000000000074",
+            "kind": "layer",
+            "relationships": { "superlayer": "000000000000006b" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 0,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 2,
+                "class": "NSViewBackingLayer",
+                "frame": {
+                    "height": 0,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": true,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["CALayer", "NSObject"],
+                "superlayer": "000000000000006b"
+            },
+            "depth": 3,
+            "handle": "0000000000000075",
+            "kind": "layer",
+            "relationships": { "superlayer": "000000000000006b" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 384,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 11,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 0,
+                "class": "CALayer",
+                "frame": {
+                    "height": 384,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 11,
+                    "x": 3,
+                    "y": 3
+                },
+                "hidden": false,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["NSObject"],
+                "superlayer": "000000000000006c"
+            },
+            "depth": 3,
+            "handle": "0000000000000076",
+            "kind": "layer",
+            "relationships": { "superlayer": "000000000000006c" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 365.5,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 11,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 0,
+                "class": "CALayer",
+                "frame": {
+                    "height": 365.5,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 11,
+                    "x": 3,
+                    "y": 3
+                },
+                "hidden": true,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["NSObject"],
+                "superlayer": "000000000000006c"
+            },
+            "depth": 3,
+            "handle": "0000000000000077",
+            "kind": "layer",
+            "relationships": { "superlayer": "000000000000006c" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 11,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 642.5,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 0,
+                "class": "CALayer",
+                "frame": {
+                    "height": 11,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 642.5,
+                    "x": 3,
+                    "y": 3
+                },
+                "hidden": false,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["NSObject"],
+                "superlayer": "000000000000006d"
+            },
+            "depth": 3,
+            "handle": "0000000000000078",
+            "kind": "layer",
+            "relationships": { "superlayer": "000000000000006d" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 11,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 20,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 0,
+                "class": "CALayer",
+                "frame": {
+                    "height": 11,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 20,
+                    "x": 118.5,
+                    "y": 3
+                },
+                "hidden": true,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["NSObject"],
+                "superlayer": "000000000000006d"
+            },
+            "depth": 3,
+            "handle": "0000000000000079",
+            "kind": "layer",
+            "relationships": { "superlayer": "000000000000006d" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 15,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 15,
+                    "x": 1,
+                    "y": 1
+                },
+                "childCount": 0,
+                "class": "_TtCC6AppKit26NSViewBackingLayerContentsP33_936B6E90B4E319ADDB011517F9EF5EC612ContentLayer",
+                "frame": {
+                    "height": 15,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 15,
+                    "x": 1,
+                    "y": 1
+                },
+                "hidden": false,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["CALayer", "NSObject"],
+                "superlayer": "000000000000006e"
+            },
+            "depth": 3,
+            "handle": "000000000000007a",
+            "kind": "layer",
+            "relationships": { "superlayer": "000000000000006e" }
+        }
+    ],
+    "observation": {
+        "consistency": "main-thread-best-effort",
+        "endTime": 1794599045.1386209,
+        "fields": ["basic"],
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+        "identity": {
+            "architecture": "arm64e",
+            "bundleId": "com.apple.TextEdit",
+            "bundlePath": "/System/Applications/TextEdit.app",
+            "executablePath": "/System/Applications/TextEdit.app/Contents/MacOS/TextEdit",
+            "osBuild": "26B131",
+            "osVersion": "Version 27.2.1 (Build 26B131)",
+            "pid": 1739,
+            "pidversion": 4274,
+            "uid": 501
+        },
+        "kind": "layer",
+        "layerState": "model",
+        "observationId": "df64affe50110ea3d5f5ba42b4d76f97224fad5fbfede92aad4b37c99dd03754",
+        "protocol": 1,
+        "scope": { "depth": 3, "limit": 200, "root": null, "windowId": 120 },
+        "sessionId": "a226f9798b33d4cde9993b5c3babbf77",
+        "source": "native-appkit",
+        "startTime": 1794599045.137712
+    },
+    "ok": true,
+    "windowRoots": [
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXWindow"
+                },
+                "childWindows": [],
+                "class": "NSKVONotifying_NSWindow",
+                "contentView": "000000000000004d",
+                "frame": {
+                    "height": 439,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 673,
+                    "x": 147,
+                    "y": 275
+                },
+                "identifier": { "status": "value", "value": "_NS:31" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screenTopLeft": {
+                        "height": 439,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 673,
+                        "x": 147,
+                        "y": 86
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": ["NSWindow", "NSResponder", "NSObject"],
+                "title": { "status": "value", "value": "recon-probe.txt" },
+                "topmostView": "000000000000004e",
+                "visible": true,
+                "windowNumber": { "status": "value", "value": 120 }
+            },
+            "handle": "000000000000004c",
+            "kind": "window",
+            "relationships": {
+                "contentView": "000000000000004d",
+                "parentWindow": { "status": "absent" }
+            }
+        }
+    ]
+}

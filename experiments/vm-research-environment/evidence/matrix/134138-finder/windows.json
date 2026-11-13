@@ -1,0 +1,362 @@
+{
+    "application": { "path": "/System/Library/CoreServices/Finder.app", "pid": 504 },
+    "coverage": { "complete": true, "narrowed": [], "returned": 4, "truncated": [], "visited": 48 },
+    "nativeWindows": [
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXGroup"
+                },
+                "childWindows": [],
+                "class": "NSKVONotifying_TDesktopWindow",
+                "contentView": "0000000000000002",
+                "frame": {
+                    "height": 800,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 1280,
+                    "x": 0,
+                    "y": 0
+                },
+                "identifier": { "status": "absent" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screenTopLeft": {
+                        "height": 800,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 1280,
+                        "x": 0,
+                        "y": 0
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": ["TDesktopWindow", "NSWindow", "NSResponder", "NSObject"],
+                "title": { "status": "value", "value": "" },
+                "topmostView": "0000000000000003",
+                "visible": true,
+                "windowNumber": { "status": "value", "value": 23 }
+            },
+            "handle": "0000000000000001",
+            "kind": "window",
+            "mapping": {
+                "evidence": "WindowServer-owner-pid-and-NSApp-windows-membership",
+                "method": "NSApplication.windowWithWindowNumber"
+            },
+            "relationships": {
+                "contentView": "0000000000000002",
+                "parentWindow": { "status": "absent" }
+            },
+            "windowId": 23
+        },
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXWindow"
+                },
+                "childWindows": [],
+                "class": "NSKVONotifying_TFloatingInputWindow",
+                "contentView": "0000000000000005",
+                "frame": {
+                    "height": 44,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 1280,
+                    "x": 0,
+                    "y": 48
+                },
+                "identifier": { "status": "absent" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screenTopLeft": {
+                        "height": 44,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 1280,
+                        "x": 0,
+                        "y": 708
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": [
+                    "TFloatingInputWindow",
+                    "NSPanel",
+                    "NSWindow",
+                    "NSResponder",
+                    "NSObject"
+                ],
+                "title": { "status": "value", "value": "" },
+                "topmostView": "0000000000000006",
+                "visible": false,
+                "windowNumber": { "status": "absent" }
+            },
+            "handle": "0000000000000004",
+            "kind": "window",
+            "relationships": {
+                "contentView": "0000000000000005",
+                "parentWindow": { "status": "absent" }
+            },
+            "windowId": { "status": "unavailable" }
+        },
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXWindow"
+                },
+                "childWindows": [],
+                "class": "NSKVONotifying_TUINSWindow",
+                "contentView": "0000000000000008",
+                "frame": {
+                    "height": 64,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 64,
+                    "x": 0,
+                    "y": 436
+                },
+                "identifier": { "status": "absent" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screenTopLeft": {
+                        "height": 64,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 64,
+                        "x": 0,
+                        "y": 300
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": ["TUINSWindow", "NSWindow", "NSResponder", "NSObject"],
+                "title": { "status": "value", "value": "" },
+                "topmostView": "0000000000000009",
+                "visible": false,
+                "windowNumber": { "status": "value", "value": 74 }
+            },
+            "handle": "0000000000000007",
+            "kind": "window",
+            "relationships": {
+                "contentView": "0000000000000008",
+                "parentWindow": { "status": "absent" }
+            },
+            "windowId": { "status": "unavailable" }
+        },
+        {
+            "basic": {
+                "accessibilityIdentifier": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "FinderWindow"
+                },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXWindow"
+                },
+                "childWindows": [],
+                "class": "NSKVONotifying_TBrowserWindow",
+                "contentView": "000000000000000b",
+                "frame": {
+                    "height": 436,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 920,
+                    "x": 180,
+                    "y": 268
+                },
+                "identifier": { "status": "value", "value": "_NS:8" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screenTopLeft": {
+                        "height": 436,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 920,
+                        "x": 180,
+                        "y": 96
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": ["TBrowserWindow", "NSWindow", "NSResponder", "NSObject"],
+                "title": { "status": "value", "value": "recon" },
+                "topmostView": "000000000000000c",
+                "visible": true,
+                "windowNumber": { "status": "value", "value": 125 }
+            },
+            "handle": "000000000000000a",
+            "kind": "window",
+            "mapping": {
+                "evidence": "WindowServer-owner-pid-and-NSApp-windows-membership",
+                "method": "NSApplication.windowWithWindowNumber"
+            },
+            "relationships": {
+                "contentView": "000000000000000b",
+                "parentWindow": { "status": "absent" }
+            },
+            "windowId": 125
+        }
+    ],
+    "observation": {
+        "consistency": "main-thread-best-effort",
+        "endTime": 1794598898.639554,
+        "fields": ["basic"],
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+        "identity": {
+            "architecture": "arm64e",
+            "bundleId": "com.apple.finder",
+            "bundlePath": "/System/Library/CoreServices/Finder.app",
+            "executablePath": "/System/Library/CoreServices/Finder.app/Contents/MacOS/Finder",
+            "osBuild": "26B131",
+            "osVersion": "Version 27.2.1 (Build 26B131)",
+            "pid": 504,
+            "pidversion": 1195,
+            "uid": 501
+        },
+        "kind": "window",
+        "layerState": "model",
+        "observationId": "286d856b39663d211ad2a2985434b3929a1e050817f63daf5f7883d23c000a3c",
+        "protocol": 1,
+        "scope": { "depth": 3, "limit": 200, "root": null, "windowId": null },
+        "sessionId": "d0386f0734a783c97af81b6d67bb2061",
+        "source": "native-appkit",
+        "startTime": 1794598898.638322
+    },
+    "session": {
+        "acquired": "attach",
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+        "id": "d0386f0734a783c97af81b6d67bb2061",
+        "profile": "research",
+        "protocolVersion": 1
+    },
+    "windows": [
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 436.0, "width": 920.0, "x": 180.0, "y": 96.0 },
+            "id": 125,
+            "layer": 0,
+            "onScreen": true,
+            "title": "recon"
+        },
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 30.0, "width": 1280.0, "x": 0.0, "y": 0.0 },
+            "id": 24,
+            "layer": 0,
+            "onScreen": false,
+            "title": null
+        },
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 800.0, "width": 1280.0, "x": 0.0, "y": 0.0 },
+            "id": 23,
+            "layer": -2147483603,
+            "onScreen": true,
+            "title": null
+        },
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 64.0, "width": 64.0, "x": 0.0, "y": 300.0 },
+            "id": 74,
+            "layer": 0,
+            "onScreen": false,
+            "title": null
+        },
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 30.0, "width": 1280.0, "x": 0.0, "y": 0.0 },
+            "id": 27,
+            "layer": 0,
+            "onScreen": false,
+            "title": null
+        },
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 30.0, "width": 1280.0, "x": 0.0, "y": 0.0 },
+            "id": 26,
+            "layer": 0,
+            "onScreen": false,
+            "title": null
+        },
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 30.0, "width": 1280.0, "x": 0.0, "y": 0.0 },
+            "id": 25,
+            "layer": 0,
+            "onScreen": false,
+            "title": null
+        }
+    ]
+}

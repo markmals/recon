@@ -1,0 +1,67 @@
+{
+    "recon": {
+        "version": "0.1.5",
+        "commit": "549a1e4c6b84389f45daa4ee9999a827e7e1fd57",
+        "executablePath": "/Users/recon/recon/target/signed/recon"
+    },
+    "host": { "os": "macos", "version": "27.2.1", "architecture": "aarch64" },
+    "macos": {
+        "codeSigning": {
+            "signed": true,
+            "identifier": "me.malstrom.recon",
+            "teamIdentifier": "647GR2UNM5",
+            "adHoc": false
+        },
+        "responsibility": { "responsibleForSelf": true, "detail": null },
+        "permissions": [
+            {
+                "permission": "screen-recording",
+                "granted": true,
+                "settingsPane": "System Settings → Privacy & Security → Screen & System Audio Recording"
+            },
+            {
+                "permission": "accessibility",
+                "granted": true,
+                "settingsPane": "System Settings → Privacy & Security → Accessibility"
+            }
+        ],
+        "interfaces": [
+            {
+                "interface": "responsibility-query",
+                "symbol": "responsibility_get_pid_responsible_for_pid",
+                "available": true
+            },
+            {
+                "interface": "responsibility-disclaim",
+                "symbol": "responsibility_spawnattrs_setdisclaim",
+                "available": true
+            },
+            { "interface": "code-signing-query", "symbol": "csops", "available": true },
+            {
+                "interface": "window-server-connection",
+                "symbol": "CGSMainConnectionID",
+                "available": true
+            },
+            {
+                "interface": "skylight-capture",
+                "symbol": "SLSHWCaptureWindowList",
+                "available": true
+            },
+            {
+                "interface": "accessibility-window-id",
+                "symbol": "_AXUIElementGetWindow",
+                "available": true
+            },
+            {
+                "interface": "accessibility-remote-token",
+                "symbol": "_AXUIElementCreateWithRemoteToken",
+                "available": true
+            }
+        ],
+        "applicationDiscovery": {
+            "mechanism": "spotlight",
+            "available": true,
+            "indexedApplications": 326
+        }
+    }
+}

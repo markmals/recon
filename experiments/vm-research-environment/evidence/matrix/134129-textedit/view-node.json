@@ -1,0 +1,244 @@
+{
+    "coverage": { "complete": true, "narrowed": [], "returned": 1, "truncated": [], "visited": 20 },
+    "node": {
+        "basic": {
+            "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+            "accessibilityRole": {
+                "read": "target-executed",
+                "status": "value",
+                "value": "AXUnknown"
+            },
+            "alpha": { "status": "value", "value": 1 },
+            "bounds": {
+                "height": 407,
+                "orientation": "bottom-left",
+                "space": "self",
+                "status": "value",
+                "units": "logical-points",
+                "width": 673,
+                "x": 0,
+                "y": 0
+            },
+            "childCount": 1,
+            "class": "NSView",
+            "flipped": false,
+            "frame": {
+                "height": 407,
+                "orientation": "bottom-left",
+                "space": "superview",
+                "status": "value",
+                "units": "logical-points",
+                "width": 673,
+                "x": 0,
+                "y": 0
+            },
+            "hidden": false,
+            "identifier": { "status": "value", "value": "_NS:36" },
+            "normalizedFrame": {
+                "backingScaleFactor": { "status": "value", "value": 2 },
+                "displayId": 1,
+                "screen": {
+                    "height": 407,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 673,
+                    "x": 147,
+                    "y": 275
+                },
+                "screenTopLeft": {
+                    "height": 407,
+                    "orientation": "top-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 673,
+                    "x": 147,
+                    "y": 118
+                },
+                "transform": {
+                    "displayId": 1,
+                    "method": "primary-screen-height-flip",
+                    "orientation": "top-left",
+                    "primaryScreenHeight": 800,
+                    "scale": 2,
+                    "status": "value"
+                },
+                "window": {
+                    "height": 407,
+                    "orientation": "bottom-left",
+                    "space": "window",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 673,
+                    "x": 0,
+                    "y": 0
+                }
+            },
+            "status": "value",
+            "superclasses": ["NSResponder", "NSObject"],
+            "superview": "000000000000000c",
+            "window": "000000000000000a"
+        },
+        "cell": { "status": "unsupported" },
+        "font": { "status": "absent" },
+        "handle": "000000000000000b",
+        "kind": "view",
+        "layer": { "reason": "target-getter-exception", "status": "failed" },
+        "layout": {
+            "compressionResistance": { "horizontal": 750, "vertical": 750 },
+            "constraints": [
+                {
+                    "active": true,
+                    "constant": 0,
+                    "firstAttribute": 32,
+                    "firstItem": { "handle": "000000000000000d", "kind": "view" },
+                    "identifier": { "status": "absent" },
+                    "multiplier": 1,
+                    "owner": { "handle": "000000000000000b", "kind": "view" },
+                    "priority": 1000,
+                    "relation": 0,
+                    "secondAttribute": 0,
+                    "secondItem": { "status": "absent" }
+                },
+                {
+                    "active": true,
+                    "constant": 0,
+                    "firstAttribute": 7,
+                    "firstItem": { "handle": "000000000000000b", "kind": "view" },
+                    "identifier": { "status": "absent" },
+                    "multiplier": 1,
+                    "owner": { "handle": "000000000000000b", "kind": "view" },
+                    "priority": 1000,
+                    "relation": 0,
+                    "secondAttribute": 36,
+                    "secondItem": { "handle": "000000000000000d", "kind": "view" }
+                },
+                {
+                    "active": true,
+                    "constant": 0,
+                    "firstAttribute": 33,
+                    "firstItem": { "handle": "000000000000000d", "kind": "view" },
+                    "identifier": { "status": "absent" },
+                    "multiplier": 1,
+                    "owner": { "handle": "000000000000000b", "kind": "view" },
+                    "priority": 1000,
+                    "relation": 0,
+                    "secondAttribute": 0,
+                    "secondItem": { "status": "absent" }
+                },
+                {
+                    "active": true,
+                    "constant": 0,
+                    "firstAttribute": 8,
+                    "firstItem": { "handle": "000000000000000b", "kind": "view" },
+                    "identifier": { "status": "absent" },
+                    "multiplier": 1,
+                    "owner": { "handle": "000000000000000b", "kind": "view" },
+                    "priority": 1000,
+                    "relation": 0,
+                    "secondAttribute": 37,
+                    "secondItem": { "handle": "000000000000000d", "kind": "view" }
+                },
+                {
+                    "active": true,
+                    "constant": 0,
+                    "firstAttribute": 32,
+                    "firstItem": { "handle": "000000000000000b", "kind": "view" },
+                    "identifier": { "status": "absent" },
+                    "multiplier": 1,
+                    "owner": { "handle": "000000000000000c", "kind": "view" },
+                    "priority": 1000,
+                    "relation": 0,
+                    "secondAttribute": 0,
+                    "secondItem": { "status": "absent" }
+                },
+                {
+                    "active": true,
+                    "constant": 673,
+                    "firstAttribute": 7,
+                    "firstItem": { "handle": "000000000000000b", "kind": "view" },
+                    "identifier": { "status": "absent" },
+                    "multiplier": 1,
+                    "owner": { "handle": "000000000000000c", "kind": "view" },
+                    "priority": 1000,
+                    "relation": 0,
+                    "secondAttribute": 0,
+                    "secondItem": { "status": "absent" }
+                },
+                {
+                    "active": true,
+                    "constant": 0,
+                    "firstAttribute": 33,
+                    "firstItem": { "handle": "000000000000000b", "kind": "view" },
+                    "identifier": { "status": "absent" },
+                    "multiplier": 1,
+                    "owner": { "handle": "000000000000000c", "kind": "view" },
+                    "priority": 1000,
+                    "relation": 0,
+                    "secondAttribute": 0,
+                    "secondItem": { "status": "absent" }
+                },
+                {
+                    "active": true,
+                    "constant": 407,
+                    "firstAttribute": 8,
+                    "firstItem": { "handle": "000000000000000b", "kind": "view" },
+                    "identifier": { "status": "absent" },
+                    "multiplier": 1,
+                    "owner": { "handle": "000000000000000c", "kind": "view" },
+                    "priority": 1000,
+                    "relation": 0,
+                    "secondAttribute": 0,
+                    "secondItem": { "status": "absent" }
+                },
+                {
+                    "active": true,
+                    "constant": 0,
+                    "firstAttribute": 7,
+                    "firstItem": { "handle": "000000000000000c", "kind": "view" },
+                    "identifier": { "status": "absent" },
+                    "multiplier": 1,
+                    "owner": { "handle": "000000000000000c", "kind": "view" },
+                    "priority": 1000,
+                    "relation": 0,
+                    "secondAttribute": 36,
+                    "secondItem": { "handle": "0000000000000039", "kind": "view" }
+                }
+            ],
+            "hugging": { "horizontal": 250, "vertical": 250 },
+            "intrinsicHeight": { "status": "no-intrinsic-metric" },
+            "intrinsicWidth": { "status": "no-intrinsic-metric" },
+            "layoutGuides": [],
+            "status": "value"
+        },
+        "relationships": { "superview": "000000000000000c", "window": "000000000000000a" }
+    },
+    "observation": {
+        "consistency": "main-thread-best-effort",
+        "endTime": 1794598890.1001658,
+        "fields": ["basic", "layout", "font", "layer", "cell"],
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+        "identity": {
+            "architecture": "arm64e",
+            "bundleId": "com.apple.TextEdit",
+            "bundlePath": "/System/Applications/TextEdit.app",
+            "executablePath": "/System/Applications/TextEdit.app/Contents/MacOS/TextEdit",
+            "osBuild": "26B131",
+            "osVersion": "Version 27.2.1 (Build 26B131)",
+            "pid": 1739,
+            "pidversion": 4274,
+            "uid": 501
+        },
+        "kind": "view",
+        "layerState": "model",
+        "observationId": "875113acd7e9cc744483725a8837dd9a7e7f3e4b9a9a24e775d890b8ed12daa7",
+        "protocol": 1,
+        "scope": { "depth": 3, "limit": 200, "root": "000000000000000b", "windowId": null },
+        "sessionId": "ff84c3b1c664c132189c1f3511906dd3",
+        "source": "native-appkit",
+        "startTime": 1794598890.09978
+    },
+    "ok": true
+}

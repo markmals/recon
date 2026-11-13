@@ -1,0 +1,36 @@
+# Experiment notes (chronological)
+
+- 11:23 VirtualBuddy 2.2.1 (430) DMG sha256 16fac6dd...fc63, notarized Developer ID Buddy Software LTDA (8C7439RJLG), installed to /Applications.
+- vctool is catalog tooling only (symlink to app binary); `vctool --help` launched the app and hung.
+- VZMacOSRestoreImage.fetchLatestSupported -> macOS 27.2.1 26B131 (same as host).
+- IPSW download 25,595,954,706 bytes; `unzip -tq` clean. Moved to VirtualBuddy _Downloads; catalog row "macOS 27.2.1, 26B131" showed the local-drive icon and installation used it (Install.plist localRestoreImageURL).
+- Host observation: Homebrew recon 0.1.5 (ad hoc, granted AX+SR) for windows/AX/screenshot of VirtualBuddy.
+- Host input: proposal-0007 interaction build (7004ba5, sha256 d769aa48..., Developer ID, granted AX+SR) `ui click/key/scroll`.
+- Deep links: first `open -g -W virtualbuddy://library` -> VirtualBuddy panel '"open" would like to access and control your virtual machines' (offscreen panel, onScreen=false). Agent clicked Allow with window-addressed mouse click. Store: client /usr/bin/open, authorization=1. Subsequent links no prompt.
+- NSOpenPanel ("Local File") in VirtualBuddy: content is remote; window-addressed clicks/keys did not reach it; `ui click --identifier CancelButton` -> ACTION_UNAVAILABLE (unreadable AX subtree). Dismissed by quitting VirtualBuddy.
+- `ui click` reports UI_INTERFERENCE when the click's own effect opens a VirtualBuddy window; input.sh accepts that case (release complete, disturbance = target instance).
+- Setup wizard: typed name OK; provisioning sheet password fields enable host Secure Event Input -> `ui key` refuses: ACTION_UNAVAILABLE "secure event input is enabled".
+- Workaround attempt: wrote keychain item with `security add-generic-password -T VirtualBuddy` + Config.plist provisioning. First boot then blocked on a SecurityAgent keychain prompt (login password needed: partition list). User chose Setup Assistant path; quit VirtualBuddy, deleted item, provisioning off. SecurityAgent prompt window stayed on screen (layer 1000) — user notified to Deny.
+- Install: VirtualInstallation backend, ~7 min ("Your macOS Virtual Machine is Ready!").
+- VM window input: keys/clicks reach guest only while VirtualBuddy is the active app. Modifier chords (shift+x, cmd+space) are NOT delivered to the guest: shift+r typed 'r'. Plain keys and window-addressed clicks work (clicks worked once VirtualBuddy active; first clicks right after activation were lost).
+- Setup Assistant completed through VM window (screens setup-*.png). Analytics off, Location off, FileVault off, Updates: download only. Account recon (lowercase-only password because shift is unavailable).
+- Remote Login enabled via System Settings > Sharing (guest auth prompt answered with guest password). "Allow full disk access for remote users" came on with it. Guest IP 192.168.64.26.
+- 13:21 deep-link `stop` -> guest shows "Are you sure you want to shut down your computer now?" (requestStop = power-button press). Confirmation needs a guest click. Used `sudo shutdown -h now` over SSH instead.
+- 13:23 deep-link `boot ... options.bootInRecoveryMode=true` -> Startup Options (Macintosh HD / Options). Options -> Continue -> Recovery (no user/password prompt to reach Recovery main window). Utilities > Terminal.
+- Recovery Terminal: `csrutil status` -> enabled. `csrutil disable` -> "Turning off System Integrity Protection requires modifying system security. Allow booting unsigned operating systems and any kernel extensions for OS "Macintosh HD"? [y/n]" y -> "Enter password for user recon:" -> "System Integrity Protection is off. Restart the machine for the changes to take effect." (screens recovery-7..9). `reboot`.
+- Observed: the first click after VirtualBuddy activation (or after a large pointer jump) is often lost; repeat after verifying.
+- Guest-side: `launchctl asuser` processes from SSH are attributed to sshd-keygen-wrapper for TCC (Automation prompt "sshd-keygen-wrapper wants access to control System Events" -> Don't Allow). screencapture from that context produced no file.
+- 13:27 after `reboot` from Recovery: guest normal boot, SSH OK, `csrutil status` disabled, boot-args empty.
+- 13:28 guest build (pinned swiftlang-6.4.0.34.1 from host-copied Xcode 27.1): helper arm64+arm64e build-id 571291a7..., loader arm64+arm64e ad hoc with com.apple.private.thread-set-state + cs.debugger, fixtures. cargo build --release -p recon.
+- Signing: guest target/release/recon copied to host, signed with Developer ID Application: Mark Malstrom (647GR2UNM5) --identifier me.malstrom.recon, copied back to target/signed/recon (sign-guest-recon.sh). Key never left host.
+- Before boot-args: running the ad hoc loader -> SIGKILL (Code Signature Invalid), namespace CODESIGNING "Taskgated Invalid Signature" (amfi-enforced-loader.txt).
+- prepare-host --status: readiness blocked (amfiDisabled false, no active args), sipDisabled true.
+- `echo prepare-host | recon ui session prepare-host` -> changed:true, sudo nvram boot-args written, recon-added-boot-args recorded, helper staged to /Library/Application Support/Recon.
+- `sudo shutdown -r now` -> guest up in ~10 s; kern.bootargs = all three tokens; prepare-host --status readiness eligible, stagedHelper true; loader now runs (usage, exit 64).
+- Auto-login: sysadminctl -autologin failed (SACSetAutoLoginPassword error:22); wrote /etc/kcpassword manually (autoLoginUser was set by sysadminctl).
+- TCC: Accessibility (pane named "Device Control and Data Access") toggled via VM-window click + guest password; Screen Recording list stayed empty after CGRequest; added recon via "+", typed "/" then lowercase path /users/recon/recon/target/signed/recon (case-insensitive APFS; no shift available). recon context: both granted, Developer ID team 647GR2UNM5, responsibleForSelf.
+- Calculator research attach #1: guest SecurityAgent "Developer Tools Access is trying to take control of another process" -> Recon UI_INTERFERENCE + InspectionTimeout (10 s open deadline). DevToolsSecurity -enable did not avoid it (#2 same). authd: taskgated evaluates system.privilege.taskport (authenticate-user). Typed guest password -> right cached (shared, 36000 s). Next attach on same pid -> INSPECTION_BUSY (unfinished attach; recovery contract). Quit + relaunch Calculator -> attach research OK. Filed recon-y9v.
+- Finder window AX read-failed -25200 with and without helper (pre-injection Finder restart test). Host comparison not done (no host Finder window; did not open one).
+- Fixture: launch standard, existing standard, attach standard, attach research all PASS. Launch needed a 3 s settle before observation (else UI_INTERFERENCE: target window appeared).
+- Third party: Hex Fiend 2.18.1 (hardened, not sandboxed), CotEditor 7.1.3 (App Sandbox, hardened): standard attach -> INSPECTION_UNAVAILABLE at preflight ("target requires the research profile"); research attach -> all PASS incl. identifier lookup.
+- Guest network: from guest, host 192.168.64.1 ports 22,5000,7000,59917,62923 open; loopback-only host services closed; host LAN IP and LAN gateway reachable.

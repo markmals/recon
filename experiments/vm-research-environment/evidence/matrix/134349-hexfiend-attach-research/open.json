@@ -1,0 +1,31 @@
+{
+    "bootstrapActive": true,
+    "capabilities": ["windows", "tree", "node", "find", "fonts"],
+    "effects": ["helper-bootstrap-resident"],
+    "establishedMode": "attach",
+    "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+    "helperResident": true,
+    "identity": {
+        "architecture": "arm64",
+        "bundleId": "com.ridiculousfish.HexFiend",
+        "bundlePath": "/Applications/Hex Fiend.app",
+        "executablePath": "/Applications/Hex Fiend.app/Contents/MacOS/Hex Fiend",
+        "osBuild": "26B131",
+        "osVersion": "Version 27.2.1 (Build 26B131)",
+        "pid": 2639,
+        "pidversion": 6169,
+        "uid": 501
+    },
+    "incarnation": { "pid": 2639, "pidversion": 6169 },
+    "mode": "attach",
+    "ok": true,
+    "pid": 2639,
+    "pidversion": 6169,
+    "profile": "research",
+    "protocol": 1,
+    "requestedMode": "attach",
+    "requestedProfile": "research",
+    "reused": false,
+    "sessionId": "8f19223e838e047a09707c62054b248b",
+    "uid": 501
+}

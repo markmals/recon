@@ -1,0 +1,16 @@
+# recons-Virtual-Machine 2026-11-13T19:27:36Z
+ProductName:		macOS
+ProductVersion:		27.2.1
+BuildVersion:		26B131
+--- csrutil status
+System Integrity Protection status: disabled.
+--- csrutil authenticated-root status
+Authenticated Root status: enabled
+--- sysctl -n kern.bootargs
+
+--- nvram boot-args
+boot-args
+--- nvram recon-added-boot-args
+nvram: Error getting variable - 'recon-added-boot-args': (iokit/common) data was not found
+--- recon ui session prepare-host --status
+recon not installed at ~/recon/target/signed/recon

@@ -1,0 +1,354 @@
+{
+    "coverage": {
+        "complete": true,
+        "narrowed": [],
+        "returned": 41,
+        "truncated": [],
+        "visited": 461
+    },
+    "fonts": [
+        {
+            "descriptor": {
+                "descriptor": ".SFNS-Regular",
+                "family": ".AppleSystemUIFont",
+                "pointSize": 13,
+                "postScriptName": ".AppleSystemUIFont",
+                "status": "value",
+                "symbolicTraits": 0,
+                "weight": 0
+            },
+            "sources": [
+                { "handle": "000000000000003e", "kind": "view", "source": "view" },
+                { "handle": "0000000000000040", "kind": "view", "source": "view" }
+            ]
+        },
+        {
+            "descriptor": {
+                "descriptor": ".SFNS-Semibold",
+                "family": ".AppleSystemUIFont",
+                "pointSize": 11,
+                "postScriptName": ".SFNS-Semibold",
+                "status": "value",
+                "symbolicTraits": 2,
+                "weight": 0.30000001192092896
+            },
+            "sources": [
+                {
+                    "handle": "000000000000003e",
+                    "kind": "view",
+                    "range": { "length": 9, "location": 0 },
+                    "source": "attributed-run"
+                },
+                { "handle": "000000000000003f", "kind": "view", "source": "view" },
+                {
+                    "handle": "0000000000000040",
+                    "kind": "view",
+                    "range": { "length": 9, "location": 0 },
+                    "source": "attributed-run"
+                },
+                { "handle": "0000000000000041", "kind": "view", "source": "view" }
+            ]
+        },
+        {
+            "descriptor": {
+                "descriptor": ".SFNS-Regular",
+                "family": ".AppleSystemUIFont",
+                "pointSize": 13,
+                "postScriptName": ".SFNS-Regular",
+                "status": "value",
+                "symbolicTraits": 0,
+                "weight": 0
+            },
+            "sources": [
+                { "handle": "0000000000000042", "kind": "view", "source": "view" },
+                {
+                    "handle": "0000000000000042",
+                    "kind": "view",
+                    "range": { "length": 7, "location": 0 },
+                    "source": "attributed-run"
+                },
+                { "handle": "0000000000000044", "kind": "view", "source": "view" },
+                {
+                    "handle": "0000000000000044",
+                    "kind": "view",
+                    "range": { "length": 6, "location": 0 },
+                    "source": "attributed-run"
+                },
+                { "handle": "0000000000000046", "kind": "view", "source": "view" },
+                {
+                    "handle": "0000000000000046",
+                    "kind": "view",
+                    "range": { "length": 12, "location": 0 },
+                    "source": "attributed-run"
+                },
+                { "handle": "0000000000000048", "kind": "view", "source": "view" },
+                {
+                    "handle": "0000000000000048",
+                    "kind": "view",
+                    "range": { "length": 7, "location": 0 },
+                    "source": "attributed-run"
+                },
+                { "handle": "000000000000004a", "kind": "view", "source": "view" },
+                {
+                    "handle": "000000000000004a",
+                    "kind": "view",
+                    "range": { "length": 9, "location": 0 },
+                    "source": "attributed-run"
+                },
+                { "handle": "000000000000004c", "kind": "view", "source": "view" },
+                {
+                    "handle": "000000000000004c",
+                    "kind": "view",
+                    "range": { "length": 9, "location": 0 },
+                    "source": "attributed-run"
+                },
+                { "handle": "000000000000004e", "kind": "view", "source": "view" },
+                {
+                    "handle": "000000000000004e",
+                    "kind": "view",
+                    "range": { "length": 12, "location": 0 },
+                    "source": "attributed-run"
+                },
+                { "handle": "0000000000000052", "kind": "view", "source": "view" },
+                {
+                    "handle": "0000000000000052",
+                    "kind": "view",
+                    "range": { "length": 12, "location": 0 },
+                    "source": "attributed-run"
+                },
+                { "handle": "0000000000000054", "kind": "view", "source": "view" },
+                {
+                    "handle": "0000000000000054",
+                    "kind": "view",
+                    "range": { "length": 7, "location": 0 },
+                    "source": "attributed-run"
+                }
+            ]
+        },
+        {
+            "descriptor": {
+                "descriptor": "Helvetica",
+                "family": "Helvetica",
+                "pointSize": 12,
+                "postScriptName": "Helvetica",
+                "status": "value",
+                "symbolicTraits": 2147483648,
+                "weight": 0
+            },
+            "sources": [
+                {
+                    "handle": "0000000000000043",
+                    "kind": "view",
+                    "range": { "length": 104, "location": 0 },
+                    "source": "attributed-run"
+                },
+                {
+                    "handle": "0000000000000045",
+                    "kind": "view",
+                    "range": { "length": 107, "location": 0 },
+                    "source": "attributed-run"
+                },
+                {
+                    "handle": "0000000000000047",
+                    "kind": "view",
+                    "range": { "length": 107, "location": 0 },
+                    "source": "attributed-run"
+                },
+                {
+                    "handle": "0000000000000049",
+                    "kind": "view",
+                    "range": { "length": 121, "location": 0 },
+                    "source": "attributed-run"
+                },
+                {
+                    "handle": "000000000000004b",
+                    "kind": "view",
+                    "range": { "length": 107, "location": 0 },
+                    "source": "attributed-run"
+                },
+                {
+                    "handle": "000000000000004d",
+                    "kind": "view",
+                    "range": { "length": 116, "location": 0 },
+                    "source": "attributed-run"
+                },
+                {
+                    "handle": "000000000000004f",
+                    "kind": "view",
+                    "range": { "length": 105, "location": 0 },
+                    "source": "attributed-run"
+                },
+                {
+                    "handle": "0000000000000051",
+                    "kind": "view",
+                    "range": { "length": 104, "location": 0 },
+                    "source": "attributed-run"
+                },
+                {
+                    "handle": "0000000000000053",
+                    "kind": "view",
+                    "range": { "length": 112, "location": 0 },
+                    "source": "attributed-run"
+                },
+                {
+                    "handle": "0000000000000055",
+                    "kind": "view",
+                    "range": { "length": 106, "location": 0 },
+                    "source": "attributed-run"
+                },
+                {
+                    "handle": "0000000000000056",
+                    "kind": "view",
+                    "range": { "length": 111, "location": 0 },
+                    "source": "attributed-run"
+                }
+            ]
+        },
+        {
+            "descriptor": {
+                "descriptor": ".SFNS-Semibold",
+                "family": ".AppleSystemUIFont",
+                "pointSize": 13,
+                "postScriptName": ".SFNS-Semibold",
+                "status": "value",
+                "symbolicTraits": 2,
+                "weight": 0.30000001192092896
+            },
+            "sources": [
+                { "handle": "0000000000000050", "kind": "view", "source": "view" },
+                {
+                    "handle": "0000000000000050",
+                    "kind": "view",
+                    "range": { "length": 5, "location": 0 },
+                    "source": "attributed-run"
+                }
+            ]
+        },
+        {
+            "descriptor": {
+                "descriptor": ".SFNS-Regular",
+                "family": ".AppleSystemUIFont",
+                "pointSize": 11,
+                "postScriptName": ".SFNS-Regular",
+                "status": "value",
+                "symbolicTraits": 0,
+                "weight": 0
+            },
+            "sources": [
+                { "handle": "0000000000000057", "kind": "view", "source": "view" },
+                {
+                    "handle": "0000000000000057",
+                    "kind": "view",
+                    "range": { "length": 27, "location": 0 },
+                    "source": "attributed-run"
+                },
+                { "handle": "0000000000000058", "kind": "view", "source": "view" }
+            ]
+        },
+        {
+            "descriptor": {
+                "descriptor": ".SFNS-Regular",
+                "family": ".AppleSystemUIFont",
+                "pointSize": 11,
+                "postScriptName": ".AppleSystemUIFont",
+                "status": "value",
+                "symbolicTraits": 0,
+                "weight": 0
+            },
+            "sources": [{ "handle": "0000000000000059", "kind": "view", "source": "view" }]
+        }
+    ],
+    "observation": {
+        "consistency": "main-thread-best-effort",
+        "endTime": 1794599046.634334,
+        "fields": ["font"],
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+        "identity": {
+            "architecture": "arm64e",
+            "bundleId": "com.apple.finder",
+            "bundlePath": "/System/Library/CoreServices/Finder.app",
+            "executablePath": "/System/Library/CoreServices/Finder.app/Contents/MacOS/Finder",
+            "osBuild": "26B131",
+            "osVersion": "Version 27.2.1 (Build 26B131)",
+            "pid": 2012,
+            "pidversion": 4855,
+            "uid": 501
+        },
+        "kind": "view",
+        "layerState": "model",
+        "observationId": "b8365b60d7d4eecc43e4dced9846428f94910f6f77ea4c955a2cb33acdf4bbad",
+        "protocol": 1,
+        "scope": { "depth": 64, "limit": 200, "root": null, "windowId": 127 },
+        "sessionId": "5da189313ee6ea274ea305e6ce450bec",
+        "source": "native-appkit",
+        "startTime": 1794599046.632801
+    },
+    "ok": true,
+    "windowRoots": [
+        {
+            "basic": {
+                "accessibilityIdentifier": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "FinderWindow"
+                },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXWindow"
+                },
+                "childWindows": [],
+                "class": "NSKVONotifying_TBrowserWindow",
+                "contentView": "0000000000000005",
+                "frame": {
+                    "height": 436,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 920,
+                    "x": 180,
+                    "y": 268
+                },
+                "identifier": { "status": "value", "value": "_NS:8" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screenTopLeft": {
+                        "height": 436,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 920,
+                        "x": 180,
+                        "y": 96
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": ["TBrowserWindow", "NSWindow", "NSResponder", "NSObject"],
+                "title": { "status": "value", "value": "recon" },
+                "topmostView": "0000000000000006",
+                "visible": true,
+                "windowNumber": { "status": "value", "value": 127 }
+            },
+            "handle": "0000000000000004",
+            "kind": "window",
+            "relationships": {
+                "contentView": "0000000000000005",
+                "parentWindow": { "status": "absent" }
+            }
+        }
+    ]
+}

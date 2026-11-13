@@ -1,0 +1,11 @@
+{
+    "application": {
+        "name": "Calculator",
+        "bundleId": "com.apple.calculator",
+        "path": "/System/Applications/Calculator.app",
+        "version": "12.0",
+        "build": "225",
+        "executablePath": "/System/Applications/Calculator.app/Contents/MacOS/Calculator",
+        "runningPids": [1564]
+    }
+}

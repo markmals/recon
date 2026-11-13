@@ -1,0 +1,7 @@
+{
+    "application": { "path": "/System/Library/CoreServices/Finder.app", "pid": 2012 },
+    "windowId": 127,
+    "truncated": false,
+    "narrowed": false,
+    "root": { "error": "read-failed", "axError": -25200 }
+}

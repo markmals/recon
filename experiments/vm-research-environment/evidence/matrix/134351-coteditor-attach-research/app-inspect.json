@@ -1,0 +1,11 @@
+{
+    "application": {
+        "name": "CotEditor",
+        "bundleId": "com.coteditor.CotEditor",
+        "path": "/Applications/CotEditor.app",
+        "version": "7.1.3",
+        "build": "856",
+        "executablePath": "/Applications/CotEditor.app/Contents/MacOS/CotEditor",
+        "runningPids": [2641]
+    }
+}

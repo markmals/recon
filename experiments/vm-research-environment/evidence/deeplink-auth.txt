@@ -1,0 +1,15 @@
+## 2026-11-13T17:40:30Z deep-link authorization
+First open -g -W virtualbuddy://library showed VirtualBuddy panel: '"open" would like to access and control your virtual machines in VirtualBuddy.' (screens/20261113-113958-small-window.png)
+Agent clicked Allow via HOST_RECON ui click --method mouse on the panel window.
+{
+  "BFED2143E3F29731690437BF4DEE4269066D01E51CCF3BE5C54FA698611162A4" => {
+    "authorization" => 1
+    "displayName" => "open"
+    "id" => "BFED2143E3F29731690437BF4DEE4269066D01E51CCF3BE5C54FA698611162A4"
+    "isValid" => true
+    "url" => {
+      "relative" => "file:///usr/bin/open"
+    }
+  }
+}
+Third call: no panel; sent virtualbuddy://library

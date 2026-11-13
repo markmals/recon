@@ -1,0 +1,1 @@
+{"error":{"code":"INVALID_ARGUMENT","message":"handle expects a live native handle from this session, written as 16 lowercase hex digits","retryable":false,"command":["ui","view","node"],"details":{"accepted":null,"argument":"handle","expected":"a live native handle from this session, written as 16 lowercase hex digits","value":null}}}

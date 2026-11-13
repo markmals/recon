@@ -1,0 +1,23 @@
+{
+    "application": { "path": "/Users/recon/recon/target/fixtures/ReconFixture.app", "pid": 2214 },
+    "window": {
+        "id": 146,
+        "title": "Recon Fixture — Main",
+        "bounds": { "x": 160.0, "y": 208.0, "width": 480.0, "height": 352.0 },
+        "onScreen": true
+    },
+    "image": {
+        "path": "/tmp/recon-inspect-fixture-existing-standard/screenshot.png",
+        "width": 960,
+        "height": 704,
+        "uniform": false
+    },
+    "method": "skylight-hardware-capture",
+    "session": {
+        "id": "8b23ca6534600efa0d98ddc277c9d425",
+        "acquired": "existing",
+        "profile": "standard",
+        "protocolVersion": 1,
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed"
+    }
+}
