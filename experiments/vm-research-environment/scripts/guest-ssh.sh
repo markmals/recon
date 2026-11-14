@@ -6,18 +6,12 @@
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
 
-: "${GUEST_USER:=recon}"
 : "${GUEST_HOST:=$("$(dirname "$0")/guest-ip.sh")}"
 
-exec ssh \
-    -F /dev/null \
-    -i "$VM_SSH_KEY" \
-    -o IdentitiesOnly=yes \
-    -o IdentityAgent=none \
+exec ssh "${guest_ssh_options[@]}" \
     -o ForwardAgent=no \
     -o ForwardX11=no \
     -o ClearAllForwardings=yes \
-    -o UserKnownHostsFile="$VM_WORKDIR/ssh/known_hosts" \
     -o StrictHostKeyChecking=accept-new \
     -o ServerAliveInterval=15 \
     -o ConnectTimeout=10 \

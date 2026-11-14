@@ -14,6 +14,9 @@
 # usage: vm-snapshot.sh list
 #        vm-snapshot.sh save NAME      (replaces an existing snapshot of that name)
 #        vm-snapshot.sh reset NAME     (discards the VM and all changes since NAME)
+#
+# save and reset refuse while vm-lock.sh shows the VM held by someone other than
+# $VM_OWNER.
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
 
@@ -60,6 +63,7 @@ case "$action" in
         done
         ;;
     save)
+        require_vm_owner
         require_virtualbuddy_quit
         destination=$(snapshot_path "${2:-}")
         mkdir -p "$snapshots"
@@ -67,6 +71,7 @@ case "$action" in
         echo "saved $VM_BUNDLE as $(basename "$destination" .vbvm)"
         ;;
     reset)
+        require_vm_owner
         require_virtualbuddy_quit
         source=$(snapshot_path "${2:-}")
         if [[ ! -d $source ]]; then

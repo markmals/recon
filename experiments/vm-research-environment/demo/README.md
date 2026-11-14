@@ -22,7 +22,7 @@ Every date is relative to the day of seeding. The snapshot was seeded on 13 Nove
 
 ## The media is not in the repository
 
-The photos and portraits are Apple marketing stock photography from the experiment host, about 4.5 GB, and are deliberately not committed. `seed-demo.sh push MEDIA_DIR` copies `MEDIA_DIR/photos` and `MEDIA_DIR/portraits` into the guest. Photo file names carry the place tags (`demo-la`, `sicily`, `tahoe`, …) that `PhotosSeeder.swift` turns into albums and Messages attachments are chosen by; portrait file names are the ones `contact-photos.json` lists. On the experiment host the directory is `~/ReconResearchVM/demo-media`.
+The photos and portraits are Apple marketing stock photography from the experiment host, about 4.5 GB, and are deliberately not committed. `seed-demo.sh push MEDIA_DIR` copies `MEDIA_DIR/photos` and `MEDIA_DIR/portraits` into the guest. Photo file names carry the place tags (`demo-la`, `sicily`, `tahoe`, …) that `PhotosSeeder.swift` turns into albums and Messages attachments are chosen by; portrait file names are the ones `contact-photos.json` lists. On the experiment host the directory is `~/Library/Application Support/ReconResearchVM/demo-media`.
 
 ## Seeding
 
@@ -40,8 +40,8 @@ From a clean `research-ready` guest:
 
 ```sh
 cd experiments/vm-research-environment/scripts
-./vm-snapshot.sh reset research-ready && ./vm-lifecycle.sh boot
-RECON_SIGNING_IDENTITY='Developer ID Application: …' ./seed-demo.sh push ~/ReconResearchVM/demo-media
+./vm-snapshot.sh reset research-ready && ./vm-lifecycle.sh boot && ./guest-wait.sh
+RECON_SIGNING_IDENTITY='Developer ID Application: …' ./seed-demo.sh push "$HOME/Library/Application Support/ReconResearchVM/demo-media"
 ./seed-demo.sh ssh check
 ./seed-demo.sh boot seeding     # AMFI enforced again, so privacy prompts can appear
 ./seed-demo.sh persona
@@ -78,7 +78,8 @@ While `amfi_get_out_of_my_way` is active, every process carries `CS_PLATFORM_BIN
 
 ```sh
 cd experiments/vm-research-environment/scripts
-./vm-snapshot.sh reset demo && ./vm-lifecycle.sh boot
-./authorize-taskport.sh         # once per boot, before the first research attach
+./vm-snapshot.sh reset demo && ./vm-lifecycle.sh boot && ./guest-wait.sh
 ./inspect-target.sh photos /System/Applications/Photos.app launch research
 ```
+
+While someone holds `vm-lock.sh`, these scripts need `VM_OWNER` to name the holder; the `inspecting-apps-in-the-research-vm` skill describes the full workflow.

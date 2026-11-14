@@ -3,8 +3,9 @@
 # Each step is idempotent, so the script can be rerun after a failure.
 #
 #   1. installs the dedicated public key (password login, once);
-#   2. gives the test account passwordless sudo, keeps the guest awake, and logs it in
-#      automatically so a reboot returns to a GUI session;
+#   2. gives the test account passwordless sudo, keeps the guest awake, logs it in
+#      automatically so a reboot returns to a GUI session, and lets a research attach
+#      take a task port without asking for a password;
 #   3. copies the host's Xcode 27.1 (the pinned Swift compiler) into the guest;
 #   4. installs mise and clones Recon at a fixed revision from a git bundle.
 #
@@ -16,9 +17,8 @@ source "$here/env.sh"
 bundle=${1:?usage: provision-guest.sh BUNDLE REVISION}
 revision=${2:?usage: provision-guest.sh BUNDLE REVISION}
 password_file="$VM_WORKDIR/ssh/guest-password"
-: "${GUEST_USER:=recon}"
 : "${GUEST_HOST:=$("$here/guest-ip.sh")}"
-export GUEST_USER GUEST_HOST
+export GUEST_HOST
 : "${HOST_XCODE:=/Applications/Xcode.app}"
 
 # 1. Key-based login. SSH_ASKPASS answers the one password prompt from the file, so
@@ -30,7 +30,7 @@ if ! "$here/guest-ssh.sh" -o BatchMode=yes true 2>/dev/null; then
     chmod 700 "$askpass"
     SSH_ASKPASS="$askpass" SSH_ASKPASS_REQUIRE=force \
         ssh -F /dev/null -o IdentityAgent=none -o PubkeyAuthentication=no \
-        -o UserKnownHostsFile="$VM_WORKDIR/ssh/known_hosts" -o StrictHostKeyChecking=accept-new \
+        -o "UserKnownHostsFile=\"$VM_WORKDIR/ssh/known_hosts\"" -o StrictHostKeyChecking=accept-new \
         "$GUEST_USER@$GUEST_HOST" \
         'umask 077; mkdir -p ~/.ssh; cat >> ~/.ssh/authorized_keys' <"$VM_SSH_KEY.pub"
 fi
@@ -44,6 +44,12 @@ fi
 '" <"$password_file"
 "$here/guest-ssh.sh" 'sudo pmset -a sleep 0 displaysleep 0 disksleep 0 &&
     defaults -currentHost write com.apple.screensaver idleTime -int 0'
+
+# A research attach makes taskgated evaluate system.privilege.taskport, which by default
+# asks for an administrator's password in a dialog once per boot. Only someone at the
+# VM window can answer it, so the guest grants the right outright. That weakens only
+# this disposable guest, which already runs with SIP and AMFI off.
+"$here/guest-ssh.sh" 'sudo security authorizationdb write system.privilege.taskport allow'
 
 # `sysadminctl -autologin set` sets autoLoginUser but fails to write /etc/kcpassword on
 # macOS 27.2.1 (SACSetAutoLoginPassword error:22), so the file is written directly in
@@ -60,9 +66,7 @@ sys.stdout.buffer.write(bytes(b ^ key[i % len(key)] for i, b in enumerate(passwo
     sudo chown root:wheel /etc/kcpassword && sudo chmod 600 /etc/kcpassword" <"$password_file"
 
 # 3. Xcode 27.1 carries swiftlang-6.4.0.34.1, the compiler swift-toolchain.toml pins.
-ssh_command="ssh -F /dev/null -i $VM_SSH_KEY -o IdentitiesOnly=yes -o IdentityAgent=none"
-ssh_command+=" -o UserKnownHostsFile=$VM_WORKDIR/ssh/known_hosts"
-rsync -a --delete -e "$ssh_command" --rsync-path='sudo rsync' \
+rsync -a --delete -e "$guest_rsync_shell" --rsync-path='sudo rsync' \
     "$HOST_XCODE/" "$GUEST_USER@$GUEST_HOST:/Applications/Xcode.app/"
 "$here/guest-ssh.sh" 'sudo xcode-select -s /Applications/Xcode.app &&
     sudo xcodebuild -license accept && sudo xcodebuild -runFirstLaunch && xcrun swiftc --version'
@@ -72,8 +76,7 @@ rsync -a --delete -e "$ssh_command" --rsync-path='sudo rsync' \
 "$here/guest-ssh.sh" 'test -x ~/.local/bin/mise || curl -fsSL https://mise.run | sh
     grep -q "mise activate" ~/.zshenv 2>/dev/null ||
         echo "eval \"\$(~/.local/bin/mise activate zsh --shims)\"" >> ~/.zshenv'
-scp -F /dev/null -i "$VM_SSH_KEY" -o IdentitiesOnly=yes -o IdentityAgent=none \
-    -o UserKnownHostsFile="$VM_WORKDIR/ssh/known_hosts" \
+scp "${guest_ssh_options[@]}" \
     "$bundle" "$GUEST_USER@$GUEST_HOST:recon.bundle"
 "$here/guest-ssh.sh" "test -d ~/recon || git clone -q -b main ~/recon.bundle ~/recon
     cd ~/recon && git fetch -q ~/recon.bundle main && git checkout -q --detach $revision && git rev-parse HEAD"

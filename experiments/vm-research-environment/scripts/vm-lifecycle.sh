@@ -3,6 +3,9 @@
 #
 # usage: vm-lifecycle.sh boot|recovery|stop|open|library
 #
+# boot, recovery, and stop refuse while vm-lock.sh shows the VM held by someone other
+# than $VM_OWNER.
+#
 # VirtualBuddy identifies the caller by the audit token of the Apple Event that carries
 # the URL, so the sender must still be alive when VirtualBuddy checks it. `open -W`
 # keeps /usr/bin/open alive until VirtualBuddy exits, so it runs in the background and
@@ -13,6 +16,7 @@ source "$(dirname "$0")/env.sh"
 
 action=${1:?usage: vm-lifecycle.sh boot|recovery|stop|open|library}
 name=$(jq -rn --arg n "$VM_NAME" '$n | @uri')
+[[ $action == open || $action == library ]] || require_vm_owner
 
 case "$action" in
     boot) url="virtualbuddy://boot?name=$name" ;;

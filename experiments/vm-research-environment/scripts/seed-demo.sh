@@ -25,11 +25,11 @@
 set -euo pipefail
 here=$(dirname "$0")
 source "$here/env.sh"
+require_vm_owner
 
 : "${GUEST_HOST:=$("$here/guest-ip.sh")}"
 export GUEST_HOST
-ssh_command="ssh -F /dev/null -i $VM_SSH_KEY -o IdentitiesOnly=yes -o IdentityAgent=none"
-ssh_command+=" -o UserKnownHostsFile=$VM_WORKDIR/ssh/known_hosts"
+guest="$GUEST_USER@$GUEST_HOST"
 seeder='~/demo/build/DemoSeeder.app'
 arguments='--data ~/demo/data --media ~/DemoMedia/photos --portraits ~/DemoMedia/portraits'
 
@@ -39,13 +39,13 @@ case "$stage" in
     push)
         media=${1:?usage: seed-demo.sh push MEDIA_DIR}
         identity=${RECON_SIGNING_IDENTITY:?set RECON_SIGNING_IDENTITY to a Developer ID Application identity}
-        rsync -a --delete -e "$ssh_command" "$here/../demo/" "recon@$GUEST_HOST:demo/"
-        rsync -a --delete -e "$ssh_command" "$media/" "recon@$GUEST_HOST:DemoMedia/"
+        rsync -a --delete -e "$guest_rsync_shell" "$here/../demo/" "$guest:demo/"
+        rsync -a --delete -e "$guest_rsync_shell" "$media/" "$guest:DemoMedia/"
         "$here/guest-ssh.sh" 'rm -f ~/Library/Logs/DemoSeeder.log; ~/demo/build-seeder.sh ~/demo/build'
         work=$(mktemp -d)
-        rsync -a -e "$ssh_command" "recon@$GUEST_HOST:demo/build/DemoSeeder.app" "$work/"
+        rsync -a -e "$guest_rsync_shell" "$guest:demo/build/DemoSeeder.app" "$work/"
         codesign --force --sign "$identity" "$work/DemoSeeder.app"
-        rsync -a --delete -e "$ssh_command" "$work/DemoSeeder.app/" "recon@$GUEST_HOST:demo/build/DemoSeeder.app/"
+        rsync -a --delete -e "$guest_rsync_shell" "$work/DemoSeeder.app/" "$guest:demo/build/DemoSeeder.app/"
         rm -rf "$work"
         "$here/guest-ssh.sh" "codesign -dv $seeder 2>&1 | grep -E '^(Identifier|TeamIdentifier)'"
         ;;
@@ -56,13 +56,9 @@ case "$stage" in
             *) echo "seed-demo: boot seeding|research" >&2; exit 2 ;;
         esac
         "$here/guest-ssh.sh" "cd ~/recon && $prepare >/dev/null && sudo shutdown -r now" || true
+        # The old session keeps answering for a few seconds after shutdown starts.
         sleep 10
-        for _ in $(seq 60); do
-            "$here/guest-ssh.sh" -o BatchMode=yes -o ConnectTimeout=3 true 2>/dev/null && break
-            sleep 3
-        done
-        # SSH comes up before the automatic login has finished starting the GUI session.
-        sleep 8
+        "$here/guest-wait.sh"
         "$here/guest-ssh.sh" 'echo "boot-args: [$(sysctl -n kern.bootargs)]"
             ~/recon/target/signed/recon ui session prepare-host --status | jq -r "\"readiness: \" + .readiness"'
         ;;

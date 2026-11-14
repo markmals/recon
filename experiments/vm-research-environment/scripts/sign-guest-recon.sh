@@ -17,9 +17,8 @@ if [[ $identity == "-" ]]; then
 fi
 
 : "${GUEST_HOST:=$("$here/guest-ip.sh")}"
-remote="recon@$GUEST_HOST"
-scp_opts=(-q -F /dev/null -i "$VM_SSH_KEY" -o IdentitiesOnly=yes -o IdentityAgent=none
-    -o UserKnownHostsFile="$VM_WORKDIR/ssh/known_hosts")
+remote="$GUEST_USER@$GUEST_HOST"
+scp_opts=(-q "${guest_ssh_options[@]}")
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
