@@ -1,0 +1,21 @@
+exit=137
+2026-11-13 11:29:29.865 Df osanalyticshelper[1355:1ef0] (OSAnalytics) Saved type '309(<private>)' report (3 of max 25) at /Library/Logs/DiagnosticReports/recon-loader-2026-11-13-112929.ips
+2026-11-13 11:29:29.865 Df osanalyticshelper[1355:1ef0] xpc log creation type 309 result success: /Library/Logs/DiagnosticReports/recon-loader-2026-11-13-112929.ips
+2026-11-13 11:29:29.865 Df ReportCrashService[1438:1f50] (OSAnalytics) client log create type 309 result success: /Library/Logs/DiagnosticReports/recon-loader-2026-11-13-112929.ips
+2026-11-13 11:29:29.865 Df ReportCrashService[1438:1f50] no MetricKit for process recon-loader type 309 bundleId (null)
+2026-11-13 11:29:29.865 Df ReportCrashService[1438:1f50] logGenerationTiming: RCS elapsedTime=0.033 for recon-loader[309]
+2026-11-13 11:29:29.868 Df ReportCrash[1410:1f1b] [com.apple.ReportCrash:postReportOps] recordCrashEvent; isBeta false, log: '/Library/Logs/DiagnosticReports/recon-loader-2026-11-13-112929.ips'
+2026-11-13 11:29:29.868 Df ReportCrash[1410:1f1b] [com.apple.ReportCrash:postReportOps] logGenerationTiming: sending CA event for recon-loader[309] elapsedTime=0.033
+2026-11-13 11:29:31.811 Df kernel[0:1f56] process_is_plugin_host: running binary "sudo" in keys-off mode due to entitlement: com.apple.private.security.clear-library-validation
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/json/decoder.py", line 353, in raw_decode
+    obj, end = self.scan_once(s, idx)
+json.decoder.JSONDecodeError: Expecting property name enclosed in double quotes: line 2 column 1 (char 2)
+{"exception":{"codes":"0x0000000000000000, 0x0000000000000000","rawCodes":[0,0],"type":"EXC_CRASH","signal":"SIGKILL (Code Signature Invalid)"},"termination":{"flags":66,"code":1,"namespace":"CODESIGNING","indicator":"Taskgated Invalid Signature"},"codeSigningID":"","codeSigningFlags":16777216,"codeSigningValidationCategory":0,"procPath":"/Users/USER/*/recon-loader"}

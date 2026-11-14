@@ -1,0 +1,119 @@
+# Demo seeding: counts, Recon research inspections, and the two failures
+# Guest: macOS 27.2.1 (26B131), seeded 2026-11-13 from research-ready; Recon 549a1e4
+
+## verify-demo.sh just before saving the demo snapshot (research boot-args active again)
+contacts         20
+calendars        Fitness, Work, Travel, Family, Home
+events           45
+reminders        50
+notes            16
+photos           669
+albums           Kanab, Lake Tahoe, SoCal Road Trip, Amalfi Coast, Sicily, Marin Headlands, India, Valley of Fire, Mexico City, Los Angeles
+messages         226
+conversations    19
+attachments      11
+documents        10
+account          Mia Navarro on Mia's Mac
+# conversations is 19, not 16: Messages added an empty any;+;chat… twin for each group chat on first open
+
+## inspect-target.sh LABEL APP MODE research, summarized
+### demo-photos
+app-inspect       PASS  {"bundleId":"com.apple.Photos","architectures":null}
+preflight         PASS  ["existing=blocked","launch=blocked","attach=unknown"]
+open              PASS  {"mode":"attach","profile":"research","reused":false,"helperBuild":"571291a74b0d","arch":"arm64e","pid":740,"osBuild":"26B131"}
+windows           PASS  {"windows":5,"nativeWindows":1,"nativeClass":"NSKVONotifying__UXWindow"}
+ax-tree           PASS  {"root":"AXWindow","truncated":false,"nodes":77}
+screenshot        PASS  {"width":2400,"height":1398,"uniform":false,"method":"skylight-hardware-capture"}
+view-tree         PASS  {"returned":23,"visited":46,"complete":true,"first":"NSView"}
+view-tree-layers  PASS  {"returned":18,"complete":true,"first":"NSViewBackingLayer"}
+view-node         PASS  {"kind":"view","class":"NSView","keys":["basic","cell","font","handle","kind","layer","layout","relationships"]}
+view-find         PASS  {"matches":24,"complete":true}
+view-fonts        PASS  {"fonts":[".AppleSystemUIFont",".AppleSystemUIFontBold",".SFNS-Regular",".SFNS-Semibold","Helvetica"],"complete":true}
+correlate         PASS  {"candidates":3,"nativeComplete":true,"unmatchedAccessibility":75}
+close             PASS  {"state":"closed","acknowledged":true,"helperResident":true,"processExited":false}
+view-find-identifier PASS  {"identifier":"IPXMainWindow","matches":0,"complete":true}
+### demo-notes
+app-inspect       PASS  {"bundleId":"com.apple.Notes","architectures":null}
+preflight         PASS  ["existing=blocked","launch=blocked","attach=unknown"]
+open              PASS  {"mode":"attach","profile":"research","reused":false,"helperBuild":"571291a74b0d","arch":"arm64e","pid":376,"osBuild":"26B131"}
+windows           PASS  {"windows":7,"nativeWindows":3,"nativeClass":"NSKVONotifying_ICMMainWindow"}
+ax-tree           PASS  {"root":"AXWindow","truncated":false,"nodes":110}
+screenshot        PASS  {"width":2000,"height":1320,"uniform":false,"method":"skylight-hardware-capture"}
+view-tree         PASS  {"returned":19,"visited":38,"complete":true,"first":"NSView"}
+view-tree-layers  PASS  {"returned":14,"complete":true,"first":"NSViewBackingLayer"}
+view-node         PASS  {"kind":"view","class":"NSView","keys":["basic","cell","font","handle","kind","layer","layout","relationships"]}
+view-find         PASS  {"matches":50,"complete":false}
+view-fonts        PASS  {"fonts":[".AppleSystemUIFaceEmphasizedSubhead",".AppleSystemUIFaceEmphasizedTitle3",".AppleSystemUIFaceSubhead",".AppleSystemUIFont",".AppleSystemUIFontBold",".AppleSystemUIFontDemi"],"complete":true}
+correlate         PASS  {"candidates":7,"nativeComplete":false,"unmatchedAccessibility":228}
+close             PASS  {"state":"closed","acknowledged":true,"helperResident":true,"processExited":false}
+view-find-identifier PASS  {"identifier":"_NS:117","matches":1,"complete":true}
+### demo-messages
+app-inspect       PASS  {"bundleId":"com.apple.MobileSMS","architectures":null}
+preflight         PASS  ["existing=blocked","launch=unknown","attach=blocked"]
+open              FAIL  exit 1 {"code":"INSPECTION_TIMEOUT","message":"the open deadline expired before the helper was contacted"}
+windows           PASS  {"windows":1,"nativeWindows":0,"nativeClass":null}
+ax-tree           FAIL  exit 2 {"code":"INVALID_ARGUMENT","message":"--window expects a window id written as decimal digits; got \"\""}
+screenshot        FAIL  exit 2 {"code":"INVALID_ARGUMENT","message":"--window expects a window id written as decimal digits; got \"\""}
+view-tree         FAIL  exit missing
+view-tree-layers  FAIL  exit missing
+view-node         FAIL  exit missing
+view-find         FAIL  exit missing
+view-fonts        FAIL  exit missing
+correlate         FAIL  exit missing
+close             FAIL  exit missing
+### demo-calendar
+app-inspect       PASS  {"bundleId":"com.apple.iCal","architectures":null}
+preflight         PASS  ["existing=blocked","launch=unknown","attach=blocked"]
+open              PASS  {"mode":"launch","profile":"research","reused":false,"helperBuild":"571291a74b0d","arch":"arm64e","pid":1483,"osBuild":"26B131"}
+windows           PASS  {"windows":1,"nativeWindows":1,"nativeClass":"NSKVONotifying_CALWindow"}
+ax-tree           PASS  {"root":"AXWindow","truncated":false,"nodes":22}
+screenshot        PASS  {"width":1870,"height":1196,"uniform":false,"method":"skylight-hardware-capture"}
+view-tree         PASS  {"returned":20,"visited":40,"complete":true,"first":"NSView"}
+view-tree-layers  PASS  {"returned":17,"complete":true,"first":"NSViewBackingLayer"}
+view-node         PASS  {"kind":"view","class":"NSView","keys":["basic","cell","font","handle","kind","layer","layout","relationships"]}
+view-find         PASS  {"matches":5,"complete":true}
+view-fonts        PASS  {"fonts":[".AppleSystemUIFont",".AppleSystemUIFontLight",".SFNS-Medium",".SFNS-Regular","Helvetica"],"complete":false}
+correlate         PASS  {"candidates":7,"nativeComplete":true,"unmatchedAccessibility":16}
+close             PASS  {"state":"closed","acknowledged":true,"helperResident":true,"processExited":false}
+view-find-identifier PASS  {"identifier":"CALMainWindow","matches":0,"complete":true}
+### demo-messages-attach
+app-inspect       PASS  {"bundleId":"com.apple.MobileSMS","architectures":null}
+preflight         PASS  ["existing=blocked","launch=blocked","attach=unknown"]
+open              FAIL  exit 1 {"code":"INSPECTION_TIMEOUT","message":"the open deadline expired before the helper answered; the target may still be starting its bootstrap"}
+windows           PASS  {"windows":5,"nativeWindows":0,"nativeClass":null}
+ax-tree           FAIL  exit 2 {"code":"INVALID_ARGUMENT","message":"--window expects a window id written as decimal digits; got \"\""}
+screenshot        FAIL  exit 2 {"code":"INVALID_ARGUMENT","message":"--window expects a window id written as decimal digits; got \"\""}
+view-tree         FAIL  exit missing
+view-tree-layers  FAIL  exit missing
+view-node         FAIL  exit missing
+view-find         FAIL  exit missing
+view-fonts        FAIL  exit missing
+correlate         FAIL  exit missing
+close             FAIL  exit missing
+### demo-contacts-window
+app-inspect       PASS  {"bundleId":"com.apple.AddressBook","architectures":null}
+preflight         PASS  ["existing=unknown","launch=blocked","attach=unknown"]
+open              PASS  {"mode":"attach","profile":"research","reused":false,"helperBuild":"571291a74b0d","arch":"arm64e","pid":381,"osBuild":"26B131"}
+windows           PASS  {"windows":6,"nativeWindows":2,"nativeClass":"NSKVONotifying_ABCleanWindow"}
+ax-tree           PASS  {"root":"AXWindow","truncated":false,"nodes":185}
+screenshot        PASS  {"width":1360,"height":1240,"uniform":false,"method":"skylight-hardware-capture"}
+view-tree         PASS  {"returned":21,"visited":42,"complete":true,"first":"NSView"}
+view-tree-layers  PASS  {"returned":17,"complete":true,"first":"NSViewBackingLayer"}
+view-node         PASS  {"kind":"view","class":"NSView","keys":["basic","cell","font","handle","kind","layer","layout","relationships"]}
+view-find         PASS  {"matches":46,"complete":true}
+view-fonts        PASS  {"fonts":[".AppleSystemUIFont",".AppleSystemUIFontBold",".AppleSystemUIFontDemi",".AppleSystemUIFontMedium",".SFNS-Medium",".SFNS-Regular"],"complete":true}
+correlate         PASS  {"candidates":9,"nativeComplete":true,"unmatchedAccessibility":185}
+close             PASS  {"state":"closed","acknowledged":true,"helperResident":true,"processExited":false}
+view-find-identifier PASS  {"identifier":"MainSplitView","matches":1,"complete":true}
+# demo-contacts (first try) found no on-screen window: Contacts had been started by AppleScript; retried as demo-contacts-window after opening it
+
+## tccd while amfi_get_out_of_my_way was active (DemoSeeder, Developer ID 647GR2UNM5, Photos request)
+E  tccd [com.apple.TCC:access] CS_PLATFORM_BINARY set but not AppleSigned; prompt policy is Deny.
+I  tccd [com.apple.TCC:access] -[TCCDPlatformMacOS promptingPolicyForIdentity:accessingService:withAttributionChain:]: promptPolicy = 3; isApplePlatformBinary = 0
+Df tccd [com.apple.TCC:access] Policy disallows prompt for Sub:{me.malstrom.recon.demo-seeder}…; access to kTCCServicePhotos denied
+# after prepare-host --revert and a reboot (kern.bootargs empty), the same app got the Contacts, Calendar, Reminders, Photos, and Automation prompts
+
+## Messages research open (recon-efk): helper resident (vmmap: 5 recon-helper regions), kernel sandbox reports
+E  kernel [com.apple.sandbox.reporting:violation] Sandbox: Messages(1576) deny(1) syscall-unix 106
+E  kernel [com.apple.sandbox.reporting:violation] Sandbox: Messages(1576) deny(1) file-write-unlink /Users/recon/Library/Application Support/recon/inspection/endpoints/1576-3835/sock
+E  kernel [com.apple.sandbox.reporting:violation] 17 duplicate reports for Sandbox: Messages(1576) deny(1) syscall-unix 186

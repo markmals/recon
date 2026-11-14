@@ -1,0 +1,99 @@
+{
+    "coverage": {
+        "complete": true,
+        "narrowed": [],
+        "returned": 0,
+        "truncated": [],
+        "visited": 128
+    },
+    "fonts": [],
+    "observation": {
+        "consistency": "main-thread-best-effort",
+        "endTime": 1794598756.3445292,
+        "fields": ["font"],
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+        "identity": {
+            "architecture": "arm64e",
+            "bundleId": "com.apple.calculator",
+            "bundlePath": "/System/Applications/Calculator.app",
+            "executablePath": "/System/Applications/Calculator.app/Contents/MacOS/Calculator",
+            "osBuild": "26B131",
+            "osVersion": "Version 27.2.1 (Build 26B131)",
+            "pid": 1564,
+            "pidversion": 3878,
+            "uid": 501
+        },
+        "kind": "view",
+        "layerState": "model",
+        "observationId": "50af99cf92afb31bf9d02793e72bdedc6fea41e2e51b40fec9476d2a44f7a651",
+        "protocol": 1,
+        "scope": { "depth": 64, "limit": 200, "root": null, "windowId": 98 },
+        "sessionId": "612c525def09bc0678f82cdd36e8ed12",
+        "source": "native-appkit",
+        "startTime": 1794598756.343793
+    },
+    "ok": true,
+    "windowRoots": [
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXWindow"
+                },
+                "childWindows": [],
+                "class": "..NSKVONotifying_SwiftUI.AppKitWindow",
+                "contentView": "0000000000000002",
+                "frame": {
+                    "height": 408,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 230,
+                    "x": 190,
+                    "y": 96
+                },
+                "identifier": { "status": "value", "value": "main" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screenTopLeft": {
+                        "height": 408,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 230,
+                        "x": 190,
+                        "y": 296
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": ["SwiftUI.AppKitWindow", "NSWindow", "NSResponder", "NSObject"],
+                "title": { "status": "value", "value": "Calculator" },
+                "topmostView": "0000000000000003",
+                "visible": true,
+                "windowNumber": { "status": "value", "value": 98 }
+            },
+            "handle": "0000000000000001",
+            "kind": "window",
+            "relationships": {
+                "contentView": "0000000000000002",
+                "parentWindow": { "status": "absent" }
+            }
+        }
+    ]
+}

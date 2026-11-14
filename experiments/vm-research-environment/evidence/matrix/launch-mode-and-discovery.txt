@@ -1,0 +1,11 @@
+{"count":320,"indexed":"indexed-and-running","sample":["com.apple.calculator","com.coteditor.CotEditor","com.ridiculousfish.HexFiend"]}
+
+launch research /System/Applications/Calculator.app exit=0
+{"establishedMode":"launch","profile":"research","pid":1115,"arch":"arm64e"}
+{"returned":5}
+{"state":"closed"}
+launch research /Applications/Hex Fiend.app exit=0
+{"establishedMode":"launch","profile":"research","pid":1144,"arch":"arm64"}
+{"returned":10}
+{"state":"closed"}
+{"path":"/System/Applications/TextEdit.app","pid":1162}

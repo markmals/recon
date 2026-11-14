@@ -1,0 +1,23 @@
+{
+    "application": { "path": "/Applications/CotEditor.app", "pid": 2641 },
+    "window": {
+        "id": 181,
+        "title": "Untitled",
+        "bounds": { "x": 320.0, "y": 30.0, "width": 640.0, "height": 705.0 },
+        "onScreen": true
+    },
+    "image": {
+        "path": "/tmp/recon-inspect-coteditor-attach-research/screenshot.png",
+        "width": 1280,
+        "height": 1410,
+        "uniform": false
+    },
+    "method": "skylight-hardware-capture",
+    "session": {
+        "id": "f54d799e369fdef6c112252d5c9c5da8",
+        "acquired": "attach",
+        "profile": "research",
+        "protocolVersion": 1,
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed"
+    }
+}

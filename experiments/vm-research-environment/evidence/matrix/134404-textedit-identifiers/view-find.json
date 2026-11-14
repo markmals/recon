@@ -1,0 +1,782 @@
+{
+    "coverage": { "complete": true, "narrowed": [], "returned": 8, "truncated": [], "visited": 64 },
+    "nodes": [
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXUnknown"
+                },
+                "alpha": { "status": "value", "value": 1 },
+                "bounds": {
+                    "height": 407,
+                    "orientation": "bottom-left",
+                    "space": "self",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 673,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 1,
+                "class": "NSView",
+                "flipped": false,
+                "frame": {
+                    "height": 407,
+                    "orientation": "bottom-left",
+                    "space": "superview",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 673,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": false,
+                "identifier": { "status": "value", "value": "_NS:36" },
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screen": {
+                        "height": 407,
+                        "orientation": "bottom-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 673,
+                        "x": 147,
+                        "y": 275
+                    },
+                    "screenTopLeft": {
+                        "height": 407,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 673,
+                        "x": 147,
+                        "y": 118
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    },
+                    "window": {
+                        "height": 407,
+                        "orientation": "bottom-left",
+                        "space": "window",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 673,
+                        "x": 0,
+                        "y": 0
+                    }
+                },
+                "status": "value",
+                "superclasses": ["NSResponder", "NSObject"],
+                "superview": "000000000000004e",
+                "window": "000000000000004c"
+            },
+            "depth": 0,
+            "handle": "000000000000004d",
+            "kind": "view",
+            "relationships": { "superview": "000000000000004e", "window": "000000000000004c" }
+        },
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXUnknown"
+                },
+                "alpha": { "status": "value", "value": 1 },
+                "bounds": {
+                    "height": 0,
+                    "orientation": "bottom-left",
+                    "space": "self",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 1,
+                "class": "NSView",
+                "flipped": false,
+                "frame": {
+                    "height": 0,
+                    "orientation": "bottom-left",
+                    "space": "superview",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": false,
+                "identifier": { "status": "absent" },
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screen": {
+                        "height": 0,
+                        "orientation": "bottom-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 0,
+                        "x": 147,
+                        "y": 682
+                    },
+                    "screenTopLeft": {
+                        "height": 0,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 0,
+                        "x": 147,
+                        "y": 118
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    },
+                    "window": {
+                        "height": 0,
+                        "orientation": "bottom-left",
+                        "space": "window",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 0,
+                        "x": 0,
+                        "y": 407
+                    }
+                },
+                "status": "value",
+                "superclasses": ["NSResponder", "NSObject"],
+                "superview": "0000000000000059",
+                "window": "000000000000004c"
+            },
+            "depth": 4,
+            "handle": "0000000000000060",
+            "kind": "view",
+            "relationships": { "superview": "0000000000000059", "window": "000000000000004c" }
+        },
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXUnknown"
+                },
+                "alpha": { "status": "value", "value": 1 },
+                "bounds": {
+                    "height": 0,
+                    "orientation": "bottom-left",
+                    "space": "self",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 2,
+                "class": "NSView",
+                "flipped": false,
+                "frame": {
+                    "height": 0,
+                    "orientation": "bottom-left",
+                    "space": "superview",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": false,
+                "identifier": { "status": "absent" },
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screen": {
+                        "height": 0,
+                        "orientation": "bottom-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 0,
+                        "x": 147,
+                        "y": 682
+                    },
+                    "screenTopLeft": {
+                        "height": 0,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 0,
+                        "x": 147,
+                        "y": 118
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    },
+                    "window": {
+                        "height": 0,
+                        "orientation": "bottom-left",
+                        "space": "window",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 0,
+                        "x": 0,
+                        "y": 407
+                    }
+                },
+                "status": "value",
+                "superclasses": ["NSResponder", "NSObject"],
+                "superview": "000000000000005c",
+                "window": "000000000000004c"
+            },
+            "depth": 4,
+            "handle": "0000000000000063",
+            "kind": "view",
+            "relationships": { "superview": "000000000000005c", "window": "000000000000004c" }
+        },
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXUnknown"
+                },
+                "alpha": { "status": "value", "value": 1 },
+                "bounds": {
+                    "height": 0,
+                    "orientation": "bottom-left",
+                    "space": "self",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 0,
+                "class": "NSView",
+                "flipped": false,
+                "frame": {
+                    "height": 0,
+                    "orientation": "bottom-left",
+                    "space": "superview",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": true,
+                "identifier": { "status": "value", "value": "shapeView" },
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screen": {
+                        "height": 0,
+                        "orientation": "bottom-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 0,
+                        "x": 147,
+                        "y": 682
+                    },
+                    "screenTopLeft": {
+                        "height": 0,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 0,
+                        "x": 147,
+                        "y": 118
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    },
+                    "window": {
+                        "height": 0,
+                        "orientation": "bottom-left",
+                        "space": "window",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 0,
+                        "x": 0,
+                        "y": 407
+                    }
+                },
+                "status": "value",
+                "superclasses": ["NSResponder", "NSObject"],
+                "superview": "0000000000000060",
+                "window": "000000000000004c"
+            },
+            "depth": 5,
+            "handle": "000000000000007c",
+            "kind": "view",
+            "relationships": { "superview": "0000000000000060", "window": "000000000000004c" }
+        },
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXUnknown"
+                },
+                "alpha": { "status": "value", "value": 1 },
+                "bounds": {
+                    "height": 0,
+                    "orientation": "bottom-left",
+                    "space": "self",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 2,
+                "class": "NSView",
+                "flipped": false,
+                "frame": {
+                    "height": 0,
+                    "orientation": "bottom-left",
+                    "space": "superview",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": false,
+                "identifier": { "status": "absent" },
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screen": {
+                        "height": 0,
+                        "orientation": "bottom-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 0,
+                        "x": 147,
+                        "y": 682
+                    },
+                    "screenTopLeft": {
+                        "height": 0,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 0,
+                        "x": 147,
+                        "y": 118
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    },
+                    "window": {
+                        "height": 0,
+                        "orientation": "bottom-left",
+                        "space": "window",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 0,
+                        "x": 0,
+                        "y": 407
+                    }
+                },
+                "status": "value",
+                "superclasses": ["NSResponder", "NSObject"],
+                "superview": "0000000000000063",
+                "window": "000000000000004c"
+            },
+            "depth": 5,
+            "handle": "000000000000007d",
+            "kind": "view",
+            "relationships": { "superview": "0000000000000063", "window": "000000000000004c" }
+        },
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXUnknown"
+                },
+                "alpha": { "status": "value", "value": 1 },
+                "bounds": {
+                    "height": 0,
+                    "orientation": "bottom-left",
+                    "space": "self",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 2,
+                "class": "NSView",
+                "flipped": false,
+                "frame": {
+                    "height": 0,
+                    "orientation": "bottom-left",
+                    "space": "superview",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": false,
+                "identifier": { "status": "absent" },
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screen": {
+                        "height": 0,
+                        "orientation": "bottom-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 0,
+                        "x": 147,
+                        "y": 682
+                    },
+                    "screenTopLeft": {
+                        "height": 0,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 0,
+                        "x": 147,
+                        "y": 118
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    },
+                    "window": {
+                        "height": 0,
+                        "orientation": "bottom-left",
+                        "space": "window",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 0,
+                        "x": 0,
+                        "y": 407
+                    }
+                },
+                "status": "value",
+                "superclasses": ["NSResponder", "NSObject"],
+                "superview": "0000000000000063",
+                "window": "000000000000004c"
+            },
+            "depth": 5,
+            "handle": "000000000000007e",
+            "kind": "view",
+            "relationships": { "superview": "0000000000000063", "window": "000000000000004c" }
+        },
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXUnknown"
+                },
+                "alpha": { "status": "value", "value": 0 },
+                "bounds": {
+                    "height": 0,
+                    "orientation": "bottom-left",
+                    "space": "self",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 0,
+                "class": "NSView",
+                "flipped": false,
+                "frame": {
+                    "height": 0,
+                    "orientation": "bottom-left",
+                    "space": "superview",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": false,
+                "identifier": { "status": "value", "value": "darkeningView" },
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screen": {
+                        "height": 0,
+                        "orientation": "bottom-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 0,
+                        "x": 147,
+                        "y": 682
+                    },
+                    "screenTopLeft": {
+                        "height": 0,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 0,
+                        "x": 147,
+                        "y": 118
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    },
+                    "window": {
+                        "height": 0,
+                        "orientation": "bottom-left",
+                        "space": "window",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 0,
+                        "x": 0,
+                        "y": 407
+                    }
+                },
+                "status": "value",
+                "superclasses": ["NSResponder", "NSObject"],
+                "superview": "000000000000007e",
+                "window": "000000000000004c"
+            },
+            "depth": 6,
+            "handle": "000000000000007f",
+            "kind": "view",
+            "relationships": { "superview": "000000000000007e", "window": "000000000000004c" }
+        },
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXUnknown"
+                },
+                "alpha": { "status": "value", "value": 0 },
+                "bounds": {
+                    "height": 0,
+                    "orientation": "bottom-left",
+                    "space": "self",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 0,
+                "class": "NSView",
+                "flipped": false,
+                "frame": {
+                    "height": 0,
+                    "orientation": "bottom-left",
+                    "space": "superview",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 0,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": false,
+                "identifier": { "status": "value", "value": "lighteningView" },
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screen": {
+                        "height": 0,
+                        "orientation": "bottom-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 0,
+                        "x": 147,
+                        "y": 682
+                    },
+                    "screenTopLeft": {
+                        "height": 0,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 0,
+                        "x": 147,
+                        "y": 118
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    },
+                    "window": {
+                        "height": 0,
+                        "orientation": "bottom-left",
+                        "space": "window",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 0,
+                        "x": 0,
+                        "y": 407
+                    }
+                },
+                "status": "value",
+                "superclasses": ["NSResponder", "NSObject"],
+                "superview": "000000000000007e",
+                "window": "000000000000004c"
+            },
+            "depth": 6,
+            "handle": "0000000000000080",
+            "kind": "view",
+            "relationships": { "superview": "000000000000007e", "window": "000000000000004c" }
+        }
+    ],
+    "observation": {
+        "consistency": "main-thread-best-effort",
+        "endTime": 1794599045.240094,
+        "fields": ["basic"],
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+        "identity": {
+            "architecture": "arm64e",
+            "bundleId": "com.apple.TextEdit",
+            "bundlePath": "/System/Applications/TextEdit.app",
+            "executablePath": "/System/Applications/TextEdit.app/Contents/MacOS/TextEdit",
+            "osBuild": "26B131",
+            "osVersion": "Version 27.2.1 (Build 26B131)",
+            "pid": 1739,
+            "pidversion": 4274,
+            "uid": 501
+        },
+        "kind": "view",
+        "layerState": "model",
+        "observationId": "3b149dc8738c9ff2f2577af0f972a7d73e39b010b1408ce298eecae1deb457b8",
+        "protocol": 1,
+        "scope": { "depth": 64, "limit": 50, "root": null, "windowId": 120 },
+        "sessionId": "a226f9798b33d4cde9993b5c3babbf77",
+        "source": "native-appkit",
+        "startTime": 1794599045.2391582
+    },
+    "ok": true,
+    "windowRoots": [
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXWindow"
+                },
+                "childWindows": [],
+                "class": "NSKVONotifying_NSWindow",
+                "contentView": "000000000000004d",
+                "frame": {
+                    "height": 439,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 673,
+                    "x": 147,
+                    "y": 275
+                },
+                "identifier": { "status": "value", "value": "_NS:31" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screenTopLeft": {
+                        "height": 439,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 673,
+                        "x": 147,
+                        "y": 86
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": ["NSWindow", "NSResponder", "NSObject"],
+                "title": { "status": "value", "value": "recon-probe.txt" },
+                "topmostView": "000000000000004e",
+                "visible": true,
+                "windowNumber": { "status": "value", "value": 120 }
+            },
+            "handle": "000000000000004c",
+            "kind": "window",
+            "relationships": {
+                "contentView": "000000000000004d",
+                "parentWindow": { "status": "absent" }
+            }
+        }
+    ]
+}

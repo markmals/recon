@@ -12,6 +12,7 @@ ci
 decision
 deps
 docs
+experiments
 guides
 hooks
 policy

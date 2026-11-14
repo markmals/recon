@@ -1,0 +1,165 @@
+{
+    "coverage": {
+        "complete": true,
+        "narrowed": [],
+        "returned": 7,
+        "truncated": [],
+        "visited": 208
+    },
+    "fonts": [
+        {
+            "descriptor": {
+                "descriptor": ".SFNS-Regular",
+                "family": ".AppleSystemUIFont",
+                "pointSize": 11,
+                "postScriptName": ".SFNS-Regular",
+                "status": "value",
+                "symbolicTraits": 0,
+                "weight": 0
+            },
+            "sources": [
+                { "handle": "0000000000000046", "kind": "view", "source": "view" },
+                {
+                    "handle": "0000000000000048",
+                    "kind": "view",
+                    "range": { "length": 15, "location": 0 },
+                    "source": "attributed-run"
+                },
+                {
+                    "handle": "0000000000000049",
+                    "kind": "view",
+                    "range": { "length": 2, "location": 0 },
+                    "source": "attributed-run"
+                }
+            ]
+        },
+        {
+            "descriptor": {
+                "descriptor": ".SFNS-Regular",
+                "family": ".AppleSystemUIFont",
+                "pointSize": 11,
+                "postScriptName": ".AppleSystemUIFont",
+                "status": "value",
+                "symbolicTraits": 0,
+                "weight": 0
+            },
+            "sources": [{ "handle": "0000000000000047", "kind": "view", "source": "view" }]
+        },
+        {
+            "descriptor": {
+                "descriptor": ".SFNS-Regular",
+                "family": ".AppleSystemUIFont",
+                "pointSize": 13,
+                "postScriptName": ".AppleSystemUIFont",
+                "status": "value",
+                "symbolicTraits": 0,
+                "weight": 0
+            },
+            "sources": [
+                { "handle": "0000000000000048", "kind": "view", "source": "view" },
+                { "handle": "0000000000000049", "kind": "view", "source": "view" }
+            ]
+        },
+        {
+            "descriptor": {
+                "descriptor": "Helvetica",
+                "family": "Helvetica",
+                "pointSize": 13,
+                "postScriptName": "Helvetica",
+                "status": "value",
+                "symbolicTraits": 2147483648,
+                "weight": 0
+            },
+            "sources": [{ "handle": "000000000000004a", "kind": "view", "source": "view" }]
+        }
+    ],
+    "observation": {
+        "consistency": "main-thread-best-effort",
+        "endTime": 1794599032.318124,
+        "fields": ["font"],
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+        "identity": {
+            "architecture": "arm64",
+            "bundleId": "com.coteditor.CotEditor",
+            "bundlePath": "/Applications/CotEditor.app",
+            "executablePath": "/Applications/CotEditor.app/Contents/MacOS/CotEditor",
+            "osBuild": "26B131",
+            "osVersion": "Version 27.2.1 (Build 26B131)",
+            "pid": 2641,
+            "pidversion": 6174,
+            "uid": 501
+        },
+        "kind": "view",
+        "layerState": "model",
+        "observationId": "74c0a7f4bc58d53e2a4f492fccaab2ec201919936abc834924aa739e647e27d0",
+        "protocol": 1,
+        "scope": { "depth": 64, "limit": 200, "root": null, "windowId": 181 },
+        "sessionId": "f54d799e369fdef6c112252d5c9c5da8",
+        "source": "native-appkit",
+        "startTime": 1794599032.317102
+    },
+    "ok": true,
+    "windowRoots": [
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXWindow"
+                },
+                "childWindows": [],
+                "class": "..NSKVONotifying_CotEditor.DocumentWindow",
+                "contentView": "0000000000000002",
+                "frame": {
+                    "height": 705,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 640,
+                    "x": 320,
+                    "y": 65
+                },
+                "identifier": { "status": "absent" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screenTopLeft": {
+                        "height": 705,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 640,
+                        "x": 320,
+                        "y": 30
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": ["CotEditor.DocumentWindow", "NSWindow", "NSResponder", "NSObject"],
+                "title": { "status": "value", "value": "Untitled" },
+                "topmostView": "0000000000000003",
+                "visible": true,
+                "windowNumber": { "status": "value", "value": 181 }
+            },
+            "handle": "0000000000000001",
+            "kind": "window",
+            "relationships": {
+                "contentView": "0000000000000002",
+                "parentWindow": { "status": "absent" }
+            }
+        }
+    ]
+}

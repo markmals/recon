@@ -1,0 +1,63 @@
+{
+    "provisioningEnabled": false,
+    "systemType": "mac",
+    "provisioningUUID": "087BBF7F-7CE4-49CB-A311-545C8DF3BA0F",
+    "clipboardSharingEnabled": false,
+    "hardware": {
+        "NVRAM": [],
+        "keyboardDevice": {
+            "kind": 0
+        },
+        "displayDevices": [
+            {
+                "pixelsPerInch": 218,
+                "id": "2892B9EA-B28B-4DAC-8668-CF4A5D35CCAA",
+                "automaticallyReconfiguresDisplay": false,
+                "name": "2560x1600@218",
+                "width": 2560,
+                "height": 1600
+            }
+        ],
+        "pointingDevice": {
+            "kind": 0
+        },
+        "cpuCount": 5,
+        "networkDevices": [
+            {
+                "id": "Default",
+                "kind": 0,
+                "name": "Default",
+                "macAddress": "16:DB:27:89:1B:06"
+            }
+        ],
+        "soundDevices": [],
+        "usbDevices": [],
+        "_storageDevices": [
+            {
+                "isUSBMassStorageDevice": false,
+                "id": "A6656465-A09B-45CB-8502-7C2E0CF92BB6",
+                "isBootVolume": true,
+                "isSavedStateClone": false,
+                "isReadOnly": false,
+                "backing": {
+                    "managedImage": {
+                        "_0": {
+                            "size": 135291469824,
+                            "id": "__BOOT__",
+                            "filename": "Disk",
+                            "resizePending": false,
+                            "format": 0
+                        }
+                    }
+                },
+                "isEnabled": true
+            }
+        ],
+        "memorySize": 17179869184
+    },
+    "sharedFolders": [],
+    "guestAdditionsEnabled": false,
+    "version": 0,
+    "captureSystemKeys": true,
+    "rosettaSharingEnabled": false
+}

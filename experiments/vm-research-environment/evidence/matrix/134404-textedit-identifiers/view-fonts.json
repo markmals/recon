@@ -1,0 +1,106 @@
+{
+    "coverage": { "complete": true, "narrowed": [], "returned": 1, "truncated": [], "visited": 64 },
+    "fonts": [
+        {
+            "descriptor": {
+                "descriptor": "Menlo-Regular",
+                "family": "Menlo",
+                "pointSize": 11,
+                "postScriptName": "Menlo-Regular",
+                "status": "value",
+                "symbolicTraits": 2147484672,
+                "weight": 0
+            },
+            "sources": [{ "handle": "0000000000000058", "kind": "view", "source": "view" }]
+        }
+    ],
+    "observation": {
+        "consistency": "main-thread-best-effort",
+        "endTime": 1794599045.342911,
+        "fields": ["font"],
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+        "identity": {
+            "architecture": "arm64e",
+            "bundleId": "com.apple.TextEdit",
+            "bundlePath": "/System/Applications/TextEdit.app",
+            "executablePath": "/System/Applications/TextEdit.app/Contents/MacOS/TextEdit",
+            "osBuild": "26B131",
+            "osVersion": "Version 27.2.1 (Build 26B131)",
+            "pid": 1739,
+            "pidversion": 4274,
+            "uid": 501
+        },
+        "kind": "view",
+        "layerState": "model",
+        "observationId": "f6bcd603e9acb4662e8bbbed452792a68426e74c4b429dc8fed3f631f9aef3b3",
+        "protocol": 1,
+        "scope": { "depth": 64, "limit": 200, "root": null, "windowId": 120 },
+        "sessionId": "a226f9798b33d4cde9993b5c3babbf77",
+        "source": "native-appkit",
+        "startTime": 1794599045.3420548
+    },
+    "ok": true,
+    "windowRoots": [
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXWindow"
+                },
+                "childWindows": [],
+                "class": "NSKVONotifying_NSWindow",
+                "contentView": "000000000000004d",
+                "frame": {
+                    "height": 439,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 673,
+                    "x": 147,
+                    "y": 275
+                },
+                "identifier": { "status": "value", "value": "_NS:31" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screenTopLeft": {
+                        "height": 439,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 673,
+                        "x": 147,
+                        "y": 86
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": ["NSWindow", "NSResponder", "NSObject"],
+                "title": { "status": "value", "value": "recon-probe.txt" },
+                "topmostView": "000000000000004e",
+                "visible": true,
+                "windowNumber": { "status": "value", "value": 120 }
+            },
+            "handle": "000000000000004c",
+            "kind": "window",
+            "relationships": {
+                "contentView": "000000000000004d",
+                "parentWindow": { "status": "absent" }
+            }
+        }
+    ]
+}

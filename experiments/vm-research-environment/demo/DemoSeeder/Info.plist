@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>me.malstrom.recon.demo-seeder</string>
+	<key>CFBundleName</key>
+	<string>DemoSeeder</string>
+	<key>CFBundleDisplayName</key>
+	<string>Demo Seeder</string>
+	<key>CFBundleExecutable</key>
+	<string>DemoSeeder</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>27.0</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Demo Seeder adds the demo persona's contacts.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Demo Seeder adds the demo persona's calendars and events.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Demo Seeder adds the demo persona's reminder lists.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Demo Seeder imports the demo photos and creates albums.</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Demo Seeder creates the demo notes and sets the demo My Card.</string>
+</dict>
+</plist>

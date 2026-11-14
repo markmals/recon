@@ -1,0 +1,146 @@
+{
+    "application": { "path": "/Applications/Hex Fiend.app", "pid": 2639 },
+    "coverage": { "complete": true, "narrowed": [], "returned": 1, "truncated": [], "visited": 62 },
+    "nativeWindows": [
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXWindow"
+                },
+                "childWindows": [],
+                "class": "DocumentWindow",
+                "contentView": "0000000000000002",
+                "frame": {
+                    "height": 448,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 383,
+                    "x": 113,
+                    "y": 173
+                },
+                "identifier": { "status": "value", "value": "_NS:12" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screenTopLeft": {
+                        "height": 448,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 383,
+                        "x": 113,
+                        "y": 179
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": ["NSWindow", "NSResponder", "NSObject"],
+                "title": { "status": "value", "value": "Untitled" },
+                "topmostView": "0000000000000003",
+                "visible": true,
+                "windowNumber": { "status": "value", "value": 180 }
+            },
+            "handle": "0000000000000001",
+            "kind": "window",
+            "mapping": {
+                "evidence": "WindowServer-owner-pid-and-NSApp-windows-membership",
+                "method": "NSApplication.windowWithWindowNumber"
+            },
+            "relationships": {
+                "contentView": "0000000000000002",
+                "parentWindow": { "status": "absent" }
+            },
+            "windowId": 180
+        }
+    ],
+    "observation": {
+        "consistency": "main-thread-best-effort",
+        "endTime": 1794599029.862887,
+        "fields": ["basic"],
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+        "identity": {
+            "architecture": "arm64",
+            "bundleId": "com.ridiculousfish.HexFiend",
+            "bundlePath": "/Applications/Hex Fiend.app",
+            "executablePath": "/Applications/Hex Fiend.app/Contents/MacOS/Hex Fiend",
+            "osBuild": "26B131",
+            "osVersion": "Version 27.2.1 (Build 26B131)",
+            "pid": 2639,
+            "pidversion": 6169,
+            "uid": 501
+        },
+        "kind": "window",
+        "layerState": "model",
+        "observationId": "c0f6d1757739a33ada55c06f7070ee3c25817daf3c187748e78ab4fcb3059c6e",
+        "protocol": 1,
+        "scope": { "depth": 3, "limit": 200, "root": null, "windowId": null },
+        "sessionId": "8f19223e838e047a09707c62054b248b",
+        "source": "native-appkit",
+        "startTime": 1794599029.859212
+    },
+    "session": {
+        "acquired": "attach",
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+        "id": "8f19223e838e047a09707c62054b248b",
+        "profile": "research",
+        "protocolVersion": 1
+    },
+    "windows": [
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 448.0, "width": 383.0, "x": 113.0, "y": 179.0 },
+            "id": 180,
+            "layer": 0,
+            "onScreen": true,
+            "title": "Untitled"
+        },
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 30.0, "width": 1280.0, "x": 0.0, "y": 0.0 },
+            "id": 183,
+            "layer": 0,
+            "onScreen": false,
+            "title": null
+        },
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 30.0, "width": 1280.0, "x": 0.0, "y": 0.0 },
+            "id": 185,
+            "layer": 0,
+            "onScreen": false,
+            "title": null
+        },
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 30.0, "width": 1280.0, "x": 0.0, "y": 0.0 },
+            "id": 184,
+            "layer": 0,
+            "onScreen": false,
+            "title": null
+        },
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 30.0, "width": 1280.0, "x": 0.0, "y": 0.0 },
+            "id": 182,
+            "layer": 0,
+            "onScreen": false,
+            "title": null
+        }
+    ]
+}

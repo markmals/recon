@@ -1,0 +1,11 @@
+{
+    "application": {
+        "name": "ReconFixture",
+        "bundleId": "me.malstrom.recon.fixture",
+        "path": "/Users/recon/recon/target/fixtures/ReconFixture.app",
+        "version": "1.0",
+        "build": "1",
+        "executablePath": "/Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture",
+        "runningPids": [2214]
+    }
+}

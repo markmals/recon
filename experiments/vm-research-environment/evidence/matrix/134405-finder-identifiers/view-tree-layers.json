@@ -1,0 +1,248 @@
+{
+    "coverage": {
+        "complete": true,
+        "narrowed": ["depth"],
+        "returned": 4,
+        "truncated": [],
+        "visited": 8
+    },
+    "nodes": [
+        {
+            "basic": {
+                "bounds": {
+                    "height": 436,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 920,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 1,
+                "class": "NSViewBackingLayer",
+                "frame": {
+                    "height": 436,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 920,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": false,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["CALayer", "NSObject"],
+                "superlayer": "0000000000000013"
+            },
+            "depth": 0,
+            "handle": "0000000000000012",
+            "kind": "layer",
+            "relationships": { "superlayer": "0000000000000013" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 436,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 920,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 1,
+                "class": "NSViewBackingLayer",
+                "frame": {
+                    "height": 436,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 920,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": false,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["CALayer", "NSObject"],
+                "superlayer": "0000000000000012"
+            },
+            "depth": 1,
+            "handle": "0000000000000014",
+            "kind": "layer",
+            "relationships": { "superlayer": "0000000000000012" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 436,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 920,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 1,
+                "class": "NSViewBackingLayer",
+                "frame": {
+                    "height": 436,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 920,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": false,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["CALayer", "NSObject"],
+                "superlayer": "0000000000000014"
+            },
+            "depth": 2,
+            "handle": "0000000000000015",
+            "kind": "layer",
+            "relationships": { "superlayer": "0000000000000014" }
+        },
+        {
+            "basic": {
+                "bounds": {
+                    "height": 436,
+                    "orientation": "layer-geometry",
+                    "space": "self-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 920,
+                    "x": 0,
+                    "y": 0
+                },
+                "childCount": 8,
+                "class": "NSViewBackingLayer",
+                "frame": {
+                    "height": 436,
+                    "orientation": "layer-geometry",
+                    "space": "parent-model-layer",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 920,
+                    "x": 0,
+                    "y": 0
+                },
+                "hidden": false,
+                "layerState": "model",
+                "opacity": { "status": "value", "value": 1 },
+                "status": "value",
+                "superclasses": ["CALayer", "NSObject"],
+                "superlayer": "0000000000000015"
+            },
+            "depth": 3,
+            "handle": "0000000000000016",
+            "kind": "layer",
+            "relationships": { "superlayer": "0000000000000015" }
+        }
+    ],
+    "observation": {
+        "consistency": "main-thread-best-effort",
+        "endTime": 1794599046.431213,
+        "fields": ["basic"],
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+        "identity": {
+            "architecture": "arm64e",
+            "bundleId": "com.apple.finder",
+            "bundlePath": "/System/Library/CoreServices/Finder.app",
+            "executablePath": "/System/Library/CoreServices/Finder.app/Contents/MacOS/Finder",
+            "osBuild": "26B131",
+            "osVersion": "Version 27.2.1 (Build 26B131)",
+            "pid": 2012,
+            "pidversion": 4855,
+            "uid": 501
+        },
+        "kind": "layer",
+        "layerState": "model",
+        "observationId": "11093b7af6349d96bddbbb078b29f50f055cf26e9514e0cfb45b9e799c0540b7",
+        "protocol": 1,
+        "scope": { "depth": 3, "limit": 200, "root": null, "windowId": 127 },
+        "sessionId": "5da189313ee6ea274ea305e6ce450bec",
+        "source": "native-appkit",
+        "startTime": 1794599046.430398
+    },
+    "ok": true,
+    "windowRoots": [
+        {
+            "basic": {
+                "accessibilityIdentifier": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "FinderWindow"
+                },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXWindow"
+                },
+                "childWindows": [],
+                "class": "NSKVONotifying_TBrowserWindow",
+                "contentView": "0000000000000005",
+                "frame": {
+                    "height": 436,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 920,
+                    "x": 180,
+                    "y": 268
+                },
+                "identifier": { "status": "value", "value": "_NS:8" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screenTopLeft": {
+                        "height": 436,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 920,
+                        "x": 180,
+                        "y": 96
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": ["TBrowserWindow", "NSWindow", "NSResponder", "NSObject"],
+                "title": { "status": "value", "value": "recon" },
+                "topmostView": "0000000000000006",
+                "visible": true,
+                "windowNumber": { "status": "value", "value": 127 }
+            },
+            "handle": "0000000000000004",
+            "kind": "window",
+            "relationships": {
+                "contentView": "0000000000000005",
+                "parentWindow": { "status": "absent" }
+            }
+        }
+    ]
+}

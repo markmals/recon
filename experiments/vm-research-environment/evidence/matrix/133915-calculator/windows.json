@@ -1,0 +1,114 @@
+{
+    "application": { "path": "/System/Applications/Calculator.app", "pid": 1564 },
+    "coverage": { "complete": true, "narrowed": [], "returned": 1, "truncated": [], "visited": 30 },
+    "nativeWindows": [
+        {
+            "basic": {
+                "accessibilityIdentifier": { "read": "target-executed", "status": "absent" },
+                "accessibilityRole": {
+                    "read": "target-executed",
+                    "status": "value",
+                    "value": "AXWindow"
+                },
+                "childWindows": [],
+                "class": "..NSKVONotifying_SwiftUI.AppKitWindow",
+                "contentView": "0000000000000002",
+                "frame": {
+                    "height": 408,
+                    "orientation": "bottom-left",
+                    "space": "global-screen",
+                    "status": "value",
+                    "units": "logical-points",
+                    "width": 230,
+                    "x": 190,
+                    "y": 96
+                },
+                "identifier": { "status": "value", "value": "main" },
+                "key": false,
+                "main": false,
+                "normalizedFrame": {
+                    "backingScaleFactor": { "status": "value", "value": 2 },
+                    "displayId": 1,
+                    "screenTopLeft": {
+                        "height": 408,
+                        "orientation": "top-left",
+                        "space": "global-screen",
+                        "status": "value",
+                        "units": "logical-points",
+                        "width": 230,
+                        "x": 190,
+                        "y": 296
+                    },
+                    "transform": {
+                        "displayId": 1,
+                        "method": "primary-screen-height-flip",
+                        "orientation": "top-left",
+                        "primaryScreenHeight": 800,
+                        "scale": 2,
+                        "status": "value"
+                    }
+                },
+                "sheet": { "status": "absent" },
+                "status": "value",
+                "superclasses": ["SwiftUI.AppKitWindow", "NSWindow", "NSResponder", "NSObject"],
+                "title": { "status": "value", "value": "Calculator" },
+                "topmostView": "0000000000000003",
+                "visible": true,
+                "windowNumber": { "status": "value", "value": 98 }
+            },
+            "handle": "0000000000000001",
+            "kind": "window",
+            "mapping": {
+                "evidence": "WindowServer-owner-pid-and-NSApp-windows-membership",
+                "method": "NSApplication.windowWithWindowNumber"
+            },
+            "relationships": {
+                "contentView": "0000000000000002",
+                "parentWindow": { "status": "absent" }
+            },
+            "windowId": 98
+        }
+    ],
+    "observation": {
+        "consistency": "main-thread-best-effort",
+        "endTime": 1794598755.831202,
+        "fields": ["basic"],
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+        "identity": {
+            "architecture": "arm64e",
+            "bundleId": "com.apple.calculator",
+            "bundlePath": "/System/Applications/Calculator.app",
+            "executablePath": "/System/Applications/Calculator.app/Contents/MacOS/Calculator",
+            "osBuild": "26B131",
+            "osVersion": "Version 27.2.1 (Build 26B131)",
+            "pid": 1564,
+            "pidversion": 3878,
+            "uid": 501
+        },
+        "kind": "window",
+        "layerState": "model",
+        "observationId": "06a260e0030a6cba97a6d391a1b2a50712f22b65a8afecd7e4e21b4d5bdfeaae",
+        "protocol": 1,
+        "scope": { "depth": 3, "limit": 200, "root": null, "windowId": null },
+        "sessionId": "612c525def09bc0678f82cdd36e8ed12",
+        "source": "native-appkit",
+        "startTime": 1794598755.828329
+    },
+    "session": {
+        "acquired": "attach",
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+        "id": "612c525def09bc0678f82cdd36e8ed12",
+        "profile": "research",
+        "protocolVersion": 1
+    },
+    "windows": [
+        {
+            "alpha": 1.0,
+            "bounds": { "height": 408.0, "width": 230.0, "x": 190.0, "y": 296.0 },
+            "id": 98,
+            "layer": 0,
+            "onScreen": true,
+            "title": "Calculator"
+        }
+    ]
+}

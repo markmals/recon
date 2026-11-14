@@ -1,0 +1,31 @@
+{
+    "bootstrapActive": true,
+    "capabilities": ["windows", "tree", "node", "find", "fonts"],
+    "effects": ["helper-bootstrap-resident"],
+    "establishedMode": "attach",
+    "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed",
+    "helperResident": true,
+    "identity": {
+        "architecture": "arm64e",
+        "bundleId": "com.apple.calculator",
+        "bundlePath": "/System/Applications/Calculator.app",
+        "executablePath": "/System/Applications/Calculator.app/Contents/MacOS/Calculator",
+        "osBuild": "26B131",
+        "osVersion": "Version 27.2.1 (Build 26B131)",
+        "pid": 1564,
+        "pidversion": 3878,
+        "uid": 501
+    },
+    "incarnation": { "pid": 1564, "pidversion": 3878 },
+    "mode": "attach",
+    "ok": true,
+    "pid": 1564,
+    "pidversion": 3878,
+    "profile": "research",
+    "protocol": 1,
+    "requestedMode": "attach",
+    "requestedProfile": "research",
+    "reused": false,
+    "sessionId": "612c525def09bc0678f82cdd36e8ed12",
+    "uid": 501
+}

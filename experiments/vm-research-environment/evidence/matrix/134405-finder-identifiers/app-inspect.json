@@ -1,0 +1,11 @@
+{
+    "application": {
+        "name": "Finder",
+        "bundleId": "com.apple.finder",
+        "path": "/System/Library/CoreServices/Finder.app",
+        "version": "27.2",
+        "build": "1865.1.20",
+        "executablePath": "/System/Library/CoreServices/Finder.app/Contents/MacOS/Finder",
+        "runningPids": [2012]
+    }
+}

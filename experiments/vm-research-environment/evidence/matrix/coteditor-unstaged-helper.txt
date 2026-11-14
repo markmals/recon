@@ -1,0 +1,3 @@
+exit=1
+{"code":"INSPECTION_UNAVAILABLE","message":"the target's sandbox cannot read the helper at /Users/recon/recon/target/recon-helper.dylib, so nothing was loaded; run `recon ui session prepare-host` to install the helper in /Library/Application Support/Recon, where App Sandbox can read it","stage":"attach"}
+{"readiness":"eligible","stagedHelper":true}

@@ -1,0 +1,23 @@
+{
+    "application": { "path": "/Applications/Hex Fiend.app", "pid": 2639 },
+    "window": {
+        "id": 180,
+        "title": "Untitled",
+        "bounds": { "x": 113.0, "y": 179.0, "width": 383.0, "height": 448.0 },
+        "onScreen": true
+    },
+    "image": {
+        "path": "/tmp/recon-inspect-hexfiend-attach-research/screenshot.png",
+        "width": 766,
+        "height": 896,
+        "uniform": false
+    },
+    "method": "skylight-hardware-capture",
+    "session": {
+        "id": "8f19223e838e047a09707c62054b248b",
+        "acquired": "attach",
+        "profile": "research",
+        "protocolVersion": 1,
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed"
+    }
+}

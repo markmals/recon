@@ -1,0 +1,14 @@
+host 192.168.64.1:22 open
+host 192.168.64.1:5000 open
+host 192.168.64.1:7000 open
+host 192.168.64.1:59917 open
+host 192.168.64.1:62923 open
+host 192.168.64.1:9091 closed
+host 192.168.64.1:4777 closed
+host 192.168.64.1:1614 closed
+Connection to 192.168.0.191 port 5000 [tcp/commplex-main] succeeded!
+host LAN 192.168.0.191:5000 open
+Connection to 192.168.0.1 port 80 [tcp/http] succeeded!
+LAN gateway 192.168.0.1:80 open
+    gateway: 192.168.64.1
+  interface: en0

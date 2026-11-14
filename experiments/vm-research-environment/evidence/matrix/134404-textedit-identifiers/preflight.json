@@ -1,0 +1,277 @@
+{
+    "application": { "path": "/System/Applications/TextEdit.app", "pid": 1739 },
+    "helper": {
+        "research": {
+            "attachWithoutDialog": { "detail": null, "source": "bound-c-loader", "value": true },
+            "inspectorThreadSetState": {
+                "detail": null,
+                "source": "codesign --display --entitlements - --xml /Users/recon/recon/target/recon-loader",
+                "value": true
+            },
+            "localAvailable": {
+                "detail": null,
+                "source": "/Library/Application Support/Recon/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "value": true
+            },
+            "localCompatible": {
+                "detail": "the packaged build identity does not prove target-side protocol compatibility",
+                "source": "/Library/Application Support/Recon/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "value": null
+            },
+            "resident": {
+                "detail": "an endpoint exists, but residency and compatibility require authenticated negotiation",
+                "source": "bootstrap-endpoint",
+                "value": null
+            },
+            "residentCompatible": {
+                "detail": "an endpoint exists, but residency and compatibility require authenticated negotiation",
+                "source": "/Library/Application Support/Recon/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "value": null
+            }
+        },
+        "standard": {
+            "attachWithoutDialog": { "detail": null, "source": "bound-c-loader", "value": true },
+            "inspectorThreadSetState": {
+                "detail": null,
+                "source": "codesign --display --entitlements - --xml /Users/recon/recon/target/recon-loader",
+                "value": true
+            },
+            "localAvailable": {
+                "detail": null,
+                "source": "/Users/recon/recon/target/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "value": true
+            },
+            "localCompatible": {
+                "detail": "the packaged build identity does not prove target-side protocol compatibility",
+                "source": "/Users/recon/recon/target/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "value": null
+            },
+            "resident": {
+                "detail": "an endpoint exists, but residency and compatibility require authenticated negotiation",
+                "source": "bootstrap-endpoint",
+                "value": null
+            },
+            "residentCompatible": {
+                "detail": "an endpoint exists, but residency and compatibility require authenticated negotiation",
+                "source": "/Users/recon/recon/target/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "value": null
+            }
+        }
+    },
+    "host": {
+        "activeBootArgs": {
+            "detail": null,
+            "source": "sysctl kern.bootargs (current boot)",
+            "value": ["amfi_get_out_of_my_way=0x1", "-arm64e_preview_abi", "tss_should_crash=0"]
+        },
+        "amfiDisabled": {
+            "detail": null,
+            "source": "sysctl kern.bootargs (current boot, AMFI boot setting)",
+            "value": true
+        },
+        "architecture": { "detail": null, "source": "/usr/bin/uname -m", "value": "arm64" },
+        "configuredBootArgs": {
+            "detail": null,
+            "source": "nvram boot-args (next boot)",
+            "value": ["amfi_get_out_of_my_way=0x1", "-arm64e_preview_abi", "tss_should_crash=0"]
+        },
+        "osVersion": {
+            "detail": null,
+            "source": "/usr/bin/sw_vers -productVersion",
+            "value": "27.2.1"
+        },
+        "sipDisabled": { "detail": null, "source": "/usr/bin/csrutil status", "value": true }
+    },
+    "modes": [
+        {
+            "evidenceSources": [
+                "/usr/bin/sw_vers -productVersion",
+                "/usr/bin/uname -m",
+                "proc_pidinfo PROC_PIDARCHINFO (live process architecture)",
+                "proc_pidpath (live process executable)",
+                "bootstrap-endpoint",
+                "/Users/recon/recon/target/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "codesign selected CDHash + csops PID 1739 CDHash (live process binding)",
+                "csops PID 1739 (live kernel signing status)"
+            ],
+            "mode": "existing",
+            "profile": "standard",
+            "reasons": [
+                "resident helper is unknown (bootstrap-endpoint: an endpoint exists, but residency and compatibility require authenticated negotiation)",
+                "resident helper is unknown (/Users/recon/recon/target/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed): an endpoint exists, but residency and compatibility require authenticated negotiation)",
+                "target requires the research profile and recon ui session prepare-host"
+            ],
+            "status": "blocked"
+        },
+        {
+            "evidenceSources": [
+                "/usr/bin/sw_vers -productVersion",
+                "/usr/bin/uname -m",
+                "proc_pidinfo PROC_PIDARCHINFO (live process architecture)",
+                "/Users/recon/recon/target/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "/Users/recon/recon/target/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "csops PID 1739 (live kernel signing status)",
+                "codesign selected CDHash + csops PID 1739 CDHash (live process binding)",
+                "csops PID 1739 (live kernel signing status)"
+            ],
+            "mode": "launch",
+            "profile": "standard",
+            "reasons": [
+                "launch requires a non-running target; no automatic replacement",
+                "local helper is unknown (/Users/recon/recon/target/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed): the packaged build identity does not prove target-side protocol compatibility)",
+                "target requires the research profile and recon ui session prepare-host"
+            ],
+            "status": "blocked"
+        },
+        {
+            "evidenceSources": [
+                "/usr/bin/sw_vers -productVersion",
+                "/usr/bin/uname -m",
+                "proc_pidinfo PROC_PIDARCHINFO (live process architecture)",
+                "proc_pidpath (live process executable)",
+                "/Users/recon/recon/target/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "/Users/recon/recon/target/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "bound-c-loader",
+                "csops PID 1739 (live kernel signing status)",
+                "codesign selected CDHash + csops PID 1739 CDHash (live process binding)",
+                "csops PID 1739 (live kernel signing status)"
+            ],
+            "mode": "attach",
+            "profile": "standard",
+            "reasons": [
+                "local helper is unknown (/Users/recon/recon/target/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed): the packaged build identity does not prove target-side protocol compatibility)",
+                "target requires the research profile and recon ui session prepare-host"
+            ],
+            "status": "blocked"
+        },
+        {
+            "evidenceSources": [
+                "/usr/bin/sw_vers -productVersion",
+                "/usr/bin/uname -m",
+                "proc_pidinfo PROC_PIDARCHINFO (live process architecture)",
+                "proc_pidpath (live process executable)",
+                "bootstrap-endpoint",
+                "/Library/Application Support/Recon/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "codesign selected CDHash + csops PID 1739 CDHash (live process binding)",
+                "csops PID 1739 (live kernel signing status)",
+                "/usr/bin/csrutil status",
+                "sysctl kern.bootargs (current boot, AMFI boot setting)",
+                "sysctl kern.bootargs (current boot)",
+                "codesign --display --entitlements - --xml /Users/recon/recon/target/recon-loader"
+            ],
+            "mode": "existing",
+            "profile": "research",
+            "reasons": [
+                "resident helper is unknown (bootstrap-endpoint: an endpoint exists, but residency and compatibility require authenticated negotiation)",
+                "resident helper is unknown (/Library/Application Support/Recon/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed): an endpoint exists, but residency and compatibility require authenticated negotiation)"
+            ],
+            "status": "unknown"
+        },
+        {
+            "evidenceSources": [
+                "/usr/bin/sw_vers -productVersion",
+                "/usr/bin/uname -m",
+                "proc_pidinfo PROC_PIDARCHINFO (live process architecture)",
+                "/Library/Application Support/Recon/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "/Library/Application Support/Recon/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "codesign selected CDHash + csops PID 1739 CDHash (live process binding)",
+                "csops PID 1739 (live kernel signing status)",
+                "/usr/bin/csrutil status",
+                "sysctl kern.bootargs (current boot, AMFI boot setting)",
+                "sysctl kern.bootargs (current boot)",
+                "codesign --display --entitlements - --xml /Users/recon/recon/target/recon-loader"
+            ],
+            "mode": "launch",
+            "profile": "research",
+            "reasons": [
+                "launch requires a non-running target; no automatic replacement",
+                "local helper is unknown (/Library/Application Support/Recon/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed): the packaged build identity does not prove target-side protocol compatibility)"
+            ],
+            "status": "blocked"
+        },
+        {
+            "evidenceSources": [
+                "/usr/bin/sw_vers -productVersion",
+                "/usr/bin/uname -m",
+                "proc_pidinfo PROC_PIDARCHINFO (live process architecture)",
+                "proc_pidpath (live process executable)",
+                "/Library/Application Support/Recon/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "/Library/Application Support/Recon/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "bound-c-loader",
+                "codesign selected CDHash + csops PID 1739 CDHash (live process binding)",
+                "csops PID 1739 (live kernel signing status)",
+                "/usr/bin/csrutil status",
+                "sysctl kern.bootargs (current boot, AMFI boot setting)",
+                "sysctl kern.bootargs (current boot)",
+                "codesign --display --entitlements - --xml /Users/recon/recon/target/recon-loader"
+            ],
+            "mode": "attach",
+            "profile": "research",
+            "reasons": [
+                "local helper is unknown (/Library/Application Support/Recon/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed): the packaged build identity does not prove target-side protocol compatibility)"
+            ],
+            "status": "unknown"
+        }
+    ],
+    "target": {
+        "allowDyldEnvironmentVariables": {
+            "detail": null,
+            "source": "codesign selected CDHash + csops PID 1739 CDHash (live process binding)",
+            "value": false
+        },
+        "appleSigned": {
+            "detail": null,
+            "source": "codesign selected CDHash + csops PID 1739 CDHash (live process binding)",
+            "value": true
+        },
+        "architecture": {
+            "detail": null,
+            "source": "proc_pidinfo PROC_PIDARCHINFO (live process architecture)",
+            "value": "arm64e"
+        },
+        "bundleId": "com.apple.TextEdit",
+        "bundlePath": "/System/Applications/TextEdit.app",
+        "executableArchitectures": {
+            "detail": null,
+            "source": "/usr/bin/lipo -archs /System/Applications/TextEdit.app/Contents/MacOS/TextEdit",
+            "value": ["arm64e", "arm64e.x1"]
+        },
+        "executablePath": {
+            "detail": null,
+            "source": "selected bundle Contents/Info.plist",
+            "value": "/System/Applications/TextEdit.app/Contents/MacOS/TextEdit"
+        },
+        "getTaskAllow": {
+            "detail": null,
+            "source": "csops PID 1739 (live kernel signing status)",
+            "value": false
+        },
+        "hardenedRuntime": {
+            "detail": null,
+            "source": "csops PID 1739 (live kernel signing status)",
+            "value": true
+        },
+        "libraryValidation": {
+            "detail": null,
+            "source": "csops PID 1739 (live kernel signing status)",
+            "value": false
+        },
+        "pid": 1739,
+        "platformBinary": {
+            "detail": null,
+            "source": "csops PID 1739 (live kernel signing status)",
+            "value": true
+        },
+        "processExecutable": {
+            "detail": null,
+            "source": "proc_pidpath (live process executable)",
+            "value": "/System/Applications/TextEdit.app/Contents/MacOS/TextEdit"
+        },
+        "runningPids": [1739],
+        "signed": {
+            "detail": null,
+            "source": "csops PID 1739 (live kernel signing status)",
+            "value": true
+        }
+    }
+}

@@ -1,0 +1,54 @@
+# host baseline 2026-11-13T17:25:59Z
+ProductName:		macOS
+ProductVersion:		27.2.1
+BuildVersion:		26B131
+Darwin Marks-MacBook-Pro.local 27.2.0 Darwin Kernel Version 27.2.0: Wed Oct 14 23:47:07 PDT 2026; root:xnu-13432.41.4~25/RELEASE_ARM64_T8132 arm64 Darwin
+hw.model: Mac16,1
+hw.memsize: 34359738368
+hw.ncpu: 10
+machdep.cpu.brand_string: Apple M4
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/disk3s1s1  1.9T  1.6T  315G  84% /
+
+System Integrity Protection status: disabled.
+kern.bootargs: amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0
+boot-args	amfi_get_out_of_my_way=0x1 -arm64e_preview_abi tss_should_crash=0
+Authenticated Root status: enabled
+
+Xcode 27.2
+Build version 27B52
+swift-driver version: 1.168.6 Apple Swift version 6.4.2 (swiftlang-6.4.2.1.9 clang-2100.4.1.1)
+Target: arm64-apple-macosx27.2.0
+2026.11.7 macos-arm64 (2026-11-11)
+
+  1) A0F7663052A1C9488ABAFFB676FD247D01AE3CFD "Developer ID Application: Mark Malstrom (647GR2UNM5)"
+  2) 7A4D7FA891BAF5DB224FCCEA0044444A125518B7 "Apple Development: Mark Malstrom (QR7UCQS8N8)"
+  3) 540D3EC9A888EAE2769D36001AD47E8302BA3B70 "Apple Distribution: Mark Malstrom (647GR2UNM5)"
+     3 valid identities found
+
+2.2.1
+430
+ls: cannot access '/Users/orion/Documents/VirtualBuddy': No such file or directory
+ls: cannot access '/Users/orion/Library/Containers/codes.rambo.VirtualBuddy': No such file or directory
+/Users/orion/Library/Application Support/VirtualBuddy:
+total 720
+drwxr-xr-x   5 orion staff    160 Nov 13 11:24 .
+drwx------ 167 orion staff   5344 Nov 13 11:24 ..
+drwxr-xr-x   4 orion staff    128 Nov 13 11:24 _GuestImage
+-rw-r--r--   1 orion staff     32 Nov 13 11:24 update-state.json
+-rw-r--r--   1 orion staff 730607 Nov 13 11:24 usb.ids
+{
+    "NSWindow Frame library" = "226 98 900 652 0 0 1352 849 ";
+    SUEnableAutomaticChecks = 0;
+    SUHasLaunchedBefore = 1;
+    bootDiskImagesUseASIF = 0;
+    closeBehavior = ask;
+    enableTSSCheck = 1;
+    hasSeenFirstLaunchExperience = 1;
+    isLibraryInRemovableVolume = 0;
+    libraryPath = "/Users/orion/Library/Application Support/VirtualBuddy";
+System-wide power settings:
+ SleepDisabled		1
+Currently in use:
+ standby              1
+ Sleep On Power Button 1

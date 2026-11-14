@@ -1,0 +1,5 @@
+exit=1
+{"code":"UI_INTERFERENCE","msg":"the frontmost application became pid 827 1623 ms into the operation, with nothing tying it to the selected target or to input from the keyboard or mouse; the operation also failed with InspectionTimeo"}
+exit=0
+{"sessionId":"ccec46afc3914131da94660571d94ae2","establishedMode":"attach","reused":false,"pid":877}
+{"state":"closed"}

@@ -1,0 +1,264 @@
+{
+    "application": { "path": "/Users/recon/recon/target/fixtures/ReconFixture.app", "pid": null },
+    "helper": {
+        "research": {
+            "attachWithoutDialog": { "detail": null, "source": "bound-c-loader", "value": true },
+            "inspectorThreadSetState": {
+                "detail": null,
+                "source": "codesign --display --entitlements - --xml /Users/recon/recon/target/recon-loader",
+                "value": true
+            },
+            "localAvailable": {
+                "detail": null,
+                "source": "/Library/Application Support/Recon/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "value": true
+            },
+            "localCompatible": {
+                "detail": "the packaged build identity does not prove target-side protocol compatibility",
+                "source": "/Library/Application Support/Recon/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "value": null
+            },
+            "resident": {
+                "detail": null,
+                "source": "selected-process+bootstrap-endpoint",
+                "value": false
+            },
+            "residentCompatible": {
+                "detail": null,
+                "source": "selected-process+bootstrap-endpoint",
+                "value": false
+            }
+        },
+        "standard": {
+            "attachWithoutDialog": { "detail": null, "source": "bound-c-loader", "value": true },
+            "inspectorThreadSetState": {
+                "detail": null,
+                "source": "codesign --display --entitlements - --xml /Users/recon/recon/target/recon-loader",
+                "value": true
+            },
+            "localAvailable": {
+                "detail": null,
+                "source": "/Users/recon/recon/target/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "value": true
+            },
+            "localCompatible": {
+                "detail": "the packaged build identity does not prove target-side protocol compatibility",
+                "source": "/Users/recon/recon/target/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "value": null
+            },
+            "resident": {
+                "detail": null,
+                "source": "selected-process+bootstrap-endpoint",
+                "value": false
+            },
+            "residentCompatible": {
+                "detail": null,
+                "source": "selected-process+bootstrap-endpoint",
+                "value": false
+            }
+        }
+    },
+    "host": {
+        "activeBootArgs": {
+            "detail": null,
+            "source": "sysctl kern.bootargs (current boot)",
+            "value": ["amfi_get_out_of_my_way=0x1", "-arm64e_preview_abi", "tss_should_crash=0"]
+        },
+        "amfiDisabled": {
+            "detail": null,
+            "source": "sysctl kern.bootargs (current boot, AMFI boot setting)",
+            "value": true
+        },
+        "architecture": { "detail": null, "source": "/usr/bin/uname -m", "value": "arm64" },
+        "configuredBootArgs": {
+            "detail": null,
+            "source": "nvram boot-args (next boot)",
+            "value": ["amfi_get_out_of_my_way=0x1", "-arm64e_preview_abi", "tss_should_crash=0"]
+        },
+        "osVersion": {
+            "detail": null,
+            "source": "/usr/bin/sw_vers -productVersion",
+            "value": "27.2.1"
+        },
+        "sipDisabled": { "detail": null, "source": "/usr/bin/csrutil status", "value": true }
+    },
+    "modes": [
+        {
+            "evidenceSources": [
+                "/usr/bin/sw_vers -productVersion",
+                "/usr/bin/uname -m",
+                "lipo -archs (single on-disk slice; launch prediction)",
+                "proc_pidpath (live process executable)",
+                "selected-process+bootstrap-endpoint",
+                "selected-process+bootstrap-endpoint",
+                "codesign --display --verbose=4 /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture (on-disk executable)",
+                "codesign --display --verbose=4 /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture (on-disk executable)"
+            ],
+            "mode": "existing",
+            "profile": "standard",
+            "reasons": [
+                "mode requires one selected running process",
+                "resident helper: no helper exists in the selected process",
+                "resident helper: helper build/protocol mismatch"
+            ],
+            "status": "blocked"
+        },
+        {
+            "evidenceSources": [
+                "/usr/bin/sw_vers -productVersion",
+                "/usr/bin/uname -m",
+                "lipo -archs (single on-disk slice; launch prediction)",
+                "/Users/recon/recon/target/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "/Users/recon/recon/target/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "codesign --display --verbose=4 /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture (on-disk executable)",
+                "codesign --display --verbose=4 /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture (on-disk executable)",
+                "codesign --display --verbose=4 /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture (on-disk executable)"
+            ],
+            "mode": "launch",
+            "profile": "standard",
+            "reasons": [
+                "local helper is unknown (/Users/recon/recon/target/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed): the packaged build identity does not prove target-side protocol compatibility)"
+            ],
+            "status": "unknown"
+        },
+        {
+            "evidenceSources": [
+                "/usr/bin/sw_vers -productVersion",
+                "/usr/bin/uname -m",
+                "lipo -archs (single on-disk slice; launch prediction)",
+                "proc_pidpath (live process executable)",
+                "/Users/recon/recon/target/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "/Users/recon/recon/target/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "bound-c-loader",
+                "codesign --display --verbose=4 /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture (on-disk executable)",
+                "codesign --display --verbose=4 /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture (on-disk executable)",
+                "codesign --display --verbose=4 /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture (on-disk executable)"
+            ],
+            "mode": "attach",
+            "profile": "standard",
+            "reasons": [
+                "mode requires one selected running process",
+                "local helper is unknown (/Users/recon/recon/target/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed): the packaged build identity does not prove target-side protocol compatibility)"
+            ],
+            "status": "blocked"
+        },
+        {
+            "evidenceSources": [
+                "/usr/bin/sw_vers -productVersion",
+                "/usr/bin/uname -m",
+                "lipo -archs (single on-disk slice; launch prediction)",
+                "proc_pidpath (live process executable)",
+                "selected-process+bootstrap-endpoint",
+                "selected-process+bootstrap-endpoint",
+                "codesign --display --verbose=4 /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture (on-disk executable)",
+                "codesign --display --verbose=4 /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture (on-disk executable)"
+            ],
+            "mode": "existing",
+            "profile": "research",
+            "reasons": [
+                "mode requires one selected running process",
+                "resident helper: no helper exists in the selected process",
+                "resident helper: helper build/protocol mismatch"
+            ],
+            "status": "blocked"
+        },
+        {
+            "evidenceSources": [
+                "/usr/bin/sw_vers -productVersion",
+                "/usr/bin/uname -m",
+                "lipo -archs (single on-disk slice; launch prediction)",
+                "/Library/Application Support/Recon/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "/Library/Application Support/Recon/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "codesign --display --verbose=4 /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture (on-disk executable)",
+                "codesign --display --verbose=4 /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture (on-disk executable)"
+            ],
+            "mode": "launch",
+            "profile": "research",
+            "reasons": [
+                "local helper is unknown (/Library/Application Support/Recon/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed): the packaged build identity does not prove target-side protocol compatibility)"
+            ],
+            "status": "unknown"
+        },
+        {
+            "evidenceSources": [
+                "/usr/bin/sw_vers -productVersion",
+                "/usr/bin/uname -m",
+                "lipo -archs (single on-disk slice; launch prediction)",
+                "proc_pidpath (live process executable)",
+                "/Library/Application Support/Recon/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "/Library/Application Support/Recon/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed)",
+                "bound-c-loader",
+                "codesign --display --verbose=4 /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture (on-disk executable)",
+                "codesign --display --verbose=4 /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture (on-disk executable)"
+            ],
+            "mode": "attach",
+            "profile": "research",
+            "reasons": [
+                "mode requires one selected running process",
+                "local helper is unknown (/Library/Application Support/Recon/recon-helper.dylib with /Users/recon/recon/target/recon-loader (build 571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed): the packaged build identity does not prove target-side protocol compatibility)"
+            ],
+            "status": "blocked"
+        }
+    ],
+    "target": {
+        "allowDyldEnvironmentVariables": {
+            "detail": null,
+            "source": "codesign --display --entitlements - --xml /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture (on-disk executable)",
+            "value": false
+        },
+        "appleSigned": {
+            "detail": "signing authority not reported",
+            "source": "codesign --display --verbose=4 /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture (on-disk executable)",
+            "value": null
+        },
+        "architecture": {
+            "detail": null,
+            "source": "lipo -archs (single on-disk slice; launch prediction)",
+            "value": "arm64"
+        },
+        "bundleId": "me.malstrom.recon.fixture",
+        "bundlePath": "/Users/recon/recon/target/fixtures/ReconFixture.app",
+        "executableArchitectures": {
+            "detail": null,
+            "source": "/usr/bin/lipo -archs /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture",
+            "value": ["arm64"]
+        },
+        "executablePath": {
+            "detail": null,
+            "source": "selected bundle Contents/Info.plist",
+            "value": "/Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture"
+        },
+        "getTaskAllow": {
+            "detail": null,
+            "source": "codesign --display --entitlements - --xml /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture (on-disk executable)",
+            "value": true
+        },
+        "hardenedRuntime": {
+            "detail": null,
+            "source": "codesign --display --verbose=4 /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture (on-disk executable)",
+            "value": false
+        },
+        "libraryValidation": {
+            "detail": null,
+            "source": "codesign --display --verbose=4 /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture (on-disk executable)",
+            "value": false
+        },
+        "pid": null,
+        "platformBinary": {
+            "detail": null,
+            "source": "codesign --display --verbose=4 /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture (on-disk executable)",
+            "value": false
+        },
+        "processExecutable": {
+            "detail": "not yet observed",
+            "source": "proc_pidpath (live process executable)",
+            "value": null
+        },
+        "runningPids": [],
+        "signed": {
+            "detail": null,
+            "source": "codesign --display --verbose=4 /Users/recon/recon/target/fixtures/ReconFixture.app/Contents/MacOS/ReconFixture (on-disk executable)",
+            "value": true
+        }
+    }
+}

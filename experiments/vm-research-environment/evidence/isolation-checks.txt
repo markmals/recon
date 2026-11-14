@@ -1,0 +1,32 @@
+# isolation checks 2026-11-13T19:45:15Z
+## guest
+SSH_AUTH_SOCK=unset
+Could not open a connection to your authentication agent.
+--- /Volumes
+Macintosh HD
+--- virtiofs mounts
+none
+--- Apple account
+Error: Domain 'MobileMeAccounts' not found.
+--- guest app
+ls: /Applications/VirtualBuddyGuest.app: No such file or directory
+--- pasteboard
+no VirtualBuddyGuest process
+--- audio devices
+    Devices:
+## host VM config
+  "clipboardSharingEnabled" => false
+  "guestAdditionsEnabled" => false
+      "kind" => 0
+        "kind" => 0
+        "macAddress" => "16:DB:27:89:1B:06"
+      "kind" => 0
+    "soundDevices" => [
+  "provisioningEnabled" => false
+  "rosettaSharingEnabled" => false
+  "sharedFolders" => [
+## host files
+VM bundle: /Users/orion/Library/Application Support/VirtualBuddy/Recon Research.vbvm
+44G	/Users/orion/Library/Application Support/VirtualBuddy/Recon Research.vbvm
+26G	/Users/orion/ReconResearchVM/baselines/Recon Research - installed-unbooted.vbvm
+0

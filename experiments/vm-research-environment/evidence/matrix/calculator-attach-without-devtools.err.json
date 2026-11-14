@@ -1,0 +1,17 @@
+{
+    "error": {
+        "code": "UI_INTERFERENCE",
+        "message": "the frontmost application became pid 1132 505 ms into the operation, with nothing tying it to the selected target or to input from the keyboard or mouse; the operation also failed with InspectionTimeout: the Recon loader exceeded the ten-second open deadline",
+        "retryable": false,
+        "command": ["ui", "session", "open"],
+        "details": {
+            "disturbance": "the frontmost application became pid 1132 505 ms into the operation, with nothing tying it to the selected target or to input from the keyboard or mouse",
+            "evidenceSource": "foreground-application",
+            "pid": 1132,
+            "session": null,
+            "stage": "open",
+            "targetExecutionMayContinue": false,
+            "windowId": null
+        }
+    }
+}

@@ -1,0 +1,23 @@
+{
+    "application": { "path": "/System/Library/CoreServices/Finder.app", "pid": 2012 },
+    "window": {
+        "id": 127,
+        "title": "recon",
+        "bounds": { "x": 180.0, "y": 96.0, "width": 920.0, "height": 436.0 },
+        "onScreen": true
+    },
+    "image": {
+        "path": "/tmp/recon-inspect-finder-identifiers/screenshot.png",
+        "width": 1840,
+        "height": 872,
+        "uniform": false
+    },
+    "method": "skylight-hardware-capture",
+    "session": {
+        "id": "5da189313ee6ea274ea305e6ce450bec",
+        "acquired": "attach",
+        "profile": "research",
+        "protocolVersion": 1,
+        "helperBuild": "571291a74b0dc9bfa8c3d622787e9c5dd437c510496f9348bb0054fc0ffa82ed"
+    }
+}
