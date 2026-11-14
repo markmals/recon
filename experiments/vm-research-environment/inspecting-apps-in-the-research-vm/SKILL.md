@@ -18,26 +18,28 @@ description: Use when inspecting a macOS app with Recon's research profile (nati
 ```sh
 cd ~/Developer/CLIs/recon/experiments/vm-research-environment/scripts
 ./vm-lock.sh status                                # locked by someone else: stop, ask the user
+pgrep -x VirtualBuddy                              # running means the VM may be up (there is no status action)
 ./vm-lock.sh acquire my-project "inspect MyApp"    # owner = your project or session name
 VM_OWNER=my-project ./vm-snapshot.sh reset research-ready   # or demo
 VM_OWNER=my-project ./vm-lifecycle.sh boot && ./guest-wait.sh
 ./guest-gui.sh 'open -g -a Calculator'            # starts an app in the guest's GUI session
 ./inspect-target.sh calc /System/Applications/Calculator.app attach research
 ./summarize-inspection.sh "<evidence dir it printed>"
-./guest-ssh.sh '~/recon/target/signed/recon ui windows com.apple.calculator'   # any Recon command
+./guest-gui.sh '~/recon/target/signed/recon ui windows com.apple.calculator'   # any Recon command
 ./guest-ssh.sh 'sudo shutdown -h now'; sleep 15; osascript -e 'quit app "VirtualBuddy"'
 ./vm-lock.sh release my-project
 ```
 
-`vm-lifecycle.sh` and `vm-snapshot.sh` refuse while the lock is held by someone other than `VM_OWNER`. `inspect-target.sh` MODE is `launch` (app not running) or `attach`/`existing` (running). It writes every result under `evidence/matrix/` in the state directory.
+`vm-lifecycle.sh` and `vm-snapshot.sh` refuse while the lock is held by someone other than `VM_OWNER`. `inspect-target.sh` MODE is `launch` (app not running) or `attach`/`existing` (running). It is a fixed smoke run of every inspection command, with the view tree cut at `--depth 4 --limit 400`, and it writes each result under `evidence/matrix/` in the state directory. For a complete tree, open a session and run `ui view tree APP --session S --window W --depth 64 --limit 5000` yourself.
+
+Run Recon's `ui` commands through `guest-gui.sh`: they need the guest's logged-in GUI session, which a plain `guest-ssh.sh` command does not reach. Both scripts take the guest command as one string, run by zsh in the guest, and pass its output back.
 
 Your own app: build it on this Mac, then `./guest-copy.sh push path/My.app Applications/` and inspect `/Users/recon/Applications/My.app`. `./guest-copy.sh pull GUEST_PATH LOCAL` brings files back; guest paths are relative to the guest home.
 
-`guest-ssh.sh` takes the guest command as one string, run by zsh in the guest.
-
 ## Rules
 
-- Before `vm-snapshot.sh save`, get the user's explicit OK: it overwrites a shared snapshot. Before `reset`, ask unless you hold the lock, because it discards the VM's current state.
+- Before `vm-snapshot.sh save`, get the user's explicit OK: it overwrites a shared snapshot.
+- A free lock means the VM's current disk is disposable: once you hold the lock, reset it without asking. Releasing the lock gives up whatever you left in the VM, so if it matters, ask the user to save it as a snapshot first.
 - Never run `prepare-host`, `csrutil`, `nvram`, or Recon's research profile on this Mac.
 - When done: VM shut down, VirtualBuddy quit, lock released.
 
