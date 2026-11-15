@@ -10,7 +10,7 @@ use recon_core::error::{
 };
 use recon_core::process::Pid;
 use recon_input_macos::request::{ClickMethod, Location, MouseButton};
-use recon_input_macos::{Target, require_unlocked, scroll};
+use recon_input_macos::{Target, Toolkit, read_toolkit, require_unlocked, scroll};
 use recon_native_access_macos::identity::SessionId;
 use recon_privacy_macos::permission::Permission;
 use recon_ui_guard_macos::Watch;
@@ -194,6 +194,23 @@ impl<'a> Context<'a> {
 
     fn permissions(&self, needed: &[Permission]) -> Result<(), Failure> {
         recon_privacy_macos::permissions::require(needed)
+    }
+
+    /// The UI framework of the running target, read from its executable before any input.
+    fn toolkit(&self, mechanism: ActionMechanism) -> Result<Toolkit, Failure> {
+        let executable =
+            recon_native_access_macos::running_executable(self.application, self.target.pid())
+                .map_err(|error| {
+                    self.failure(
+                        ErrorCode::ActionUnavailable,
+                        &format!("the running target's executable is unavailable: {error}"),
+                        ActionStage::Resolve,
+                        DispatchState::None,
+                        mechanism,
+                        ReleaseState::NotNeeded,
+                    )
+                })?;
+        read_toolkit(&self.target, &executable, mechanism)
     }
 
     fn point(

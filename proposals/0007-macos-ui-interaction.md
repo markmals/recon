@@ -100,7 +100,7 @@ Before resolving the action Recon binds the process incarnation — PID and audi
 
 Synthetic input requires an unlocked console session. A locked screen, reported by the current session dictionary, makes every operation fail with `ACTION_UNAVAILABLE` before input. Secure event input (`IsSecureEventInputEnabled`) makes `ui key` fail the same way.
 
-The toolkit of the target is read from the `LC_BUILD_VERSION` platform of its running executable: platform `MACCATALYST` is Catalyst, `MACOS` is AppKit. An unreadable platform fails `ui key` with `ACTION_UNAVAILABLE`.
+The toolkit of the target is read from the `LC_BUILD_VERSION` platform of its running executable: platform `MACCATALYST` is Catalyst, `MACOS` is AppKit. An unreadable platform fails `ui key` and a middle-button click with `ACTION_UNAVAILABLE`. That includes an executable built without `LC_BUILD_VERSION`, as some older AppKit applications are; refusing them is an accepted limit.
 
 ### 2. Locations and element resolution
 
@@ -125,11 +125,11 @@ The method is chosen before any mutating call. A capability read failure, permis
 
 AX delivery invokes `AXPress` once under the two-second messaging timeout. `kAXErrorCannotComplete` is `ACTION_TIMEOUT` with unknown execution.
 
-Mouse delivery creates events at the global point (window origin plus local point) and posts them with `CGEventPostToPid` only. Each event carries field 51 = window number, field 40 = PID, field 1 = click state, field 3 = button number, field 7 = 3, field 58 = a per-request click group, and the window-local location set with `CGEventSetWindowLocation`; fields are set with `SLEventSetIntegerValueField`, resolved at runtime. Missing private symbols are `INTERFACE_UNAVAILABLE`. Each click is a down and an up 30 ms apart; a double click sends a second pair 60 ms later with click state 2. Modifiers are carried in the event flags only; no modifier key events are posted, so no modifier can be left held. Right and middle clicks use the secondary and other button event types, never Control-click or `AXShowMenu`.
+Mouse delivery creates events at the global point (window origin plus local point) and posts them with `CGEventPostToPid` only. Each event carries field 51 = window number, field 40 = PID, field 1 = click state, field 3 = button number, field 7 = 3, field 58 = 1 (the click group; every request uses group 1, an accepted limit), and the window-local location set with `CGEventSetWindowLocation`; fields are set with `SLEventSetIntegerValueField`, resolved at runtime. Missing private symbols are `INTERFACE_UNAVAILABLE`. Each click is a down and an up 30 ms apart; a double click sends a second pair 60 ms later with click state 2. Modifiers are carried in the event flags only; no modifier key events are posted, so no modifier can be left held. Right and middle clicks use the secondary and other button event types, never Control-click or `AXShowMenu`.
 
 When the target is the frontmost application and the selected window is not its key window, a mouse click is `ACTION_UNAVAILABLE`: it would move the user's keyboard focus. AX press and scrolling remain available there. When the target is in the background, a click may make the selected window key inside the target; the result reports it.
 
-Mac Catalyst limits what a background window receives. Its first click there reaches UIKit only over a control; over any other view, the click is taken as window activation and never reaches the application, and UIKit offers no way to accept it. Middle-button events never reach UIKit at all. Recon sends these clicks the same way and reports them `unverified` like every click; it neither detects nor refuses them.
+Mac Catalyst limits what a background window receives. In the live evidence, its first click there reached UIKit only over a control; over any other view the click was taken as window activation and did not reach the application. Recon cannot tell a control from another view before input, so it sends such a click and reports it `unverified` like every click. No middle click reached UIKit in any run, so a middle click on a Catalyst target is `ACTION_UNAVAILABLE` before input, whatever it is over.
 
 ### 4. Scroll
 
@@ -167,7 +167,7 @@ Every operation runs inside the shared guard with an `interaction` stage and the
 - **Kept dimensions.** Frontmost process, on-screen window order, active Space, real pointer location and hardware pointer counters, and the diverted-input check (session input counted beyond hardware input). Process-addressed posts do not move session counters, so any session-level synthetic input still fails the operation; implementation must show this holds for button and wheel events as well as keys.
 - **Transient changes.** The guard also observes workspace application-activation and active-Space notifications for the whole interval on its own run-loop thread, so a change undone between samples is still caught. If the observers cannot be registered the operation fails with `INTERFACE_UNAVAILABLE` before any input.
 - **The user's key window.** At the start and end of the interval, the guard reads the frontmost application's `AXFocusedWindow`; a change not explained by hardware input is interference.
-- **Target-local changes.** A change of the target's own key window, main window, or internal active state while the target remains in the background is expected and reported in the result. Any target window coming in front of a window it was behind is still interference.
+- **Target-local changes.** A change of the target's own key window, main window, or internal active state while the target remains in the background is expected and is not interference. Any target window coming in front of a window it was behind is still interference.
 - **Attribution.** During an interaction, a frontmost change to the target, or a target window moving forward in the window order, is attributed to the target even when hardware input occurred in the same interval, because the operation posted the input that could have caused it. Other changes during hardware input remain the user's. A read posts nothing, so the shared guard applies this target-wins rule only to the interaction stage: for a read, a target frontmost change or window-order move that coincides with hardware input is the person's own action and does not fail the read, while the same move with no hardware input remains interference in either stage.
 
 Interference returns `UI_INTERFERENCE` with stage `interaction`, evidence source, affected process and window, and whether target execution may continue. Recon stops unsent events, sends only the releases below, and never restores focus, order, pointer, or Space.
@@ -194,7 +194,7 @@ Action error details contain `stage` (`resolve`, `key-window`, `dispatch`, `rele
 
 ### 8. Permissions, registry, and helper
 
-AX lookup, AX press, and `AXFocusedWindow` reads require Accessibility; posting requires event-posting access, checked with `CGPreflightPostEventAccess`. A coordinate-only click or scroll needs no Accessibility unless the target's key-window or frontmost state must be read. A missing grant may be requested under the existing setup exception and then fails with `PERMISSION_DENIED` before input. `context` and preflight stay non-prompting and report event-posting state alongside the existing grants.
+AX lookup, AX press, and `AXFocusedWindow` reads require Accessibility; posting requires event-posting access, checked with `CGPreflightPostEventAccess`. Every operation reads the target's `AXFocusedWindow`, for the frontmost refusals and for `targetKeyWindowChanged`, so every operation requires Accessibility, including a coordinate-only click or scroll. A missing grant may be requested under the existing setup exception and then fails with `PERMISSION_DENIED` before input. `context` and preflight stay non-prompting and report event-posting state alongside the existing grants.
 
 `ui click`, `ui scroll`, and `ui key` are registered through the existing registry with effects `sends-input` and `changes-target-key-window`; `ui key` on a Catalyst target additionally declares `executes-target-code`. Each declares the guard errors and the action errors above.
 
@@ -208,7 +208,7 @@ The initial host boundary is native Apple silicon on macOS 27 with an unlocked c
 
 | Operation | AppKit | Mac Catalyst |
 | --- | --- | --- |
-| Click | AX press and forced mouse on an element; coordinate left, right, middle, double, and modifier clicks each produce their own handler effect once | AX press and forced mouse on an element; coordinate left, right, double, and modifier clicks over a control each produce their own handler effect once, in a real Catalyst scene |
+| Click | AX press and forced mouse on an element; coordinate left, right, middle, double, and modifier clicks each produce their own handler effect once | AX press and forced mouse on an element; coordinate left, right, double, and modifier clicks over a control each produce their own handler effect once, in a real Catalyst scene; a middle click is refused with nothing sent |
 | Scroll | Both axes, both directions, both units, outer and nested regions | The same |
 | Key chord | The selected window's action runs, for each of two windows, from a background target, with no repeated action | The same, through a session, with balanced press begin and end |
 

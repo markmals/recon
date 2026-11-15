@@ -4,8 +4,8 @@ use recon_core::error::{
 };
 use recon_core::process::Pid;
 use recon_input_macos::chord::Modifiers;
-use recon_input_macos::frontmost_pid;
 use recon_input_macos::request::{ClickMethod, Location, MouseButton};
+use recon_input_macos::{Toolkit, frontmost_pid};
 use recon_native_access_macos::identity::SessionId;
 use recon_privacy_macos::permission::Permission;
 use recon_ui_guard_macos::Watch;
@@ -51,6 +51,19 @@ pub(super) fn run(
         }
     };
     context.check(DispatchState::None, ReleaseState::NotNeeded, false)?;
+    // A middle click is always mouse events: `--method ax` refuses every button but the left.
+    if button == MouseButton::Middle
+        && context.toolkit(ActionMechanism::MouseEvents)? == Toolkit::Catalyst
+    {
+        return Err(context.failure(
+            ErrorCode::ActionUnavailable,
+            "Mac Catalyst does not deliver a middle click to the application",
+            ActionStage::Resolve,
+            DispatchState::None,
+            ActionMechanism::MouseEvents,
+            ReleaseState::NotNeeded,
+        ));
+    }
     let eligible = initial.as_ref().is_some_and(|element| element.advertises_press());
     let plain = button == MouseButton::Left && count == 1 && modifiers.is_empty();
     let effective = match (requested, prepared) {

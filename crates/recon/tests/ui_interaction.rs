@@ -179,13 +179,53 @@ fn proposal0007_a_catalyst_click_over_a_control_delivers_each_button_count_and_m
     let desktop = Desktop::catalyst();
     for label in ["main", "inspector"] {
         let window = desktop.window(label);
-        // Mac Catalyst never hands a middle click to UIKit, so the matrix leaves it out here.
+        // A middle click on Catalyst is refused; the next test holds Recon to that.
         for click in Click::ALL.into_iter().filter(|click| click.button != "middle") {
             let events = desktop.clicked(&window, label, click);
             click.assert(&events, label);
             untouched(&events, label);
         }
     }
+}
+
+#[test]
+#[ignore = "needs target/signed/recon with Accessibility and event posting granted, the built fixtures, and a hands-off Mac; run mise run test:interaction"]
+fn proposal0007_a_catalyst_middle_click_is_refused_and_sends_nothing() {
+    let desktop = Desktop::catalyst();
+    let window = desktop.window("main");
+    let id = window.id();
+    let target = desktop.target.target();
+    let (x, y) = window.point("canvas");
+    let mark = desktop.target.evidence().sequence();
+
+    // Over a plain view and over a control alike: Mac Catalyst hands no middle click to UIKit,
+    // so a delivered one could never be told apart from one that did nothing.
+    for arguments in [
+        vec!["click", target, "--window", &id, "--x", &x, "--y", &y, "--button", "middle"],
+        vec![
+            "click",
+            target,
+            "--window",
+            &id,
+            "--role",
+            "AXButton",
+            "--identifier",
+            "record",
+            "--button",
+            "middle",
+        ],
+    ] {
+        let error = refused(&arguments, "ACTION_UNAVAILABLE");
+        assert!(
+            error["message"].as_str().is_some_and(|message| message.contains("middle")),
+            "the refusal has to name the middle button: {error}"
+        );
+        assert_eq!(error["details"]["dispatch"], "none", "{error}");
+    }
+    assert!(
+        desktop.target.settled().since(mark).is_empty(),
+        "a refused middle click reached the target anyway"
+    );
 }
 
 // ── Scroll ───────────────────────────────────────────────────────────────────

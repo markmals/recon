@@ -8,8 +8,7 @@ use recon_core::error::{
 use recon_core::process::Pid;
 use recon_input_macos::chord::Chord;
 use recon_input_macos::{
-    Toolkit, frontmost_pid, keycode, make_appkit_key, read_toolkit, require_secure_input_disabled,
-    send_chord,
+    Toolkit, frontmost_pid, keycode, make_appkit_key, require_secure_input_disabled, send_chord,
 };
 use recon_native_access_macos::identity::SessionId;
 use recon_privacy_macos::permission::Permission;
@@ -34,18 +33,7 @@ pub(super) fn run(
         Context::prepare(application, pid, window, ActionMechanism::KeyEvents, session, started)?;
     context.permissions(&[Permission::EventPosting])?;
     require_secure_input_disabled(&context.target)?;
-    let executable =
-        recon_native_access_macos::running_executable(application, pid).map_err(|error| {
-            context.failure(
-                ErrorCode::ActionUnavailable,
-                &format!("the running target's executable is unavailable: {error}"),
-                ActionStage::Resolve,
-                DispatchState::None,
-                ActionMechanism::KeyEvents,
-                ReleaseState::NotNeeded,
-            )
-        })?;
-    let toolkit = read_toolkit(&context.target, &executable)?;
+    let toolkit = context.toolkit(ActionMechanism::KeyEvents)?;
     let base = keycode(&context.target, chord)?;
     let frontmost = frontmost_pid()?;
     if frontmost.is_none() {
