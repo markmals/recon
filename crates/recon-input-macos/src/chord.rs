@@ -58,6 +58,7 @@ impl Modifiers {
         self.0 == 0
     }
 
+    #[cfg(target_os = "macos")]
     pub(crate) fn event_flags(self) -> u64 {
         let mut flags = 0;
         if self.contains(Self::COMMAND) {
@@ -75,6 +76,7 @@ impl Modifiers {
         flags
     }
 
+    #[cfg(target_os = "macos")]
     pub(crate) fn key_code(self) -> u16 {
         match self {
             Self::COMMAND => 55,
