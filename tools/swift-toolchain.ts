@@ -22,7 +22,7 @@ export function pinnedSwift(file: string = PIN_FILE): string {
 }
 
 /**
- * Apple's Swift 6.4, from Xcode 27.1 or the Command Line Tools. The swift.org toolchain cannot
+ * Apple's Swift 6.4.2, from Xcode 27.2 or the Command Line Tools. The swift.org toolchain cannot
  * build the helper's arm64e slice: its `usr/lib/swift/macosx` stubs lack arm64e, and the arm64e
  * code it generates dies in the OS runtime with `EXC_ARM_PAC_FAIL`.
  */
@@ -33,7 +33,7 @@ export function verifiedCompiler(): string {
     let compiler = execFileSync("xcrun", ["swiftc", "--version"], { encoding: "utf8" });
     if (!compiler.includes(PINNED_SWIFT)) {
         throw new Error(
-            `Recon requires Apple's Swift ${PINNED_SWIFT}, from Xcode 27.1 or the Command Line ` +
+            `Recon requires Apple's Swift ${PINNED_SWIFT}, from Xcode 27.2 or the Command Line ` +
                 `Tools. The active compiler is:\n${compiler.trim()}`,
         );
     }

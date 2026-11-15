@@ -53,7 +53,7 @@ impl Compiler {
         let version = run("xcrun", &["swiftc".as_ref(), "--version".as_ref()]);
         assert!(
             version.contains(&pin),
-            "Recon requires Apple's Swift {pin}, from Xcode 27.1 or the Command Line Tools, as \
+            "Recon requires Apple's Swift {pin}, from Xcode 27.2 or the Command Line Tools, as \
              {} pins it. The active compiler is:\n{}",
             pin_file.display(),
             version.trim()
