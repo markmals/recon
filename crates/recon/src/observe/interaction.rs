@@ -137,7 +137,7 @@ pub(super) fn run(
                 }
                 let release = scroll(&context.target, point, *dx, *dy, *unit)?;
                 context.check(DispatchState::Complete, release, true)?;
-                let changed = context.changed(DispatchState::Complete, release)?;
+                let changed = context.changed();
                 let encoded =
                     crate::output::encode(&crate::ui::interaction_response::ScrollResponse {
                         application: context.application(),
@@ -249,21 +249,10 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn changed(&self, dispatch: DispatchState, release: ReleaseState) -> Result<bool, Failure> {
-        focused_window_id(self.target.pid()).map(|after| after != self.before).map_err(|error| {
-            if error.code == ErrorCode::Timeout {
-                self.failure(
-                    ErrorCode::ActionTimeout,
-                    "the target's key window could not be read after the action; execution is unknown",
-                    ActionStage::Dispatch,
-                    dispatch,
-                    self.mechanism,
-                    release,
-                )
-            } else {
-                error
-            }
-        })
+    /// Whether the target's own key window changed, read after the input was delivered. A failed
+    /// read leaves it unknown rather than failing an action that has already happened.
+    fn changed(&self) -> Option<bool> {
+        focused_window_id(self.target.pid()).ok().map(|after| after != self.before)
     }
 
     fn stopped(&self, dispatch: DispatchState, release: ReleaseState) -> Failure {

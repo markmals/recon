@@ -88,6 +88,44 @@ fn proposal0007_scroll_result_schema_preserves_both_signed_axes_and_units() {
     );
 }
 
+// The key window is read again after the input is delivered. When that read fails the input has
+// still been delivered, so the command succeeds and says the change is unknown rather than
+// reporting a delivered click as a failure a caller might repeat.
+#[test]
+fn proposal0007_a_delivered_click_or_scroll_may_report_an_unknown_key_window_change() {
+    validate(
+        &["ui", "click"],
+        json!({
+            "application": application(),
+            "window": 123,
+            "operation": "click",
+            "mechanism": "mouse-events",
+            "outcome": "unverified",
+            "method": {"requested": "auto", "effective": "mouse", "reason": "mouse-required"},
+            "button": "left",
+            "count": 1,
+            "modifiers": [],
+            "location": {"x": 160.0, "y": 84.0},
+            "element": null,
+            "targetKeyWindowChanged": null,
+            "release": "complete"
+        }),
+    );
+    validate(
+        &["ui", "scroll"],
+        json!({
+            "application": application(),
+            "window": 123,
+            "operation": "scroll",
+            "mechanism": "scroll-wheel",
+            "outcome": "unverified",
+            "delta": {"x": 0, "y": 300, "unit": "pixel"},
+            "targetKeyWindowChanged": null,
+            "release": "not-needed"
+        }),
+    );
+}
+
 #[test]
 fn proposal0007_key_result_schema_reports_key_window_provenance_and_release() {
     validate(

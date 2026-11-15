@@ -160,7 +160,7 @@ pub(super) fn run(
         })?
     };
     context.check(DispatchState::Complete, release, true)?;
-    let changed = context.changed(DispatchState::Complete, release)?;
+    let changed = context.changed();
     let encoded = crate::output::encode(&ClickResponse {
         application: context.application(),
         window,

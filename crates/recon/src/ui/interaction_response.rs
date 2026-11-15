@@ -68,7 +68,8 @@ pub struct ClickResponse<'a> {
     pub modifiers: Vec<&'static str>,
     pub location: LocalPoint,
     pub element: Option<ActionElement>,
-    pub target_key_window_changed: bool,
+    /// `None` when the key window could not be read after the input was delivered.
+    pub target_key_window_changed: Option<bool>,
     pub release: ReleaseState,
 }
 
@@ -90,7 +91,8 @@ pub struct ScrollResponse<'a> {
     pub mechanism: ActionMechanism,
     pub outcome: Outcome,
     pub delta: ScrollDelta,
-    pub target_key_window_changed: bool,
+    /// `None` when the key window could not be read after the input was delivered.
+    pub target_key_window_changed: Option<bool>,
     pub release: ReleaseState,
 }
 
