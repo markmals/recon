@@ -104,8 +104,12 @@ pub(super) fn run(
         refuse_frontmost_mouse(&context, window)?;
     }
 
-    let dispatch_window =
-        context.target.revalidate(mechanism, DispatchState::None, ReleaseState::NotNeeded)?;
+    let dispatch_window = context.target.revalidate(
+        mechanism,
+        ActionStage::Resolve,
+        DispatchState::None,
+        ReleaseState::NotNeeded,
+    )?;
     let fresh = match location {
         Location::Element(selector) => {
             let bounds = dispatch_window.clone();
@@ -139,7 +143,12 @@ pub(super) fn run(
                 ReleaseState::NotNeeded,
             ));
         }
-        context.target.revalidate(mechanism, DispatchState::None, ReleaseState::NotNeeded)?;
+        context.target.revalidate(
+            mechanism,
+            ActionStage::Dispatch,
+            DispatchState::None,
+            ReleaseState::NotNeeded,
+        )?;
         if watch.interrupted() {
             return Err(context.stopped(DispatchState::None, ReleaseState::NotNeeded));
         }

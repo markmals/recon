@@ -4,7 +4,7 @@ use std::sync::LazyLock;
 
 use objc2_core_foundation::CGPoint;
 use recon_core::error::Failure;
-use recon_core::error::{ActionMechanism, DispatchState, ReleaseState};
+use recon_core::error::{ActionMechanism, ActionStage, DispatchState, ReleaseState};
 
 use crate::failure::with_delivery;
 use crate::request::{MouseButton, Point, ScrollUnit};
@@ -142,8 +142,12 @@ pub(crate) fn post_mouse(
     event: MouseEvent,
     delivery: Delivery,
 ) -> Result<(), Failure> {
-    let window =
-        target.revalidate(ActionMechanism::MouseEvents, delivery.dispatch, delivery.release)?;
+    let window = target.revalidate(
+        ActionMechanism::MouseEvents,
+        ActionStage::Dispatch,
+        delivery.dispatch,
+        delivery.release,
+    )?;
     if event.down {
         Target::validate_point(&window, event.point, ActionMechanism::MouseEvents)
             .map_err(|failure| with_delivery(failure, delivery))?;
@@ -172,6 +176,7 @@ pub(crate) fn post_wheel(
 ) -> Result<(), Failure> {
     let window = target.revalidate(
         ActionMechanism::ScrollWheel,
+        ActionStage::Dispatch,
         DispatchState::None,
         ReleaseState::NotNeeded,
     )?;
@@ -196,7 +201,12 @@ pub(crate) fn post_key(
     event: KeyEvent,
     delivery: Delivery,
 ) -> Result<(), Failure> {
-    target.revalidate(ActionMechanism::KeyEvents, delivery.dispatch, delivery.release)?;
+    target.revalidate(
+        ActionMechanism::KeyEvents,
+        ActionStage::Dispatch,
+        delivery.dispatch,
+        delivery.release,
+    )?;
     let posted = Event::key(source, event.keycode, event.down).ok_or_else(|| {
         event_failure(ActionMechanism::KeyEvents, target, delivery.dispatch, delivery.release)
     })?;

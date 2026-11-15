@@ -226,6 +226,7 @@ impl<'a> Context<'a> {
                 self.permissions(&[Permission::Accessibility])?;
                 let window = self.target.revalidate(
                     self.mechanism,
+                    ActionStage::Resolve,
                     DispatchState::None,
                     ReleaseState::NotNeeded,
                 )?;

@@ -49,9 +49,12 @@ impl Target {
         &self.window
     }
 
+    /// The bound window as it is now, or `STALE_TARGET` at `stage` when the process is no longer
+    /// the bound incarnation or no longer owns the window.
     pub fn revalidate(
         &self,
         mechanism: ActionMechanism,
+        stage: ActionStage,
         dispatch: DispatchState,
         release: ReleaseState,
     ) -> Result<Window, Failure> {
@@ -60,7 +63,7 @@ impl Target {
                 ErrorCode::StaleTarget,
                 detail,
                 ActionFailure {
-                    stage: ActionStage::Dispatch,
+                    stage,
                     dispatch,
                     mechanism,
                     pid: self.pid().0,
@@ -120,21 +123,20 @@ impl Target {
             },
         ))
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn proposal0007_exit_invalidates_identity_and_skips_an_owed_release() {
+    /// A target bound to a process that has since exited, as when the application quits or its
+    /// window's owner goes away while an operation is running.
+    #[cfg(test)]
+    pub(crate) fn exited() -> Self {
         let mut child = std::process::Command::new("/bin/sleep")
             .arg("30")
             .spawn()
             .expect("spawn process fixture");
         let pid = Pid(child.id());
         let incarnation = inject::identify(pid.0 as i32).map(Incarnation::from).unwrap();
-        let target = Target {
+        child.kill().unwrap();
+        child.wait().unwrap();
+        Self {
             incarnation,
             window: Window {
                 id: WindowId(123),
@@ -150,12 +152,23 @@ mod tests {
                 on_screen: true,
                 alpha: 1.0,
             },
-        };
-        child.kill().unwrap();
-        child.wait().unwrap();
+        }
+    }
+}
 
-        let failure = target
-            .revalidate(ActionMechanism::MouseEvents, DispatchState::Partial, ReleaseState::Failed)
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn proposal0007_exit_invalidates_identity_and_skips_an_owed_release() {
+        let failure = Target::exited()
+            .revalidate(
+                ActionMechanism::MouseEvents,
+                ActionStage::Dispatch,
+                DispatchState::Partial,
+                ReleaseState::Failed,
+            )
             .unwrap_err();
 
         assert_eq!(failure.code, ErrorCode::StaleTarget);
