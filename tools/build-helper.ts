@@ -21,7 +21,7 @@ import path from "node:path";
 import { verifiedCompiler } from "./swift-toolchain.ts";
 
 /// What the helper answers with, beyond anything a file states.
-const CONFIGURATION = "arm64+arm64e|release|macOS27.0|ReconProtocolVersion=2";
+const CONFIGURATION = "arm64+arm64e|release|macOS26.0|ReconProtocolVersion=2";
 
 /// Every file that decides what the helper is built from, including this one: the link line
 /// lives here, so a change to it is a change to the helper even when no source moved.

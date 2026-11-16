@@ -6,7 +6,7 @@ import PackageDescription
 
 let package = Package(
     name: "ReconCatalyst",
-    platforms: [.macOS("27.0")],
+    platforms: [.macOS("26.0")],
     products: [
         .library(name: "ReconCatalyst", targets: ["ReconCatalyst"])
     ],

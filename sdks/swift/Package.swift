@@ -11,7 +11,7 @@ let appKitTestSettings: [SwiftSetting] = [.unsafeFlags(["-disable-cross-import-o
 
 let package = Package(
     name: "ReconSDK",
-    platforms: [.macOS("27.0")],
+    platforms: [.macOS("26.0")],
     products: [
         // What an extension author imports.
         .library(name: "ReconExtension", targets: ["ReconExtension"]),

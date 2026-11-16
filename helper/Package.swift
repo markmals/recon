@@ -8,7 +8,7 @@ import PackageDescription
 
 let package = Package(
     name: "ReconHelper",
-    platforms: [.macOS("27.0")],
+    platforms: [.macOS("26.0")],
     products: [
         .library(name: "ReconHelper", type: .dynamic, targets: ["ReconHelper"])
     ],
