@@ -12,6 +12,7 @@ workspace = true
 
 [dependencies]
 recon-core = { path = "../recon-core" }
+recon-input-macos = { path = "../recon-input-macos" }
 recon-window-server-macos = { path = "../recon-window-server-macos" }
 schemars = "1"
 serde = { version = "1", features = ["derive"] }

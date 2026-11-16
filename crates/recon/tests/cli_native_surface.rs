@@ -158,7 +158,17 @@ fn each_group_lists_exactly_its_own_operations() {
     let accepted = usage_error(&["ui"])["details"]["accepted"].clone();
     assert_eq!(
         accepted,
-        json!(["windows", "ax", "screenshot", "session", "view", "correlate"]),
+        json!([
+            "windows",
+            "ax",
+            "screenshot",
+            "click",
+            "scroll",
+            "key",
+            "session",
+            "view",
+            "correlate"
+        ]),
         "the ui group lists its subgroups beside its own operations"
     );
     for group in [vec!["ui", "session"], vec!["ui", "view"]] {

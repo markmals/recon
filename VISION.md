@@ -1,6 +1,6 @@
 ---
 title: A Vision for Recon
-updated: 2026-11-01
+updated: 2026-11-15
 ---
 
 # A Vision for Recon
@@ -17,9 +17,11 @@ Recon currently lists discovered and running macOS application bundles, inspects
 
 Recon can also establish an explicit, process-bound native inspection session and read a macOS application's AppKit windows, views, cells, layers, layout, and observed fonts. Native queries under `ui view`, accessibility queries under `ui ax`, shared WindowServer capture, and native/AX correlation preserve their separate evidence sources and identities. The current native scope is Apple silicon on macOS 27; cooperative and explicitly prepared research access have different prerequisites. Catalyst, UIKit, Simulator, and connected-device inspection remain future work.
 
+Recon can also act on a running macOS application without interrupting the person at the Mac. `ui click` presses an element through accessibility or sends window-addressed mouse clicks, `ui scroll` sends wheel input at an element or point, and `ui key` sends one key chord to a selected window after making it key inside the background target, through a session for Mac Catalyst. An interaction-aware guard fails any operation that changes the user's frontmost application, window order, Space, pointer, keyboard focus, or input, and a successful result reports delivery as unverified rather than claiming the application acted.
+
 Native capabilities are assembled into that one Rust CLI from focused capability crates. Logic that runs inside an inspected application is written in Swift against Recon's own extension SDK and compiled into the helper Recon releases with the CLI; the AppKit inspector is its first consumer. This is first-party assembly, not a plugin system: extensions are trusted code fixed at build time, and the only Objective-C left is the boundary that catches a target's exceptions. Building Recon from source requires one exact Apple Swift compiler build.
 
-The current `ui tree` spelling is retired. Accessibility trees use `recon ui ax tree`; native hierarchies use `recon ui view` with an explicit session. Binary analysis, other runtime inspection, web and Electron inspection, live network capture, asset extraction, private-API discovery, UI interaction, experiments, behavioral specifications, verification, and persistent evidence remain future work.
+The current `ui tree` spelling is retired. Accessibility trees use `recon ui ax tree`; native hierarchies use `recon ui view` with an explicit session. Binary analysis, other runtime inspection, web and Electron inspection, live network capture, asset extraction, private-API discovery, hover, drag-and-drop and trackpad-gesture input, experiments, behavioral specifications, verification, and persistent evidence remain future work.
 
 Agents can learn the CLI through built-in help, inspect each command's schema, constraints, and effects, and classify compact JSON errors by stable code. Build-version and execution-context reports identify the running binary; on macOS, context checks its own signing identity and permission state without requesting grants.
 
@@ -31,7 +33,7 @@ This map records the intended scope and its GitHub tracking. Only the current ca
 
 | Capability | Intended investigation | Tracking |
 | --- | --- | --- |
-| macOS applications and accessibility | Discover/inspect/launch apps; observe windows, AX trees, and screenshots. Implemented. | [#20](https://github.com/markmals/recon/issues/20), [#15](https://github.com/markmals/recon/issues/15), proposals 0001 through 0004 |
+| macOS applications and accessibility | Discover/inspect/launch apps; observe windows, AX trees, and screenshots; click, scroll, and send key chords to a selected window. Implemented. | [#20](https://github.com/markmals/recon/issues/20), [#15](https://github.com/markmals/recon/issues/15), [#24](https://github.com/markmals/recon/issues/24), proposals 0001 through 0004 and 0007 |
 | Native binaries and managed code | Mach-O metadata, disassembly, decompilation, references, and .NET metadata/CIL. | [#2](https://github.com/markmals/recon/issues/2), [#7](https://github.com/markmals/recon/issues/7) |
 | Web and Electron | Live DOM hierarchy, CSSOM rules and cascade, computed styles/layout, scripts, modules, IPC, and network observations. | [#4](https://github.com/markmals/recon/issues/4), [#5](https://github.com/markmals/recon/issues/5) |
 | Native UI structure | Actual AppKit view/cell/layer hierarchies, fonts, constraints, materials, and SwiftUI backing boundaries; UIKit/Mac Catalyst hierarchy and UIKit screenshots/logs in Simulator/device investigations. | [#44](https://github.com/markmals/recon/issues/44), [#55](https://github.com/markmals/recon/issues/55), [#40](https://github.com/markmals/recon/issues/40), [#41](https://github.com/markmals/recon/issues/41) |
@@ -120,3 +122,4 @@ The minimum proves the behavioral investigation loop on purpose-built macOS fixt
 | 2026-10-27 | Recorded FLEX-derived UIKit/AppKit network, resource, runtime, and application-state scope; distinguished the owner's intended reimplementation from the unbuilt Flexscope checkout and closed AppKit-walker PR #740; linked capability families to GitHub issues. | Owner clarification; no feature implementation approval |
 | 2026-10-29 | Added process-bound native AppKit inspection sessions, native view/cell/layer/layout/font queries, the `ui ax` migration, and native/AX correlation with shared no-focus behavior. | proposal.0005 |
 | 2026-11-01 | Recorded the extension architecture: focused Rust capability crates, a Swift extension SDK, and the AppKit inspector rebuilt on it inside the helper, with no new user-visible capability. | proposal.0006 |
+| 2026-11-15 | Added window-targeted clicks, scrolling, and key chords under an interaction-aware guard, including session-backed Mac Catalyst key chords. | proposal.0007 |

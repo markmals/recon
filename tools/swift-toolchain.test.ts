@@ -32,6 +32,6 @@ test("refuses a pin file that names no compiler", t => {
 test("the repository pins the Apple compiler the proposal requires", () => {
     let repository = fileURLToPath(new URL("../swift-toolchain.toml", import.meta.url));
 
-    assert.equal(PINNED_SWIFT, "swiftlang-6.4.0.34.1");
+    assert.equal(PINNED_SWIFT, "swiftlang-6.4.2.1.9");
     assert.equal(pinnedSwift(repository), PINNED_SWIFT);
 });

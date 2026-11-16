@@ -8,6 +8,12 @@
 //! front of the user, the active Space, and the pointer and input event streams every few
 //! milliseconds, and compares each sample with the one before it.
 //!
+//! Sampling has a floor: a change that happens and is undone between two looks leaves both of
+//! them identical. So an interaction, which sends input of its own, also listens to what the
+//! workspace announces as it happens — an application becoming active, the user's Space changing
+//! — on a thread that runs a run loop for the whole operation. The announcements are evidence in
+//! the same trace, judged by the same rules as the looks.
+//!
 //! The guard only watches. It never activates, raises, makes key, warps the pointer, posts an
 //! event, or puts back anything it saw change: a disturbance is a failure the caller reports, not
 //! a state the guard repairs. Restoring focus would be a second disturbance, and “activate, then
@@ -37,7 +43,10 @@ use objc2_core_graphics::{
 use serde_json::json;
 
 use crate::private;
-use recon_core::error::{ErrorCode, Failure, InspectionStage, Interference, InterferenceEvidence};
+use crate::transient::{Notice, Notices};
+use recon_core::error::{
+    ErrorCode, Failure, InspectionStage, Interference, InterferenceEvidence, ReleaseState,
+};
 use recon_core::process::Pid;
 use recon_window_server_macos::window::WindowId;
 
@@ -98,31 +107,86 @@ pub fn guarded<T>(
     observation.resolve(result)
 }
 
+pub fn guarded_interaction<T>(
+    scope: Scope,
+    operation: impl FnOnce(Watch) -> Result<(T, ReleaseState), Failure>,
+) -> Result<T, Failure> {
+    let guard = Guard::start(scope)?;
+    let watch = guard.watch();
+    let result = operation(watch.clone());
+    let deadline = Instant::now() + Duration::from_millis(300);
+    while Instant::now() < deadline && !watch.interrupted() {
+        thread::sleep(INTERVAL);
+    }
+    let observation = guard.finish();
+    observation.resolve_interaction(result)
+}
+
+#[derive(Clone)]
+pub struct Watch {
+    interrupted: Arc<AtomicBool>,
+}
+
+impl Watch {
+    pub fn interrupted(&self) -> bool {
+        self.interrupted.load(Ordering::Acquire)
+    }
+}
+
 /// A running watch over one operation. A guard that is dropped instead of finished stops the
 /// watcher too, so an early return cannot leave a thread sampling the Mac forever.
 pub struct Guard {
     scope: Scope,
     stop: Arc<AtomicBool>,
+    interrupted: Arc<AtomicBool>,
     watcher: JoinHandle<Trace>,
 }
 
 impl Guard {
     /// Resolves what this Mac lets Recon watch, then starts watching.
     ///
+    /// An interaction also subscribes to what the workspace announces, before the first look, so
+    /// that the whole of the operation is heard as well as seen.
+    ///
     /// # Errors
     ///
     /// [`ErrorCode::InterfaceUnavailable`] when the frontmost application or the active Space
-    /// cannot be observed on this macOS version. An operation that cannot be watched cannot
-    /// claim it respected the user's foreground work, so the guard fails before it runs.
+    /// cannot be observed on this macOS version, or when an interaction's notification observers
+    /// cannot be registered. An operation that cannot be watched cannot claim it respected the
+    /// user's foreground work, so the guard fails before it runs.
     pub fn start(scope: Scope) -> Result<Self, Failure> {
         let probe = Probe::of_this_mac()?;
         let stop = Arc::new(AtomicBool::new(false));
+        let interrupted = Arc::new(AtomicBool::new(false));
         let watching = Arc::clone(&stop);
-        let target = scope.target;
+        let watching_interference = Arc::clone(&interrupted);
+        let interaction = scope.stage == InspectionStage::Interaction;
+        // An interaction posts events into the session, and an activation or Space switch it
+        // causes can be over before the next look. Listening starts before the baseline, so the
+        // operation that cannot be heard fails before it sends anything.
+        let notices = if interaction {
+            Some(Notices::listening().map_err(|reason| {
+                Dimension::Workspace.unwatchable(format!(
+                    "Recon could not listen for {} ({reason}), so a ui interaction cannot report \
+                     that it left the user's foreground work alone",
+                    Dimension::Workspace
+                ))
+            })?)
+        } else {
+            None
+        };
+        let orders = Orders {
+            probe,
+            target: scope.target,
+            interaction,
+            setup_prompts_expected: scope.setup_prompts_expected,
+            clock: Instant::now(),
+            notices,
+        };
         let (baseline_tx, baseline_rx) = std::sync::mpsc::channel::<Option<Dimension>>();
         let watcher = thread::Builder::new()
             .name("recon-no-focus".to_owned())
-            .spawn(move || watch(&probe, &watching, target, &baseline_tx))
+            .spawn(move || watch(&orders, &watching, &watching_interference, &baseline_tx))
             .map_err(|error| {
                 Failure::internal(format!("the no-focus guard could not start watching: {error}"))
             })?;
@@ -147,7 +211,11 @@ impl Guard {
                 ));
             }
         }
-        Ok(Self { scope, stop, watcher })
+        Ok(Self { scope, stop, interrupted, watcher })
+    }
+
+    fn watch(&self) -> Watch {
+        Watch { interrupted: Arc::clone(&self.interrupted) }
     }
 
     /// Stops watching and collects what the trace recorded. The watcher takes one last look after
@@ -196,15 +264,7 @@ impl Observation {
             return trace
                 .disturbances
                 .iter()
-                .filter(|disturbance| {
-                    disturbance.attribution.reportable()
-                        && (disturbance.attribution == Attribution::Target
-                            || !matches!(
-                                disturbance.evidence,
-                                InterferenceEvidence::ForegroundApplication
-                                    | InterferenceEvidence::KeyWindow
-                            ))
-                })
+                .filter(|disturbance| disturbance.blocks_operation(setup_prompts_expected))
                 .min_by_key(|disturbance| (disturbance.attribution.rank(), disturbance.at))
                 .map(|disturbance| disturbance.failure(&self.scope));
         }
@@ -235,6 +295,27 @@ impl Observation {
                 Err(interference)
             }
         }
+    }
+    fn resolve_interaction<T>(
+        &self,
+        result: Result<(T, ReleaseState), Failure>,
+    ) -> Result<T, Failure> {
+        let release = match &result {
+            Ok((_, release)) => serde_json::to_value(release).expect("release state serializes"),
+            Err(error) => error
+                .details
+                .as_ref()
+                .and_then(|details| details.get("release"))
+                .cloned()
+                .unwrap_or_else(|| json!("not-needed")),
+        };
+        let mut resolved = self.resolve(result.map(|(value, _)| value));
+        if let Err(error) = &mut resolved
+            && error.code == ErrorCode::UiInterference
+        {
+            error.details.get_or_insert_with(|| json!({}))["release"] = release;
+        }
+        resolved
     }
 }
 
@@ -269,27 +350,35 @@ struct Gap {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Dimension {
     Foreground,
+    KeyWindow,
     WindowOrder,
     Space,
     Pointer,
+    /// What the workspace announces as it happens, which is the only account of a change that
+    /// was undone between two looks.
+    Workspace,
 }
 
 impl Dimension {
     fn interface(self) -> &'static str {
         match self {
             Self::Foreground => "no-focus-foreground",
+            Self::KeyWindow => "frontmost-key-window",
             Self::WindowOrder => "no-focus-window-order",
             Self::Space => "no-focus-space",
             Self::Pointer => "no-focus-pointer",
+            Self::Workspace => "no-focus-workspace-notifications",
         }
     }
 
     fn symbol(self) -> &'static str {
         match self {
             Self::Foreground => "_SLPSGetFrontProcess",
+            Self::KeyWindow => "AXFocusedWindow",
             Self::WindowOrder => "CGWindowListCopyWindowInfo",
             Self::Space => "CGSGetActiveSpace",
             Self::Pointer => "CGEventCreate",
+            Self::Workspace => "NSWorkspaceDidActivateApplicationNotification",
         }
     }
 
@@ -315,9 +404,11 @@ impl fmt::Display for Dimension {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(match self {
             Self::Foreground => "the frontmost application",
+            Self::KeyWindow => "the frontmost application's key window",
             Self::WindowOrder => "the order of the windows on screen",
             Self::Space => "the active Space",
             Self::Pointer => "the pointer",
+            Self::Workspace => "what the workspace announces about activations and Spaces",
         })
     }
 }
@@ -350,6 +441,16 @@ impl Disturbance {
         self.pid = Some(pid);
         self.window = window;
         self
+    }
+
+    fn blocks_operation(&self, setup_prompts_expected: bool) -> bool {
+        self.attribution.reportable()
+            && (!setup_prompts_expected
+                || self.attribution == Attribution::Target
+                || !matches!(
+                    self.evidence,
+                    InterferenceEvidence::ForegroundApplication | InterferenceEvidence::KeyWindow
+                ))
     }
 
     fn failure(&self, scope: &Scope) -> Failure {
@@ -418,6 +519,9 @@ impl Attribution {
 struct Snapshot {
     at: Duration,
     front: Option<FrontProcess>,
+    front_key: Option<Option<WindowId>>,
+    front_key_counters: Counters,
+    front_key_watched: bool,
     space: Option<u64>,
     pointer: Option<CGPoint>,
     counters: Counters,
@@ -430,6 +534,9 @@ impl Snapshot {
     fn unreadable(&self) -> Option<Dimension> {
         if self.front.is_none() {
             return Some(Dimension::Foreground);
+        }
+        if self.front_key_watched && self.front_key.is_none() {
+            return Some(Dimension::KeyWindow);
         }
         if self.space.is_none() {
             return Some(Dimension::Space);
@@ -508,9 +615,6 @@ struct Probe {
     connection: i32,
     active_space: ActiveSpace,
     front_process: FrontProcessOf,
-    /// Turning a serial number into a process ID uses a deprecated interface. Without it the
-    /// guard still sees that the front process changed; it just cannot say whether the new front
-    /// process is the target, and attributes the change to no one.
     process_pid: Option<ProcessPid>,
 }
 
@@ -534,12 +638,37 @@ impl Probe {
     }
 
     /// Fills `into` with one look at the Mac, reusing its window buffer.
-    fn look(&self, keys: &Keys, at: Duration, previous: Option<&Snapshot>, into: &mut Snapshot) {
+    fn look(
+        &self,
+        keys: &Keys,
+        at: Duration,
+        previous: Option<&Snapshot>,
+        interaction: bool,
+        read_front_key: bool,
+        into: &mut Snapshot,
+    ) {
         into.at = at;
         into.front = self.front(previous);
+        into.front_key_watched = interaction && read_front_key;
+        into.front_key = if !interaction {
+            None
+        } else if read_front_key {
+            into.front.and_then(|front| front.pid).and_then(|pid| {
+                recon_accessibility_macos::window_element::focused_window_id(pid).ok()
+            })
+        } else {
+            previous.and_then(|snapshot| snapshot.front_key)
+        };
         into.space = self.space();
         into.pointer = pointer();
         into.counters = Counters::of_this_session();
+        if interaction {
+            into.front_key_counters = if read_front_key {
+                into.counters
+            } else {
+                previous.map_or(Counters::default(), |snapshot| snapshot.front_key_counters)
+            };
+        }
         into.windows_read = windows_on_screen(keys, &mut into.windows);
     }
 
@@ -634,38 +763,107 @@ impl Keys {
     }
 }
 
+/// What the watcher was asked to watch, and the interfaces it watches through.
+struct Orders {
+    probe: Probe,
+    /// The instance the request selected, when it names one.
+    target: Option<Pid>,
+    /// An interaction is watched more closely: it reads the frontmost application's key window
+    /// and listens for what the workspace announces between looks.
+    interaction: bool,
+    setup_prompts_expected: bool,
+    /// When the operation started. Every look and every announcement is dated from it, so the
+    /// two accounts of the same moment carry the same clock.
+    clock: Instant,
+    /// The workspace's own account of activations and Space switches, for an interaction. It
+    /// stops listening when the watcher drops these orders.
+    notices: Option<Notices>,
+}
+
+impl Orders {
+    /// Whatever the workspace has announced since the last look, timed from the start.
+    fn announced(&self, into: &mut Vec<(Notice, Duration)>) {
+        into.clear();
+        if let Some(notices) = &self.notices {
+            notices.take(self.clock, into);
+        }
+    }
+}
+
 /// Looks at the Mac until the operation says it is done, then takes one final look.
 ///
 /// A guard that was dropped rather than finished leaves this thread holding the only reference
 /// to the stop flag, which ends the watch as surely as asking it to stop.
 fn watch(
-    probe: &Probe,
+    orders: &Orders,
     stop: &Arc<AtomicBool>,
-    target: Option<Pid>,
+    interrupted: &Arc<AtomicBool>,
     baseline: &std::sync::mpsc::Sender<Option<Dimension>>,
 ) -> Trace {
     let keys = Keys::of_the_window_server();
-    let clock = Instant::now();
     let mut trace = Trace::default();
     let mut previous = Snapshot::default();
     let mut current = Snapshot::default();
     let mut keystrokes = UnmatchedKeystrokes::default();
+    let mut announced = Vec::new();
 
-    probe.look(&keys, clock.elapsed(), None, &mut previous);
+    orders.probe.look(&keys, orders.clock.elapsed(), None, orders.interaction, true, &mut previous);
     trace.record(&previous);
     // Release the operation only with a readable baseline; an unreadable one fails the start.
     let _ = baseline.send(previous.unreadable());
     while !stop.load(Ordering::Acquire) && Arc::strong_count(stop) > 1 {
         thread::sleep(INTERVAL);
-        probe.look(&keys, clock.elapsed(), Some(&previous), &mut current);
+        orders.probe.look(
+            &keys,
+            orders.clock.elapsed(),
+            Some(&previous),
+            orders.interaction,
+            false,
+            &mut current,
+        );
         trace.record(&current);
-        compare(&previous, &current, target, &mut keystrokes, &mut trace.disturbances);
+        let existing = trace.disturbances.len();
+        // What the workspace announced happened before this look and may be the only account of
+        // it, so it is recorded first and the look is compared afterwards.
+        orders.announced(&mut announced);
+        reported(&announced, orders.target, &previous, &current, &mut trace.disturbances);
+        compare(
+            &previous,
+            &current,
+            orders.target,
+            orders.interaction,
+            &mut keystrokes,
+            &mut trace.disturbances,
+        );
+        if current.unreadable().is_some()
+            || trace.disturbances[existing..]
+                .iter()
+                .any(|disturbance| disturbance.blocks_operation(orders.setup_prompts_expected))
+        {
+            interrupted.store(true, Ordering::Release);
+        }
         mem::swap(&mut previous, &mut current);
     }
     // The operation has returned; whatever it did last is only visible now.
-    probe.look(&keys, clock.elapsed(), Some(&previous), &mut current);
+    orders.probe.look(
+        &keys,
+        orders.clock.elapsed(),
+        Some(&previous),
+        orders.interaction,
+        true,
+        &mut current,
+    );
     trace.record(&current);
-    compare(&previous, &current, target, &mut keystrokes, &mut trace.disturbances);
+    orders.announced(&mut announced);
+    reported(&announced, orders.target, &previous, &current, &mut trace.disturbances);
+    compare(
+        &previous,
+        &current,
+        orders.target,
+        orders.interaction,
+        &mut keystrokes,
+        &mut trace.disturbances,
+    );
     trace
 }
 
@@ -674,20 +872,74 @@ fn compare(
     previous: &Snapshot,
     current: &Snapshot,
     target: Option<Pid>,
+    interaction: bool,
     keystrokes: &mut UnmatchedKeystrokes,
     found: &mut Vec<Disturbance>,
 ) {
-    foreground(previous, current, target, found);
-    window_order(previous, current, target, found);
+    foreground(previous, current, target, interaction, found);
+    frontmost_key_window(previous, current, target, found);
+    window_order(previous, current, target, interaction, found);
     space(previous, current, target, found);
     pointer_moved(previous, current, found);
     input_posted(previous, current, keystrokes, found);
+}
+
+/// What the workspace announced between two looks, as evidence.
+///
+/// An announcement is often the only account there is: an application activated and put back, or
+/// a Space switched and switched back, between two looks leaves both of them identical. So each
+/// one is recorded on its own, dated when it arrived rather than when it was noticed, and judged
+/// by the same rules the looks are — the target named in an activation is the target even while
+/// someone is typing, and anything else that happens while the hardware is producing input is
+/// the person at the Mac.
+fn reported(
+    announced: &[(Notice, Duration)],
+    target: Option<Pid>,
+    previous: &Snapshot,
+    current: &Snapshot,
+    found: &mut Vec<Disturbance>,
+) {
+    for (notice, at) in announced {
+        let disturbance = match *notice {
+            Notice::Activated(pid) => {
+                let became = match pid {
+                    Some(pid) => format!("pid {pid}"),
+                    None => "an application it could not name".to_owned(),
+                };
+                let disturbance = Disturbance::new(
+                    InterferenceEvidence::ForegroundApplication,
+                    attribute_forward(pid, target, previous, current),
+                    *at,
+                    &format!("the workspace announced that {became} became the active application"),
+                );
+                match pid {
+                    Some(pid) => disturbance.about(pid, None),
+                    None => disturbance,
+                }
+            }
+            // The announcement names no process, so the Space switch points wherever the
+            // frontmost application does, exactly as the look at the active Space would.
+            Notice::SpaceChanged => Disturbance::new(
+                InterferenceEvidence::SpaceChange,
+                attribute_forward(
+                    current.front.and_then(|front| front.pid),
+                    target,
+                    previous,
+                    current,
+                ),
+                *at,
+                "the workspace announced that the active Space changed",
+            ),
+        };
+        note(found, disturbance);
+    }
 }
 
 fn foreground(
     previous: &Snapshot,
     current: &Snapshot,
     target: Option<Pid>,
+    interaction: bool,
     found: &mut Vec<Disturbance>,
 ) {
     let (Some(before), Some(after)) = (previous.front, current.front) else {
@@ -696,7 +948,7 @@ fn foreground(
     if before.serial == after.serial {
         return;
     }
-    let attribution = attribute(after.pid, target, previous, current);
+    let attribution = attribute_move(interaction, after.pid, target, previous, current);
     let became = match after.pid {
         Some(pid) => format!("pid {pid}"),
         None => "another process".to_owned(),
@@ -713,10 +965,35 @@ fn foreground(
     note(found, disturbance);
 }
 
+fn frontmost_key_window(
+    previous: &Snapshot,
+    current: &Snapshot,
+    target: Option<Pid>,
+    found: &mut Vec<Disturbance>,
+) {
+    let (Some(before), Some(after)) = (previous.front_key, current.front_key) else {
+        return;
+    };
+    if before == after {
+        return;
+    }
+    let front_pid = current.front.and_then(|front| front.pid);
+    let attribution = attribute_since(front_pid, target, current, previous.front_key_counters);
+    let observed =
+        format!("the frontmost application's key window changed from {before:?} to {after:?}");
+    let mut disturbance =
+        Disturbance::new(InterferenceEvidence::KeyWindow, attribution, current.at, &observed);
+    if let Some(pid) = front_pid {
+        disturbance = disturbance.about(pid, after);
+    }
+    note(found, disturbance);
+}
+
 fn window_order(
     previous: &Snapshot,
     current: &Snapshot,
     target: Option<Pid>,
+    interaction: bool,
     found: &mut Vec<Disturbance>,
 ) {
     if !previous.windows_read || !current.windows_read {
@@ -729,7 +1006,7 @@ fn window_order(
         && before.id != after.id
         && current.windows.iter().any(|window| window.id == before.id)
     {
-        let attribution = attribute(Some(after.owner), target, previous, current);
+        let attribution = attribute_move(interaction, Some(after.owner), target, previous, current);
         let observed = format!(
             "window {} of pid {} came in front of window {}",
             after.id, after.owner, before.id
@@ -742,8 +1019,9 @@ fn window_order(
         return;
     }
 
-    if reordered(previous, current) {
-        let attribution = attribute(None, target, previous, current);
+    if let Some(forward) = came_forward(previous, current) {
+        let attribution =
+            attribute_move(interaction, Some(forward.owner), target, previous, current);
         note(
             found,
             Disturbance::new(
@@ -776,19 +1054,21 @@ fn window_order(
     }
 }
 
-/// Whether the windows both looks have in common are in a different order.
-fn reordered(previous: &Snapshot, current: &Snapshot) -> bool {
+/// The window that came forward, if the windows both looks have in common are in a different
+/// order.
+///
+/// The first place the two orders disagree names it: whatever sits there now was behind whatever
+/// sat there before.
+fn came_forward(previous: &Snapshot, current: &Snapshot) -> Option<WindowPlace> {
     let before = previous
         .windows
         .iter()
-        .map(|window| window.id)
-        .filter(|id| current.windows.iter().any(|window| window.id == *id));
+        .filter(|window| current.windows.iter().any(|other| other.id == window.id));
     let after = current
         .windows
         .iter()
-        .map(|window| window.id)
-        .filter(|id| previous.windows.iter().any(|window| window.id == *id));
-    !before.eq(after)
+        .filter(|window| previous.windows.iter().any(|other| other.id == window.id));
+    before.zip(after).find(|(before, after)| before.id != after.id).map(|(_, after)| *after)
 }
 
 fn space(
@@ -924,10 +1204,61 @@ fn attribute(
     Attribution::Unexplained
 }
 
+fn attribute_since(
+    pid: Option<Pid>,
+    target: Option<Pid>,
+    current: &Snapshot,
+    counters: Counters,
+) -> Attribution {
+    if used_by_hand_counters(counters, current.counters) {
+        return Attribution::ConcurrentUser;
+    }
+    if pid.is_some() && pid == target {
+        return Attribution::Target;
+    }
+    Attribution::Unexplained
+}
+
+fn attribute_forward(
+    pid: Option<Pid>,
+    target: Option<Pid>,
+    previous: &Snapshot,
+    current: &Snapshot,
+) -> Attribution {
+    if pid.is_some() && pid == target {
+        Attribution::Target
+    } else {
+        attribute(pid, target, previous, current)
+    }
+}
+
+/// How a forward move — the target coming to the front, or a window of it rising in the order — is
+/// attributed. Only an interaction posts the input that could cause such a move, so only an
+/// interaction blames the target for one that coincides with hardware input. During a read Recon
+/// sends nothing, so the same move while the person is typing or clicking is their own action and
+/// stays theirs; a move with no hardware input is still unexplained interference in either stage.
+fn attribute_move(
+    interaction: bool,
+    pid: Option<Pid>,
+    target: Option<Pid>,
+    previous: &Snapshot,
+    current: &Snapshot,
+) -> Attribution {
+    if interaction {
+        attribute_forward(pid, target, previous, current)
+    } else {
+        attribute(pid, target, previous, current)
+    }
+}
+
 /// Whether the hardware generated any input between two looks: someone is using the Mac.
 fn used_by_hand(previous: &Snapshot, current: &Snapshot) -> bool {
-    delta(current.counters.hid_pointer, previous.counters.hid_pointer) != 0
-        || delta(current.counters.hid_input, previous.counters.hid_input) != 0
+    used_by_hand_counters(previous.counters, current.counters)
+}
+
+fn used_by_hand_counters(previous: Counters, current: Counters) -> bool {
+    delta(current.hid_pointer, previous.hid_pointer) != 0
+        || delta(current.hid_input, previous.hid_input) != 0
 }
 
 fn delta(current: u32, previous: u32) -> u32 {
@@ -966,6 +1297,14 @@ mod tests {
         Snapshot {
             at: Duration::from_millis(at),
             front: Some(FrontProcess { serial: 1, pid: Some(OTHER) }),
+            front_key: Some(Some(WindowId(1))),
+            front_key_counters: Counters {
+                hid_pointer: 10,
+                hid_input: 5,
+                session_pointer: 10,
+                session_input: 5,
+            },
+            front_key_watched: false,
             space: Some(4),
             pointer: Some(CGPoint::new(100.0, 200.0)),
             counters: Counters {
@@ -992,7 +1331,7 @@ mod tests {
         let mut keystrokes = UnmatchedKeystrokes::default();
         let mut found = Vec::new();
         for pair in looks.windows(2) {
-            compare(pair[0], pair[1], Some(TARGET), &mut keystrokes, &mut found);
+            compare(pair[0], pair[1], Some(TARGET), false, &mut keystrokes, &mut found);
         }
         found
     }
@@ -1003,6 +1342,52 @@ mod tests {
 
     fn observed(disturbances: Vec<Disturbance>) -> Observation {
         Observation { scope: scope(), trace: Some(Trace { samples: 2, disturbances, gap: None }) }
+    }
+
+    /// One interval of an interaction's watch: what the workspace announced during it, and then
+    /// what the two looks themselves show, in the order the watcher records them.
+    fn interval(
+        announced: &[(Notice, u64)],
+        previous: &Snapshot,
+        current: &Snapshot,
+    ) -> Vec<Disturbance> {
+        let announced: Vec<(Notice, Duration)> =
+            announced.iter().map(|(notice, at)| (*notice, Duration::from_millis(*at))).collect();
+        let mut keystrokes = UnmatchedKeystrokes::default();
+        let mut found = Vec::new();
+        reported(&announced, Some(TARGET), previous, current, &mut found);
+        compare(previous, current, Some(TARGET), true, &mut keystrokes, &mut found);
+        found
+    }
+
+    /// An interaction whose caller expects a macOS setup prompt to interrupt the desktop.
+    fn observed_during_setup(disturbances: Vec<Disturbance>) -> Observation {
+        Observation {
+            scope: Scope {
+                stage: InspectionStage::Interaction,
+                target: Some(TARGET),
+                setup_prompts_expected: true,
+            },
+            trace: Some(Trace { samples: 2, disturbances, gap: None }),
+        }
+    }
+
+    /// An interaction whose caller expects no setup prompt.
+    fn observed_interaction(disturbances: Vec<Disturbance>) -> Observation {
+        Observation {
+            scope: Scope {
+                stage: InspectionStage::Interaction,
+                target: Some(TARGET),
+                setup_prompts_expected: false,
+            },
+            trace: Some(Trace { samples: 2, disturbances, gap: None }),
+        }
+    }
+
+    /// Someone at the keyboard during the interval between two looks.
+    fn typed_on(look: &mut Snapshot) {
+        look.counters.hid_input += 1;
+        look.counters.session_input += 1;
     }
 
     #[test]
@@ -1061,7 +1446,7 @@ mod tests {
     }
 
     #[test]
-    fn a_person_clicking_the_selected_target_is_not_blamed_on_the_operation() {
+    fn a_person_clicking_the_selected_target_during_a_read_is_not_blamed() {
         let before = snapshot(0);
         let mut after = snapshot(10);
         after.front = Some(FrontProcess { serial: 7, pid: Some(TARGET) });
@@ -1072,6 +1457,80 @@ mod tests {
 
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].attribution, Attribution::ConcurrentUser);
+        assert!(observed(found).outcome().is_none());
+    }
+
+    #[test]
+    fn a_target_activation_during_an_interaction_is_the_targets_through_hardware_input() {
+        let before = snapshot(0);
+        let mut after = snapshot(10);
+        after.front = Some(FrontProcess { serial: 7, pid: Some(TARGET) });
+        after.counters.hid_input += 1;
+        after.counters.session_input += 1;
+
+        let found = interval(&[], &before, &after);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].attribution, Attribution::Target);
+        assert_eq!(
+            observed_interaction(found).outcome().map(|failure| failure.code),
+            Some(ErrorCode::UiInterference)
+        );
+    }
+
+    #[test]
+    fn a_frontmost_key_window_change_without_hardware_input_is_interference() {
+        let mut before = snapshot(0);
+        before.front_key = Some(Some(WindowId(42)));
+        let mut after = snapshot(10);
+        after.front_key = Some(Some(WindowId(99)));
+
+        let found = changes(&before, &after);
+
+        assert!(found.iter().any(|disturbance| {
+            disturbance.evidence == InterferenceEvidence::KeyWindow
+                && disturbance.attribution == Attribution::Unexplained
+        }));
+        assert_eq!(
+            observed(found).outcome().map(|failure| failure.code),
+            Some(ErrorCode::UiInterference)
+        );
+    }
+
+    #[test]
+    fn hardware_input_explains_a_frontmost_key_window_change() {
+        let mut before = snapshot(0);
+        before.front_key = Some(Some(WindowId(42)));
+        let mut after = snapshot(10);
+        after.front_key = Some(Some(WindowId(99)));
+        after.counters.hid_input += 1;
+        after.counters.session_input += 1;
+
+        let found = changes(&before, &after);
+
+        assert!(found.iter().any(|disturbance| {
+            disturbance.evidence == InterferenceEvidence::KeyWindow
+                && disturbance.attribution == Attribution::ConcurrentUser
+        }));
+        assert!(observed(found).outcome().is_none());
+    }
+
+    #[test]
+    fn hardware_input_since_the_key_window_read_explains_a_quiet_final_interval() {
+        let mut before = snapshot(0);
+        before.front_key = Some(Some(WindowId(42)));
+        before.counters.hid_input += 1;
+        before.counters.session_input += 1;
+        let mut after = snapshot(10);
+        after.front_key = Some(Some(WindowId(99)));
+        after.counters = before.counters;
+
+        let found = changes(&before, &after);
+
+        assert!(found.iter().any(|disturbance| {
+            disturbance.evidence == InterferenceEvidence::KeyWindow
+                && disturbance.attribution == Attribution::ConcurrentUser
+        }));
         assert!(observed(found).outcome().is_none());
     }
 
@@ -1139,6 +1598,46 @@ mod tests {
 
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].evidence, InterferenceEvidence::KeyWindow);
+    }
+
+    /// A target window rising past one it was behind while the person is typing is the person's
+    /// doing during a read: the read posts nothing, so a reorder that coincides with hardware input
+    /// stays theirs and does not fail the read.
+    #[test]
+    fn a_target_window_rising_during_a_read_with_hardware_input_is_not_blamed() {
+        let mut before = snapshot(0);
+        before.windows = vec![place(1, OTHER), place(3, OTHER), place(2, TARGET)];
+        let mut after = snapshot(10);
+        after.counters.hid_input += 1;
+        after.counters.session_input += 1;
+
+        let found = changes(&before, &after);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].evidence, InterferenceEvidence::KeyWindow);
+        assert_eq!(found[0].attribution, Attribution::ConcurrentUser);
+        assert!(observed(found).outcome().is_none());
+    }
+
+    /// The same reorder during an interaction is the target's doing even while the person types:
+    /// the operation posted the input that could have caused it.
+    #[test]
+    fn a_target_window_rising_during_an_interaction_is_the_targets_through_hardware_input() {
+        let mut before = snapshot(0);
+        before.windows = vec![place(1, OTHER), place(3, OTHER), place(2, TARGET)];
+        let mut after = snapshot(10);
+        after.counters.hid_input += 1;
+        after.counters.session_input += 1;
+
+        let found = interval(&[], &before, &after);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].evidence, InterferenceEvidence::KeyWindow);
+        assert_eq!(found[0].attribution, Attribution::Target);
+        assert_eq!(
+            observed_interaction(found).outcome().map(|failure| failure.code),
+            Some(ErrorCode::UiInterference)
+        );
     }
 
     #[test]
@@ -1326,7 +1825,7 @@ mod tests {
             after.pointer = Some(CGPoint::new(f64::from(step), 0.0));
             after.counters.hid_pointer += step;
             after.counters.session_pointer += step;
-            compare(&before, &after, Some(TARGET), &mut keystrokes, &mut found);
+            compare(&before, &after, Some(TARGET), false, &mut keystrokes, &mut found);
         }
 
         assert_eq!(found.len(), 1);
@@ -1501,5 +2000,235 @@ mod tests {
         assert_eq!(failure.code, ErrorCode::UiInterference);
         assert!(failure.message.contains("getter failed"), "{}", failure.message);
         assert_eq!(failure.details.expect("details")["evidenceSource"], "foreground-application");
+    }
+
+    #[test]
+    fn an_activation_the_workspace_announces_for_the_target_is_attributed_to_it() {
+        let before = snapshot(0);
+        let after = snapshot(10);
+
+        let found = interval(&[(Notice::Activated(Some(TARGET)), 4)], &before, &after);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].evidence, InterferenceEvidence::ForegroundApplication);
+        assert_eq!(found[0].attribution, Attribution::Target);
+        assert_eq!(found[0].pid, Some(TARGET));
+        // The announcement dates the disturbance: it is when the desktop changed, not when the
+        // guard next looked.
+        assert_eq!(found[0].at, Duration::from_millis(4));
+        assert_eq!(
+            observed(found).outcome().map(|failure| failure.code),
+            Some(ErrorCode::UiInterference)
+        );
+    }
+
+    /// The case the looks cannot see: the activation is over before the next one.
+    #[test]
+    fn an_activation_the_workspace_announced_and_undone_still_fails_the_operation() {
+        let before = snapshot(0);
+        let after = snapshot(10);
+        assert!(changes(&before, &after).is_empty(), "the looks themselves show a quiet desktop");
+
+        let found = interval(
+            &[(Notice::Activated(Some(TARGET)), 2), (Notice::Activated(Some(OTHER)), 6)],
+            &before,
+            &after,
+        );
+
+        assert_eq!(details(&found).len(), 2, "{:?}", details(&found));
+        assert_eq!(found[0].attribution, Attribution::Target);
+        assert_eq!(found[1].attribution, Attribution::Unexplained);
+        let failure = observed(found).outcome().expect("an activation that was undone still fails");
+        assert_eq!(failure.code, ErrorCode::UiInterference);
+        let details = failure.details.as_ref().expect("details");
+        assert_eq!(details["evidenceSource"], "foreground-application");
+        assert_eq!(details["pid"], TARGET.0);
+        assert_eq!(details["targetExecutionMayContinue"], Value::Bool(true));
+    }
+
+    #[test]
+    fn an_announced_target_activation_during_hardware_input_is_still_the_targets() {
+        let before = snapshot(0);
+        let mut after = snapshot(10);
+        typed_on(&mut after);
+
+        let found = interval(&[(Notice::Activated(Some(TARGET)), 5)], &before, &after);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].attribution, Attribution::Target);
+        // What blocks the operation is also what interrupts the watch that is still running.
+        assert!(found[0].blocks_operation(false));
+    }
+
+    #[test]
+    fn an_announced_activation_of_another_application_during_input_is_the_persons() {
+        let before = snapshot(0);
+        let mut after = snapshot(10);
+        typed_on(&mut after);
+
+        let found = interval(&[(Notice::Activated(Some(Pid(1234))), 5)], &before, &after);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].attribution, Attribution::ConcurrentUser);
+        assert!(!found[0].blocks_operation(false));
+        assert!(observed(found).outcome().is_none());
+    }
+
+    #[test]
+    fn an_announced_activation_nothing_explains_fails_without_blaming_the_target() {
+        let before = snapshot(0);
+        let after = snapshot(10);
+
+        let found = interval(&[(Notice::Activated(Some(Pid(1234))), 5)], &before, &after);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].attribution, Attribution::Unexplained);
+        let failure = observed(found).outcome().expect("an unexplained activation fails");
+        assert_eq!(failure.code, ErrorCode::UiInterference);
+        assert!(failure.message.contains("nothing tying it"), "{}", failure.message);
+    }
+
+    #[test]
+    fn an_announced_activation_the_workspace_cannot_name_is_not_the_targets() {
+        let before = snapshot(0);
+        let after = snapshot(10);
+
+        let found = interval(&[(Notice::Activated(None), 5)], &before, &after);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].attribution, Attribution::Unexplained);
+        assert_eq!(found[0].pid, None);
+        assert!(found[0].detail.contains("could not name"), "{}", found[0].detail);
+    }
+
+    /// A Space that is switched and switched back leaves both looks on the same Space.
+    #[test]
+    fn a_space_switch_the_workspace_announced_and_undone_still_fails_the_operation() {
+        let before = snapshot(0);
+        let after = snapshot(10);
+        assert!(changes(&before, &after).is_empty(), "the looks themselves show a quiet desktop");
+
+        let found =
+            interval(&[(Notice::SpaceChanged, 3), (Notice::SpaceChanged, 7)], &before, &after);
+
+        // The switch and the switch back are one run of the same evidence; the first of them
+        // dates it.
+        assert_eq!(details(&found).len(), 1, "{:?}", details(&found));
+        assert_eq!(found[0].evidence, InterferenceEvidence::SpaceChange);
+        assert_eq!(found[0].at, Duration::from_millis(3));
+        let failure = observed(found).outcome().expect("a Space switch that was undone fails");
+        assert_eq!(failure.details.expect("details")["evidenceSource"], "space-change");
+    }
+
+    #[test]
+    fn a_space_switch_announced_while_someone_is_typing_is_not_interference() {
+        let before = snapshot(0);
+        let mut after = snapshot(10);
+        typed_on(&mut after);
+
+        let found = interval(&[(Notice::SpaceChanged, 4)], &before, &after);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].attribution, Attribution::ConcurrentUser);
+        assert!(observed(found).outcome().is_none());
+    }
+
+    /// The announcement names no process, so the Space it switched to points where the frontmost
+    /// application does — the same reading the look at the active Space makes.
+    #[test]
+    fn a_space_switch_announced_while_the_target_is_in_front_is_its_doing() {
+        let front = Some(FrontProcess { serial: 2, pid: Some(TARGET) });
+        let mut before = snapshot(0);
+        before.front = front;
+        let mut after = snapshot(10);
+        after.front = front;
+        typed_on(&mut after);
+
+        let found = interval(&[(Notice::SpaceChanged, 4)], &before, &after);
+
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].attribution, Attribution::Target);
+    }
+
+    #[test]
+    fn an_expected_setup_prompt_does_not_excuse_an_announced_space_switch() {
+        let before = snapshot(0);
+        let after = snapshot(10);
+
+        let observation =
+            observed_during_setup(interval(&[(Notice::SpaceChanged, 4)], &before, &after));
+
+        let failure = observation.outcome().expect("setup does not excuse a Space switch");
+        assert_eq!(failure.code, ErrorCode::UiInterference);
+        assert_eq!(failure.details.expect("details")["evidenceSource"], "space-change");
+    }
+
+    #[test]
+    fn an_expected_setup_prompt_excuses_the_activation_it_announces() {
+        let before = snapshot(0);
+        let after = snapshot(10);
+
+        let observation = observed_during_setup(interval(
+            &[(Notice::Activated(Some(Pid(501))), 4)],
+            &before,
+            &after,
+        ));
+
+        assert!(observation.outcome().is_none());
+    }
+
+    #[test]
+    fn an_expected_setup_prompt_does_not_excuse_an_announced_target_activation() {
+        let before = snapshot(0);
+        let after = snapshot(10);
+
+        let observation = observed_during_setup(interval(
+            &[(Notice::Activated(Some(TARGET)), 4)],
+            &before,
+            &after,
+        ));
+
+        let failure = observation.outcome().expect("target activation is still reported");
+        assert_eq!(failure.code, ErrorCode::UiInterference);
+    }
+
+    /// An activation that lasted long enough to be seen is announced and looked at. It is one
+    /// disturbance, dated when the workspace said it happened.
+    #[test]
+    fn an_activation_both_heard_and_seen_is_reported_once() {
+        let before = snapshot(0);
+        let mut after = snapshot(10);
+        after.front = Some(FrontProcess { serial: 2, pid: Some(TARGET) });
+
+        let found = interval(&[(Notice::Activated(Some(TARGET)), 4)], &before, &after);
+
+        assert_eq!(details(&found).len(), 1, "{:?}", details(&found));
+        assert_eq!(found[0].at, Duration::from_millis(4));
+    }
+
+    #[test]
+    fn an_interaction_listens_for_what_a_look_would_miss() {
+        let scope = Scope {
+            stage: InspectionStage::Interaction,
+            target: Some(TARGET),
+            setup_prompts_expected: false,
+        };
+        let guard = match Guard::start(scope) {
+            Ok(guard) => guard,
+            // A Mac that cannot be watched or listened to is the case the guard fails closed on,
+            // before the operation sends anything.
+            Err(failure) => {
+                assert_eq!(failure.code, ErrorCode::InterfaceUnavailable);
+                return;
+            }
+        };
+
+        thread::sleep(Duration::from_millis(100));
+        let observation = guard.finish();
+
+        // Finishing stops the observers with the watcher; the trace it returns is the whole of
+        // what the guard heard and saw.
+        let trace = observation.trace.as_ref().expect("the watcher finished");
+        assert!(trace.samples > 2, "{} samples in 100 ms", trace.samples);
     }
 }

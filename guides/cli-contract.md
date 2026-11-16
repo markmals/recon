@@ -1,7 +1,7 @@
 ---
 id: guide.cli-contract
 title: Discover and Diagnose Recon
-describes: [proposal.0003, proposal.0004]
+describes: [proposal.0003, proposal.0004, proposal.0007]
 ---
 
 # Discover and Diagnose Recon
@@ -34,7 +34,7 @@ Options use long names. Flags take no value; value-taking options take exactly o
 
 `recon context` returns `recon` with version, full build commit or `null`, and the canonical absolute executable path. `host` gives the compiled target OS and architecture; its version is the structured macOS product version or `null` on other hosts. `macos` is `null` outside macOS.
 
-On macOS, the report includes code-signing identifier and team, signed and ad-hoc flags, whether Recon is responsible for its own privacy identity, preflight results for Screen Recording and Accessibility, the private interfaces it uses, and application-discovery availability. Permission entries include the System Settings pane that grants each permission. An identity failure before spawning is reported with a reason and `granted: null` for both permissions. Those grants are unknown; the launcher's permissions cannot answer the question.
+On macOS, the report includes code-signing identifier and team, signed and ad-hoc flags, whether Recon is responsible for its own privacy identity, preflight results for Screen Recording, Accessibility, and event posting, the private interfaces it uses, and application-discovery availability. Permission entries include the System Settings pane that grants each permission. An identity failure before spawning is reported with a reason and `granted: null` for every permission. Those grants are unknown; the launcher's permissions cannot answer the question.
 
 Signing facts describe the running process even if its executable file has been replaced. Recon reads only its own kernel signing status and, when signed, its own code-directory hash. A successful status query reporting no signature produces `signed: false`, null identifier and team, and `adHoc: false`. For signed code, the selected public signing metadata must match that kernel hash before Recon reports its identifier, team, or ad-hoc flag. `signed: true` carries no validity or trust guarantee.
 

@@ -1,0 +1,34 @@
+[package]
+name = "recon-input-macos"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+recon-applications-macos = { path = "../recon-applications-macos" }
+recon-core = { path = "../recon-core" }
+recon-native-access-macos = { path = "../recon-native-access-macos" }
+recon-window-server-macos = { path = "../recon-window-server-macos" }
+schemars = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2"
+objc2-core-foundation = { version = "0.3", features = [
+    "CFCGTypes",
+    "CFString",
+    "std",
+], default-features = false }
+objc2-core-graphics = { version = "0.3", features = [
+    "CGEvent",
+    "CGEventSource",
+    "CGEventTypes",
+    "std",
+], default-features = false }

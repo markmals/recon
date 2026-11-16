@@ -134,11 +134,16 @@ mod macos {
             context["macos"]["responsibility"]["responsibleForSelf"].as_bool().expect("a flag");
         let permissions = entries(&context, "permissions");
 
-        assert_eq!(permissions.len(), 2, "{permissions:?}");
+        assert_eq!(permissions.len(), 3, "{permissions:?}");
         assert_eq!(permissions[0]["permission"], "screen-recording");
         assert_eq!(permissions[0]["settingsPane"], SCREEN_RECORDING_PANE);
         assert_eq!(permissions[1]["permission"], "accessibility");
         assert_eq!(permissions[1]["settingsPane"], ACCESSIBILITY_PANE);
+        assert_eq!(permissions[2]["permission"], "event-posting");
+        assert_eq!(
+            permissions[2]["settingsPane"],
+            "System Settings → Privacy & Security → Device Control & Data Access"
+        );
         for permission in permissions {
             // A preflight run under the launcher's identity answers a different question, so an
             // unknown grant is null rather than false.

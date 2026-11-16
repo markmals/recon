@@ -22,7 +22,7 @@ Every failure is one JSON error object printed on a single line to standard erro
 
 `ui` commands work on macOS only. On any other host they fail with `UNSUPPORTED_HOST`, whose `details` name the host you are on and the hosts the command supports, and exit with a nonzero status.
 
-Install Recon at the path where you intend to keep it before granting anything, because macOS records a permission grant against an executable at a location. Homebrew source builds and bottles are ad-hoc signed. Their designated requirement is the code hash, so an upgrade or replacement with a different build needs fresh grants; Homebrew's versioned Cellar path also changes between releases. Run `recon context` to inspect the current installation's signing facts and grants without requesting either permission.
+Install Recon at the path where you intend to keep it before granting anything, because macOS records a permission grant against an executable at a location. Homebrew source builds and bottles are ad-hoc signed. Their designated requirement is the code hash, so an upgrade or replacement with a different build needs fresh grants; Homebrew's versioned Cellar path also changes between releases. Run `recon context` to inspect the current installation's signing facts and grants without requesting a grant.
 
 Grant the permissions to the installed `recon`. Run a `ui` command, let macOS show its prompt, then open System Settings and enable `recon` in Privacy & Security → Screen & System Audio Recording and in Privacy & Security → Accessibility. Both lists show the executable as "recon", from the Info.plist embedded in it.
 
@@ -30,7 +30,7 @@ Which permission a command needs depends on what it reads. `recon ui windows` ne
 
 When a needed permission is missing, Recon asks macOS to request it. macOS may show its prompt, and will stay silent if you denied the permission earlier. Recon then exits with a nonzero status and fails with `PERMISSION_DENIED`. Its `message` names the missing permissions and the executable; `details` carries the same facts as data. `details.permissions` holds one entry per missing permission, each with a `permission` of `screen-recording` or `accessibility` and the `settingsPane` that grants it. `details.executablePath` is the absolute path of the running executable, which is what macOS records a grant against. `details.adHocSigned` says whether this build is ad-hoc signed.
 
-If both permissions are missing, both appear in `details.permissions`. When `adHocSigned` is `true`, macOS forgets the grant whenever the executable is rebuilt or replaced. For a stable development copy instead, you can sign it with your own Developer ID Application identity and Recon's identifier:
+If required permissions are missing, each appears in `details.permissions`. When `adHocSigned` is `true`, macOS forgets the grant whenever the executable is rebuilt or replaced. For a stable development copy instead, you can sign it with your own Developer ID Application identity and Recon's identifier:
 
 ```sh
 codesign --force --sign "Developer ID Application: <Your Name> (<TEAMID>)" --identifier me.malstrom.recon /path/to/recon

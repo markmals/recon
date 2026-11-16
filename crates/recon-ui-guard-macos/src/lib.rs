@@ -6,12 +6,15 @@
 //! declared, and classifies interference it could not rule out.
 //!
 //! Nothing here inspects an application. The guard observes the Mac through the same window
-//! server interfaces anyone could use, and never calls back into the operation it is watching.
+//! server and workspace interfaces anyone could use, and never calls back into the operation it
+//! is watching.
 
 #[cfg(target_os = "macos")]
 mod focus;
 #[cfg(target_os = "macos")]
 mod private;
+#[cfg(target_os = "macos")]
+mod transient;
 
 #[cfg(target_os = "macos")]
-pub use focus::{Guard, Observation, Scope, guarded};
+pub use focus::{Guard, Observation, Scope, Watch, guarded, guarded_interaction};

@@ -200,7 +200,7 @@ fn unknown_grants(output: &Output) {
     assert_eq!(responsibility["responsibleForSelf"], serde_json::json!(false));
     assert!(responsibility["detail"].is_string(), "{responsibility}");
     let permissions = report["macos"]["permissions"].as_array().unwrap();
-    assert_eq!(permissions.len(), 2, "{permissions:?}");
+    assert_eq!(permissions.len(), 3, "{permissions:?}");
     for permission in permissions {
         assert!(permission["granted"].is_null(), "a grant was preflighted anyway: {permission}");
     }

@@ -24,6 +24,8 @@ const EXECUTABLE: &str = "/usr/local/bin/recon";
 const SCREEN_RECORDING_PANE: &str =
     "System Settings → Privacy & Security → Screen & System Audio Recording";
 const ACCESSIBILITY_PANE: &str = "System Settings → Privacy & Security → Accessibility";
+const EVENT_POSTING_PANE: &str =
+    "System Settings → Privacy & Security → Device Control & Data Access";
 
 #[test]
 fn a_missing_permission_carries_the_executable_and_the_settings_pane() {
@@ -89,11 +91,11 @@ fn an_ad_hoc_signature_is_reported_as_a_field() {
 fn every_permission_has_a_stable_identifier_and_a_settings_pane() {
     assert_eq!(
         Permission::ALL.map(Permission::identifier),
-        ["screen-recording", "accessibility"],
+        ["screen-recording", "accessibility", "event-posting"],
         "the identifiers recon schema and recon context publish"
     );
     assert_eq!(
         Permission::ALL.map(Permission::settings_pane),
-        [SCREEN_RECORDING_PANE, ACCESSIBILITY_PANE]
+        [SCREEN_RECORDING_PANE, ACCESSIBILITY_PANE, EVENT_POSTING_PANE]
     );
 }

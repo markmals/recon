@@ -11,6 +11,7 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
+recon-accessibility-macos = { path = "../recon-accessibility-macos" }
 recon-core = { path = "../recon-core" }
 recon-window-server-macos = { path = "../recon-window-server-macos" }
 serde_json = "1"
@@ -19,11 +20,22 @@ serde_json = "1"
 libc = "0.2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
+block2 = { version = "0.6", features = ["std"], default-features = false }
+objc2 = { version = "0.6", features = ["std"], default-features = false }
+objc2-app-kit = { version = "0.3", features = [
+    "NSRunningApplication",
+    "NSWorkspace",
+    # `-[NSRunningApplication processIdentifier]`, which is how an activation names a process.
+    "libc",
+    "std",
+], default-features = false }
 objc2-core-foundation = { version = "0.3", features = [
     "CFArray",
     "CFCGTypes",
+    "CFDate",
     "CFDictionary",
     "CFNumber",
+    "CFRunLoop",
     "CFString",
     "std",
 ], default-features = false }
@@ -32,5 +44,14 @@ objc2-core-graphics = { version = "0.3", features = [
     "CGEventSource",
     "CGEventTypes",
     "CGWindow",
+    "std",
+], default-features = false }
+objc2-foundation = { version = "0.3", features = [
+    "NSDictionary",
+    "NSNotification",
+    "NSObject",
+    "NSOperation",
+    "NSString",
+    "block2",
     "std",
 ], default-features = false }

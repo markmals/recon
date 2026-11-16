@@ -9,7 +9,7 @@ pub(super) fn details(generator: &mut SchemaGenerator) -> Schema {
     let optional_strings = json!({"type":["array","null"],"items":string});
     let integers = json!({"type":"array","items":integer});
     let candidates = json!({"type":"array","items":object(json!({"name":string,"bundleId":optional_string,"path":string}))});
-    let permissions = json!({"type":"array","items":object(json!({"permission":{"enum":["screen-recording","accessibility"]},"settingsPane":string}))});
+    let permissions = json!({"type":"array","items":object(json!({"permission":{"enum":["screen-recording","accessibility","event-posting"]},"settingsPane":string}))});
     let shapes = vec![
         object(
             json!({"argument":optional_string,"value":optional_string,"expected":string,"accepted":optional_strings}),
@@ -31,7 +31,7 @@ pub(super) fn details(generator: &mut SchemaGenerator) -> Schema {
             json!({"stage":{"enum":["lookup","spawn","disclaim","wait","verify"]},"symbol":optional_string,"detail":optional_string}),
         ),
         object(json!({"interface":string,"symbol":string})),
-        object(json!({"pid":integer,"timeoutSeconds":{"const":2}})),
+        object(json!({"pid":integer,"timeoutSeconds":{"enum":[2,5,10]}})),
         object(
             json!({"windowId":integer,"stage":{"enum":["capture","pixels","encode"]},"detail":optional_string}),
         ),
@@ -45,6 +45,8 @@ pub(super) fn details(generator: &mut SchemaGenerator) -> Schema {
         object(json!({"detail":string})),
         serde_json::to_value(generator.subschema_for::<super::InspectionFailure<'static>>())
             .expect("inspection failure schema serializes"),
+        serde_json::to_value(generator.subschema_for::<super::ActionFailure>())
+            .expect("action failure schema serializes"),
         serde_json::to_value(generator.subschema_for::<super::Interference<'static>>())
             .expect("interference schema serializes"),
         json!({"type":"null"}),
@@ -54,7 +56,7 @@ pub(super) fn details(generator: &mut SchemaGenerator) -> Schema {
 
 pub(super) fn not_found_kind(_: &mut SchemaGenerator) -> Schema {
     serde_json::from_value(
-        json!({"enum":["application","path","instance","window","window-element","main-window"]}),
+        json!({"enum":["application","path","instance","window","window-element","main-window","element"]}),
     )
     .expect("valid not-found kinds")
 }

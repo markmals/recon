@@ -1,5 +1,5 @@
-//! Reading one accessibility element out of a running application. Recon only reads: it never
-//! sets an attribute, performs an action, or opens a menu.
+//! Reading one accessibility element out of a running application. The interaction module owns
+//! the single AXPress mutation; all observation reads remain side-effect free.
 
 use std::ffi::c_float;
 use std::hash::{Hash, Hasher};
@@ -28,6 +28,11 @@ pub struct Element(CFRetained<AXUIElement>);
 impl Element {
     pub fn new(element: CFRetained<AXUIElement>) -> Self {
         Self(element)
+    }
+
+    pub(crate) fn perform_action(&self, action: &CFString) -> AXError {
+        // SAFETY: the element is live and the action name is a Core Foundation string.
+        unsafe { self.0.perform_action(action) }
     }
 }
 

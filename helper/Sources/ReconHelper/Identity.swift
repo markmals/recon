@@ -4,12 +4,16 @@ import MachO
 
 /// What this helper speaks, and what it was built from.
 ///
+/// The wire protocol version is the closed operation set and the shapes around it. Version 2
+/// added the interaction operation; a resident helper from an earlier build answers version 1,
+/// and the protocol gate refuses it rather than being asked for an operation it does not have.
+///
 /// The build identity is the content hash of every input the build consumed, linked into the
 /// image as `__TEXT,__recon_build`. A request that names a different build is refused rather
 /// than answered from the wrong code, and an image built without the section names no build at
 /// all: the protocol gate then refuses every request instead of inventing an identity.
 enum ReconHelperIdentity {
-    static let protocolVersion = 1
+    static let protocolVersion = 2
     static let build = linkedBuild()
 }
 

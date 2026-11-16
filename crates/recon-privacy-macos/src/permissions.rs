@@ -4,7 +4,10 @@ use objc2_application_services::{
     AXIsProcessTrusted, AXIsProcessTrustedWithOptions, kAXTrustedCheckOptionPrompt,
 };
 use objc2_core_foundation::{CFBoolean, CFDictionary, CFType};
-use objc2_core_graphics::{CGPreflightScreenCaptureAccess, CGRequestScreenCaptureAccess};
+use objc2_core_graphics::{
+    CGPreflightPostEventAccess, CGPreflightScreenCaptureAccess, CGRequestPostEventAccess,
+    CGRequestScreenCaptureAccess,
+};
 
 use crate::identity::executable_path;
 use crate::permission::{Permission, permission_denied};
@@ -35,6 +38,7 @@ pub fn granted(permission: Permission) -> bool {
         Permission::ScreenRecording => CGPreflightScreenCaptureAccess(),
         // SAFETY: reads this process's accessibility trust; it neither prompts nor changes state.
         Permission::Accessibility => unsafe { AXIsProcessTrusted() },
+        Permission::EventPosting => CGPreflightPostEventAccess(),
     }
 }
 
@@ -49,6 +53,9 @@ fn request(permission: Permission) {
             let options = CFDictionary::from_slices(&[prompt], &[CFBoolean::new(true) as &CFType]);
             // SAFETY: the dictionary holds the documented option key and a CFBoolean.
             unsafe { AXIsProcessTrustedWithOptions(Some(options.as_opaque())) };
+        }
+        Permission::EventPosting => {
+            CGRequestPostEventAccess();
         }
     }
 }

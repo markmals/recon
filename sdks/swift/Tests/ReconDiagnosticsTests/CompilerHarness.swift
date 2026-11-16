@@ -15,10 +15,11 @@ enum Compiler {
         let products = try self.products
         let process = Process()
         process.executableURL = URL(filePath: "/usr/bin/xcrun")
+        let productsPath = products.path(percentEncoded: false)
         process.arguments = [
-            "swiftc", "-typecheck", "-swift-version", "6", "-I", products.path(),
-            "-load-plugin-executable", "\(products.path())/ReconExtensionMacros#ReconExtensionMacros",
-            source.path(),
+            "swiftc", "-typecheck", "-swift-version", "6", "-I", productsPath,
+            "-load-plugin-executable", "\(productsPath)/ReconExtensionMacros#ReconExtensionMacros",
+            source.path(percentEncoded: false),
         ]
         let output = Pipe()
         process.standardOutput = output
@@ -35,9 +36,11 @@ enum Compiler {
     private static var products: URL {
         get throws {
             var directory = Bundle(for: BundleToken.self).bundleURL
-            while directory.path() != "/" {
+            while directory.path(percentEncoded: false) != "/" {
                 let plugin = directory.appending(path: "ReconExtensionMacros")
-                if FileManager.default.isExecutableFile(atPath: plugin.path()) { return directory }
+                if FileManager.default.isExecutableFile(atPath: plugin.path(percentEncoded: false)) {
+                    return directory
+                }
                 directory = directory.deletingLastPathComponent()
             }
             throw CompilerUnavailable()

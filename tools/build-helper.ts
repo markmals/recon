@@ -21,7 +21,7 @@ import path from "node:path";
 import { verifiedCompiler } from "./swift-toolchain.ts";
 
 /// What the helper answers with, beyond anything a file states.
-const CONFIGURATION = "arm64+arm64e|release|macOS27.0|ReconProtocolVersion=1";
+const CONFIGURATION = "arm64+arm64e|release|macOS27.0|ReconProtocolVersion=2";
 
 /// Every file that decides what the helper is built from, including this one: the link line
 /// lives here, so a change to it is a change to the helper even when no source moved.
@@ -33,11 +33,18 @@ const MANIFESTS = [
     "sdks/swift/Package.resolved",
     "extensions/appkit/Package.swift",
     "extensions/appkit/Package.resolved",
+    "extensions/catalyst/Package.swift",
+    "extensions/catalyst/Package.resolved",
     "helper/Package.swift",
     "helper/Package.resolved",
 ];
 
-const SOURCE_TREES = ["sdks/swift/Sources", "extensions/appkit/Sources", "helper/Sources"];
+const SOURCE_TREES = [
+    "sdks/swift/Sources",
+    "extensions/appkit/Sources",
+    "extensions/catalyst/Sources",
+    "helper/Sources",
+];
 
 /** Code-unit order, not locale order, so identity does not depend on the builder's locale. */
 function byCodeUnit(left: string, right: string): number {
@@ -65,7 +72,11 @@ function buildIdentity(compiler: string): string {
     // swiftlang build with different linkers, and their helpers differ byte for byte.
     hash.update(compiler);
     hash.update(spawnSync("xcrun", ["ld", "-v"], { encoding: "utf8" }).stderr); // `ld -v` reports on stderr
-    hash.update(execFileSync("xcrun", ["--show-sdk-build-version"], { encoding: "utf8" }));
+    hash.update(
+        execFileSync("xcrun", ["--sdk", "macosx", "--show-sdk-build-version"], {
+            encoding: "utf8",
+        }),
+    );
     hash.update(CONFIGURATION);
     return hash.digest("hex");
 }

@@ -37,7 +37,7 @@ struct Inspector {
             ReconNativeSession.close(identifier: open.identifier)
         }
         ReconNativeSession.open(
-            identifier: identifier, helperBuild: "test-build", protocolVersion: 1)
+            identifier: identifier, helperBuild: "test-build", protocolVersion: 2)
         session = ReconNativeSession.current!
         host = try ReconTestHost(AppKitInspector.reconExtension)
     }

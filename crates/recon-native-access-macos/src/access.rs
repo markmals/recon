@@ -45,6 +45,7 @@ pub(crate) struct TargetFacts {
     pub(crate) pid: Option<u32>,
     pub(crate) running_pids: Vec<u32>,
     pub(crate) process_executable: Fact<String>,
+    pub(crate) toolkit: Fact<String>,
     pub(crate) architecture: Fact<String>,
     pub(crate) executable_architectures: Fact<Vec<String>>,
     pub(crate) signed: Fact<bool>,
@@ -1021,6 +1022,7 @@ pub(crate) fn collect_preflight<R: CommandRunner>(
         pid,
         running_pids: selection.running_pids,
         process_executable: unknown("proc_pidpath (live process executable)"),
+        toolkit: unknown("LC_BUILD_VERSION (executable platform)"),
         architecture: unknown("proc_pidinfo PROC_PIDARCHINFO (live process architecture)"),
         executable_architectures: unknown("lipo -archs (on-disk executable)"),
         signed: unknown("codesign (on-disk executable)"),
@@ -1043,6 +1045,19 @@ pub(crate) fn collect_preflight<R: CommandRunner>(
             Err(error) => {
                 Fact::unknown("proc_pidinfo PROC_PIDARCHINFO (live process architecture)", &error)
             }
+        };
+    }
+    let toolkit_path =
+        target.process_executable.value.as_deref().or(executable_path.value.as_deref());
+    if let Some(path) = toolkit_path {
+        let source = if target.process_executable.value.is_some() {
+            "LC_BUILD_VERSION (running process executable)"
+        } else {
+            "LC_BUILD_VERSION (selected bundle executable)"
+        };
+        target.toolkit = match recon_applications_macos::toolkit::read(Path::new(path)) {
+            Ok(toolkit) => Fact::known(toolkit.as_str().to_owned(), source),
+            Err(error) => Fact::unknown(source, &error),
         };
     }
     let disk_hash = if let Some(path) = executable_path.value.as_deref() {

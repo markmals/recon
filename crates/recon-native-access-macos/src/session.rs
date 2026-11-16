@@ -13,7 +13,9 @@ use serde_json::{Map, Value};
 use crate::error::{InspectionError, InspectionErrorCode, Stage};
 use crate::identity::{AccessMode, AccessProfile, Capability, Incarnation, SessionId};
 use crate::store::{SessionRecord, SessionState, SessionStore, now_unix};
-use crate::transport::{Connection, LIFECYCLE_DEADLINE, Op, current_incarnation, current_uid};
+use crate::transport::{
+    Connection, HELPER_PROTOCOL, LIFECYCLE_DEADLINE, Op, current_incarnation, current_uid,
+};
 
 /// What a caller asks for when opening a session. Identity comes from the loader's verified
 /// binding; nothing here resolves a bundle or a pid.
@@ -388,11 +390,16 @@ pub fn close_until(
     }
 }
 
-/// Carry one native read to the helper under the process-wide read guard.
+/// Carry one request the helper runs in the target — a read or the interaction — under the
+/// process-wide execution guard.
 ///
-/// `params` supplies the requested scope, fields, and bounds; this layer neither interprets nor
-/// filters them. The guard is released when the read resolves, and deliberately left in place when
-/// a deadline expires, because the target's main thread may still be running that read.
+/// `params` supplies the operation's own input; this layer neither interprets nor filters it.
+/// The guard is released when the request resolves, and deliberately left in place when a
+/// deadline expires, because the target's main thread may still be running that work.
+///
+/// The session must be served by a helper speaking this build's protocol. A resident from an
+/// earlier build answers its own vocabulary, so an operation added since it loaded is named as
+/// the mismatch it is rather than sent and refused as an unknown argument.
 pub fn native_request(
     store: &SessionStore,
     id: &SessionId,
@@ -403,7 +410,7 @@ pub fn native_request(
         return Err(InspectionError::new(
             InspectionErrorCode::InvalidArgument,
             Stage::Send,
-            format!("`{}` is a lifecycle operation, not a native read", op.as_wire()),
+            format!("`{}` is a lifecycle operation, not a native request", op.as_wire()),
         ));
     }
     let record = require_record(store, id)?;
@@ -426,6 +433,21 @@ pub fn native_request(
                 format!("session {} is closed", record.session_id),
             ));
         }
+    }
+
+    if record.protocol != HELPER_PROTOCOL {
+        return Err(InspectionError::new(
+            InspectionErrorCode::ProtocolMismatch,
+            Stage::Store,
+            format!(
+                "session {} is served by helper build {} on protocol {}, not protocol {}; close it and open a new session before `{}`",
+                record.session_id,
+                record.helper_build,
+                record.protocol,
+                HELPER_PROTOCOL,
+                op.as_wire()
+            ),
+        ));
     }
 
     store.begin_execution(record.incarnation, op, &record.session_id)?;

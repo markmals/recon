@@ -39,6 +39,8 @@ pub(super) fn constraints(parser: &ValueParser) -> Option<Constraints> {
         Some(Decimal::<0>::constraints())
     } else if parser.type_id() == TypeId::of::<Decimal<1>>() {
         Some(Decimal::<1>::constraints())
+    } else if parser.type_id() == TypeId::of::<Decimal<1, 2>>() {
+        Some(Decimal::<1, 2>::constraints())
     } else if parser.type_id()
         == TypeId::of::<Decimal<0, { recon_accessibility_macos::tree::MAX_DEPTH as u32 }>>()
     {

@@ -28,6 +28,7 @@ fn target() -> TargetFacts {
         pid: Some(42),
         running_pids: vec![42],
         process_executable: known("/Applications/Fixture.app/Contents/MacOS/Fixture".into()),
+        toolkit: known("appkit".into()),
         architecture: known("arm64".into()),
         executable_architectures: known(vec!["arm64".into()]),
         signed: known(true),

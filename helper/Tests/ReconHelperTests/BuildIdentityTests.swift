@@ -36,7 +36,7 @@ struct BuildIdentityTests {
             build: "", lifecycle: ReconAccessLifecycle(incarnation: .current, build: ""),
             runtime: try ReconRuntime(assembling: assembledExtensions))
         let refused = gate.answer(
-            ["op": "reconcile", "protocol": 1, "helperBuild": ""], startedAt: .now)
+            ["op": "reconcile", "protocol": 2, "helperBuild": ""], startedAt: .now)
         let members = try JSONSerialization.jsonObject(with: try #require(refused))
         #expect(errorCode(members as? [String: Any] ?? [:]) == "INSPECTION_PROTOCOL_MISMATCH")
     }
@@ -45,8 +45,8 @@ struct BuildIdentityTests {
         (answer["error"] as? [String: Any])?["code"] as? String
     }
 
-    @Test("The helper speaks wire protocol 1")
+    @Test("The helper speaks wire protocol 2, which an earlier resident does not")
     func protocolVersion() {
-        #expect(ReconHelperIdentity.protocolVersion == 1)
+        #expect(ReconHelperIdentity.protocolVersion == 2)
     }
 }

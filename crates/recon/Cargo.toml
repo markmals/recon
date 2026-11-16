@@ -19,6 +19,7 @@ clap = { version = "4", features = ["string"] }
 recon-accessibility-macos = { path = "../recon-accessibility-macos" }
 recon-applications-macos = { path = "../recon-applications-macos" }
 recon-core = { path = "../recon-core" }
+recon-input-macos = { path = "../recon-input-macos" }
 recon-native-access-macos = { path = "../recon-native-access-macos" }
 recon-privacy-macos = { path = "../recon-privacy-macos" }
 recon-window-server-macos = { path = "../recon-window-server-macos" }

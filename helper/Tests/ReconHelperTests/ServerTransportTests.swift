@@ -73,9 +73,9 @@ struct ServerTransportTests {
         #expect(answer.errorMessage == "Operation is required")
     }
 
-    @Test("A request for another wire protocol is refused")
+    @Test("A client that speaks the earlier wire protocol is refused")
     func protocolMismatch() throws {
-        let answer = try helper.exchange(helper.request("open", ["protocol": 2]))
+        let answer = try helper.exchange(helper.request("open", ["protocol": 1]))
         #expect(answer.errorCode == "INSPECTION_PROTOCOL_MISMATCH")
         #expect(answer.errorStage == "protocol")
         #expect(answer.errorMessage == "Helper build or wire protocol differs")

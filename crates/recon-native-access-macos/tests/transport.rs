@@ -26,13 +26,14 @@ use recon_native_access_macos::identity::{
     AccessMode, AccessProfile, Capability, Incarnation, SessionId,
 };
 use recon_native_access_macos::{
-    CloseOutcome, Connection, InspectionErrorCode, MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES, Op,
-    OpenRequest, Reconciliation, SessionRecord, SessionState, SessionStore, Stage, close,
-    close_until, current_incarnation, decode_frame_length, encode_frame, native_request, open,
-    open_until, reconcile,
+    CloseOutcome, Connection, HELPER_PROTOCOL, InspectionErrorCode, MAX_REQUEST_BYTES,
+    MAX_RESPONSE_BYTES, Op, OpenRequest, Reconciliation, SessionRecord, SessionState, SessionStore,
+    Stage, close, close_until, current_incarnation, decode_frame_length, encode_frame,
+    native_request, open, open_until, reconcile,
 };
 
-const PROTOCOL: u32 = 1;
+/// What this build speaks. A scripted helper that answers anything else is an earlier resident.
+const PROTOCOL: u32 = HELPER_PROTOCOL;
 const HELPER_BUILD: &str = "recon-native-1";
 const SESSION_A: &str = "0f1e2d3c4b5a69788796a5b4c3d2e1f0";
 const SESSION_B: &str = "1122334455667788990011223344aabb";
@@ -689,6 +690,32 @@ fn a_mismatched_helper_build_fails_explicitly() {
         .expect_err("a different build cannot serve this session");
     assert_eq!(failure.code(), InspectionErrorCode::ProtocolMismatch, "{failure}");
     assert!(fixture.store.records().unwrap().is_empty(), "no session was recorded");
+}
+
+/// A helper an earlier build left resident answers the protocol it was built for. It is refused
+/// rather than reused: this build would ask it for an operation it does not have.
+#[test]
+fn a_resident_helper_on_the_earlier_protocol_fails_explicitly() {
+    let fixture = Fixture::new();
+    let incarnation = fixture.incarnation;
+    let helper = Helper::start(
+        &fixture.endpoint,
+        always(move |_| {
+            let mut reply = open_reply(incarnation, SESSION_A, CAPABILITY_A, false);
+            reply["protocol"] = json!(PROTOCOL - 1);
+            Reply::Json(reply)
+        }),
+    );
+
+    let failure = open(&fixture.store, &fixture.open_request(AccessMode::Existing))
+        .expect_err("an earlier protocol cannot serve this session");
+    assert_eq!(failure.code(), InspectionErrorCode::ProtocolMismatch, "{failure}");
+    assert!(failure.message().contains(&(PROTOCOL - 1).to_string()), "{failure}");
+    assert!(fixture.store.records().unwrap().is_empty(), "no session was recorded");
+
+    // The host announced the version it speaks, so the mismatch is the helper's, not a guess.
+    let requests = helper.requests();
+    assert_eq!(requests.first().expect("the open request")["protocol"], json!(PROTOCOL));
 }
 
 #[test]
@@ -1368,4 +1395,87 @@ fn lifecycle_operations_are_not_native_reads() {
     }
     assert_eq!(Op::Tree.deadline(), Duration::from_secs(2));
     assert_eq!(Op::Open.deadline(), Duration::from_secs(10));
+}
+
+/// A session opened by an earlier build is served by that build's resident. An operation this
+/// build added since it loaded must be refused as the protocol mismatch it is, before anything
+/// is sent, rather than reaching the resident and coming back as an unknown argument.
+#[test]
+fn a_request_to_an_earlier_resident_is_refused_as_a_protocol_mismatch() {
+    let fixture = Fixture::new();
+    // What an earlier resident answers for an operation it does not know.
+    let helper = Helper::start(
+        &fixture.endpoint,
+        always(|_| {
+            Reply::Json(json!({
+                "ok": false,
+                "error": {
+                    "code": "INVALID_ARGUMENT",
+                    "stage": "read",
+                    "message": "unknown operation"
+                }
+            }))
+        }),
+    );
+    let record = SessionRecord {
+        socket_path: fixture.endpoint.clone(),
+        protocol: PROTOCOL - 1,
+        ..record_for(fixture.incarnation, SESSION_A, CAPABILITY_A, SessionState::Active)
+    };
+    fixture.store.insert(&record).expect("record the session");
+
+    let failure = native_request(
+        &fixture.store,
+        &record.session_id,
+        Op::MakeWindowKey,
+        json!({ "windowId": 7 }),
+    )
+    .expect_err("an earlier resident cannot serve this build's interaction");
+
+    assert_eq!(failure.code(), InspectionErrorCode::ProtocolMismatch, "{failure}");
+    assert!(failure.message().contains(&(PROTOCOL - 1).to_string()), "{failure}");
+    assert!(failure.message().contains(&PROTOCOL.to_string()), "{failure}");
+    assert_eq!(helper.request_count(), 0, "nothing was sent to the earlier resident");
+    // A request that was never sent leaves no execution outstanding in the target.
+    assert!(
+        fixture.store.unresolved_execution(fixture.incarnation).unwrap().is_none(),
+        "no execution guard was taken"
+    );
+
+    // A read is refused the same way: the mismatch belongs to the session, not to one operation.
+    let failure = native_request(&fixture.store, &record.session_id, Op::Tree, json!({}))
+        .expect_err("an earlier resident cannot serve this build's reads");
+    assert_eq!(failure.code(), InspectionErrorCode::ProtocolMismatch, "{failure}");
+    assert_eq!(helper.request_count(), 0, "nothing was sent to the earlier resident");
+
+    // The matching protocol is what lets the same request reach a helper at all: a session this
+    // build's protocol serves is sent, and fails on the resident's own answer.
+    let current = Fixture::new();
+    let serving = Helper::start(
+        &current.endpoint,
+        always(|_| {
+            Reply::Json(json!({
+                "ok": false,
+                "error": {
+                    "code": "STALE_NODE",
+                    "stage": "read",
+                    "message": "that window is gone"
+                }
+            }))
+        }),
+    );
+    let served = SessionRecord {
+        socket_path: current.endpoint.clone(),
+        ..record_for(current.incarnation, SESSION_B, CAPABILITY_B, SessionState::Active)
+    };
+    current.store.insert(&served).expect("record the session");
+    let failure = native_request(
+        &current.store,
+        &served.session_id,
+        Op::MakeWindowKey,
+        json!({ "windowId": 7 }),
+    )
+    .expect_err("the scripted resident answers for the window itself");
+    assert_eq!(failure.code(), InspectionErrorCode::StaleNode, "{failure}");
+    assert_eq!(serving.request_count(), 1, "a matching session reached the helper");
 }

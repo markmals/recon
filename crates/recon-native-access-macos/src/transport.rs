@@ -16,18 +16,24 @@ use serde_json::{Map, Value};
 use crate::error::{InspectionError, InspectionErrorCode, Stage};
 use crate::identity::Incarnation;
 
+/// The wire protocol this build speaks to a resident helper.
+///
+/// The version is the closed operation set and the shapes around it. Version 2 added the
+/// interaction operation, so a helper left resident by an earlier build answers version 1 and
+/// the handshake refuses it rather than asking it for an operation it does not have.
+pub const HELPER_PROTOCOL: u32 = 2;
 /// The largest request frame, matching proposal 0005's 64 KiB request cap.
 pub const MAX_REQUEST_BYTES: usize = 64 * 1024;
 /// The largest response frame, matching the 8 MiB response cap.
 pub const MAX_RESPONSE_BYTES: usize = 8 * 1024 * 1024;
-/// Covers queueing, target execution, transport, and delivery of one native read.
+/// Covers queueing, target execution, transport, and delivery of one native request.
 pub const NATIVE_DEADLINE: Duration = Duration::from_secs(2);
 /// Covers an open, close, or reconciliation round trip.
 pub const LIFECYCLE_DEADLINE: Duration = Duration::from_secs(10);
 
 /// The operations this transport can carry. Native object semantics live in the helper; the
-/// transport only distinguishes lifecycle work from a native read, because they have different
-/// deadlines and different consequences when they time out.
+/// transport only distinguishes lifecycle work from a request the helper runs in the target,
+/// because they have different deadlines and different consequences when they time out.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Op {
     Open,
@@ -38,6 +44,8 @@ pub enum Op {
     Node,
     Find,
     Fonts,
+    /// The one operation that changes a target rather than observing it.
+    MakeWindowKey,
 }
 
 impl Op {
@@ -51,10 +59,11 @@ impl Op {
             Self::Node => "node",
             Self::Find => "find",
             Self::Fonts => "fonts",
+            Self::MakeWindowKey => "makeWindowKey",
         }
     }
 
-    /// Whether the operation negotiates access rather than reading native objects.
+    /// Whether the operation negotiates access rather than running in the target.
     pub fn is_lifecycle(self) -> bool {
         matches!(self, Self::Open | Self::Reconcile | Self::Close)
     }

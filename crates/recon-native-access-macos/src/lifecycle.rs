@@ -21,8 +21,8 @@ use crate::identity::{AccessMode, AccessProfile, Incarnation, SessionId};
 use crate::inject;
 use crate::sandbox;
 use crate::{
-    CloseOutcome, InspectionError, InspectionErrorCode, LIFECYCLE_DEADLINE, OpenRequest,
-    SessionState, SessionStore, Stage, close_until, open_until,
+    CloseOutcome, HELPER_PROTOCOL, InspectionError, InspectionErrorCode, LIFECYCLE_DEADLINE,
+    OpenRequest, SessionState, SessionStore, Stage, close_until, open_until,
 };
 
 pub(crate) fn preflight(
@@ -125,7 +125,8 @@ pub fn open_session(
             format!("the selected process incarnation could not be identified: {error}"),
         )
     })?);
-    let executable = selected_executable(application, pid)?;
+    let executable = running_executable(application, pid)?;
+    let toolkit = recon_applications_macos::toolkit::read(&executable).ok();
     let store = default_store()?;
     let _lifecycle = store.lock_lifecycle(incarnation)?;
     let pending = store.attach_reservation(incarnation)?;
@@ -183,7 +184,7 @@ pub fn open_session(
         mode,
         profile,
         helper_build: &artifacts.helper_build,
-        protocol: 1,
+        protocol: HELPER_PROTOCOL,
     };
 
     if mode != AccessMode::Launch {
@@ -192,7 +193,12 @@ pub fn open_session(
                 if pending.is_some() {
                     store.complete_attach(incarnation)?;
                 }
-                return session_value(outcome.record.session_id, outcome.response, outcome.reused);
+                return session_value(
+                    outcome.record.session_id,
+                    outcome.response,
+                    outcome.reused,
+                    toolkit,
+                );
             }
             // Only attach may fall through to loading a helper, and only when there is no recorded
             // session to resolve first. A connection failure to a session Recon still has on record
@@ -237,7 +243,12 @@ pub fn open_session(
         match open_until(&store, &request, deadline) {
             Ok(outcome) => {
                 store.complete_attach(incarnation)?;
-                return session_value(outcome.record.session_id, outcome.response, outcome.reused);
+                return session_value(
+                    outcome.record.session_id,
+                    outcome.response,
+                    outcome.reused,
+                    toolkit,
+                );
             }
             Err(error) if error.stage() == Stage::Connect && Instant::now() < deadline => {
                 sleep(Duration::from_millis(20));
@@ -320,7 +331,7 @@ pub fn close_session(session: &SessionId) -> Result<Value, InspectionError> {
     }))
 }
 
-fn selected_executable(application: &Application, pid: Pid) -> Result<PathBuf, InspectionError> {
+pub fn running_executable(application: &Application, pid: Pid) -> Result<PathBuf, InspectionError> {
     let mut runner = SystemRunner;
     let observed = runner.process_executable(pid.0).map_err(|error| {
         InspectionError::new(
@@ -561,9 +572,14 @@ fn session_value(
     session: SessionId,
     mut response: Map<String, Value>,
     reused: bool,
+    toolkit: Option<recon_applications_macos::toolkit::Toolkit>,
 ) -> Result<Value, InspectionError> {
     response.insert("sessionId".to_owned(), Value::from(session.as_str()));
     response.insert("reused".to_owned(), Value::from(reused));
+    response.insert(
+        "toolkit".to_owned(),
+        toolkit.map_or(Value::Null, |toolkit| Value::from(toolkit.as_str())),
+    );
     Ok(Value::Object(response))
 }
 
