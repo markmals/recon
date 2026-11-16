@@ -250,3 +250,30 @@ To recreate the guest from scratch, start from `installed-unbooted`, or install 
 8. Save it with `vm-snapshot.sh save research-ready`.
 
 [`evidence/log.txt`](evidence/log.txt) is the chronological record, including every dead end.
+
+## A macOS 26 guest
+
+A second guest, "Recon Research 26", was built from `UniversalMac_26.6.2_25G83_Restore.ipsw` to check Recon on macOS 26 ([pull request 98](https://github.com/markmals/recon/pull/98)). Every script takes it through `VM_NAME="Recon Research 26"`. The account, the SSH key and password, and the lock are shared with the first guest, so one lock covers both.
+
+| Snapshot | State |
+| --- | --- |
+| `tahoe26-installed-unbooted` | macOS 26.6.2 installed by VirtualBuddy and configured by `configure-vm.sh`, never booted |
+| `tahoe26-provisioned` | Setup Assistant done, account `recon`, Remote Login, key login, passwordless `sudo`, automatic login; SIP on |
+| `tahoe26-research-ready` | SIP off, research boot-args active, Accessibility and Screen Recording granted to the staged `recon` builds, helper staged |
+
+What differed from the first guest:
+
+- The restore image goes into VirtualBuddy's `_Downloads` as a `cp -c` clone, and the wizard takes it as a local file. The wizard's OS cards are not accessibility-addressable, so they were clicked by window point.
+- In Setup Assistant and Recovery, a click on a pop-up button's menu item is lost. Open the menu with a click, then choose with `down` and `return` through `vm-input.sh`.
+- `python3` is the Command Line Tools stub until developer tools are installed, so write `/etc/kcpassword` with `perl`.
+- The privacy grants are rows written into the system `TCC.db` over SSH (SIP is off), with the binary's code requirement as `csreq` (`csreq -r- -b`). An empty `csreq` leaves event posting ungranted. Restart `tccd` to make it reread the file.
+- Xcode 27.2 needs macOS 26.6 or later, so this guest builds with the pinned compiler. Copy Xcode in with `rsync --rsync-path='sudo rsync'`.
+- `vm-lifecycle.sh … | tail` hangs, because the background `open -W` keeps the pipe open. Redirect its output to a file instead.
+
+| Build | Result on macOS 26.6.2 |
+| --- | --- |
+| Released 0.2.0 | `app list`, `ui windows`, `ui ax tree` and `ui screenshot` work. `ui session open` stops with `inspection access is Blocked: inspection requires macOS 27` |
+| 0.2.0 with only that check relaxed (helper and loader still built for macOS 27) | Calculator research attach passes |
+| The macOS 26 branch | Calculator attach, TextEdit launch and Finder attach pass; coordinate clicks, a key chord and a scroll are delivered; the SDK, AppKit, Catalyst and helper Swift suites pass with Xcode 27.2 |
+
+On macOS 26 the Calculator accessibility tree has two unreadable nodes (three on macOS 27), so `ui click --identifier` returns `ACTION_UNAVAILABLE`; a click at coordinates works.

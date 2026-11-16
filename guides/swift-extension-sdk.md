@@ -16,7 +16,7 @@ The approach follows [Neon](https://neon-rs.dev/docs/functions/), which exports 
 
 ## Before you start
 
-- Build on an Apple-silicon Mac running macOS 27.
+- Build on an Apple-silicon Mac running macOS 26.6 or later, the oldest macOS that Xcode 27.2 runs on.
 - Use Apple's Swift 6.4.2 compiler build `swiftlang-6.4.2.1.9`, from Xcode 27.2 or the Command Line Tools. Recon requires that exact build for every build, including Homebrew's. The swift.org toolchain, including the one `swiftly` or `mise` installs, cannot build the helper's arm64e slice. Check the active compiler with `mise run swift:toolchain`; it fails and names the compiler it found when the build differs.
 - The first build resolves swift-syntax 604.0.0 for the macros, so it needs network access or an already-resolved checkout.
 

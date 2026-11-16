@@ -24,6 +24,9 @@ function buildLoader(): void {
             "-Wall",
             "-Wextra",
             "-Werror",
+            // The floor the helper's Swift packages declare. Without it clang stamps the SDK's own
+            // version as the loader's minimum, which names an OS newer than Recon supports.
+            "-mmacosx-version-min=26.0",
             path.resolve("loader/recon_loader.c"),
             path.resolve("helper/bootstrap.s"),
             "-lbsm",

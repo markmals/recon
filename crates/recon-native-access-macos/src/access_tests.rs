@@ -219,19 +219,39 @@ fn proposal0005_modes_never_fallback_or_launch_a_running_process() {
 }
 
 #[test]
-fn proposal0005_unsupported_architecture_and_version_are_blocked() {
+fn proposal0005_unsupported_architecture_is_blocked() {
     let mut t = target();
     t.architecture = known("x86_64".into());
     assert_eq!(
         state(&t, &host(), &helper(), AccessMode::Attach, AccessProfile::Research),
         Eligibility::Blocked
     );
-    let mut h = host();
-    h.os_version = known("26.1".into());
-    assert_eq!(
-        state(&target(), &h, &helper(), AccessMode::Existing, AccessProfile::Standard),
-        Eligibility::Blocked
-    );
+}
+
+#[test]
+fn native_inspection_is_eligible_on_macos_26_and_27() {
+    for version in ["26.6.2", "27.0.1", "27.2.1"] {
+        let mut h = host();
+        h.os_version = known(version.into());
+        assert_eq!(
+            state(&target(), &h, &helper(), AccessMode::Attach, AccessProfile::Standard),
+            Eligibility::Eligible,
+            "macOS {version}"
+        );
+    }
+}
+
+#[test]
+fn native_inspection_is_blocked_on_every_other_macos_major() {
+    for version in ["15.7.4", "28.0"] {
+        let mut h = host();
+        h.os_version = known(version.into());
+        assert_eq!(
+            state(&target(), &h, &helper(), AccessMode::Attach, AccessProfile::Standard),
+            Eligibility::Blocked,
+            "macOS {version}"
+        );
+    }
 }
 
 #[test]

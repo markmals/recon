@@ -18,7 +18,7 @@ Hover, drag-and-drop, trackpad gestures, text insertion, held keys, key sequence
 
 ### Check the host, target, and grants
 
-Interaction supports native Apple silicon on macOS 27 with an unlocked console session. A locked screen makes every action fail with `ACTION_UNAVAILABLE` before input. Secure event input also makes `ui key` fail with `ACTION_UNAVAILABLE`.
+Interaction supports native Apple silicon on macOS 26 and 27 with an unlocked console session. On macOS 26 the click, scroll, and key mechanisms were verified in a virtual machine only. A locked screen makes every action fail with `ACTION_UNAVAILABLE` before input. Secure event input also makes `ui key` fail with `ACTION_UNAVAILABLE`.
 
 Run `recon context` before acting. It reports Recon's Accessibility and event-posting grants and the private interfaces these commands require without requesting a grant. Mouse, wheel, and key delivery need event-posting access. Every action reads the target's key window through Accessibility, so every action needs the Accessibility grant, including a coordinate-only click or scroll. If an action finds a required grant missing, it may request macOS authorization as a setup step and then fails with `PERMISSION_DENIED` before sending input. Grants belong to the installed `recon` executable; see [Observe macOS Application UI](macos-ui-observation.md) for signing and upgrade implications.
 
@@ -112,7 +112,7 @@ Use `--mode existing` or `--mode launch` instead when that is the access relatio
 
 ## Limits and edge cases
 
-- The WindowServer routes and event fields are private macOS interfaces. Missing symbols return `INTERFACE_UNAVAILABLE`. Each macOS update requires fresh live evidence; older macOS, Intel, and Rosetta are not supported by this contract.
+- The WindowServer routes and event fields are private macOS interfaces. Missing symbols return `INTERFACE_UNAVAILABLE`. Each macOS update requires fresh live evidence; macOS 15 and earlier, Intel, and Rosetta are not supported by this contract.
 - The whole action, including key-window confirmation, has a ten-second deadline. Application callbacks may continue after Recon stops waiting, and their effects persist even when the command reports failure.
 - Recon cannot make arbitrary target code pure or undo its effects. A posted event, an AX return, and an application-level result are different facts; successful delivery is explicitly unverified.
 - In Recon's live testing, a background Mac Catalyst window received its first click only over a control, such as a button; a click on any other view was taken as window activation and did not reach the application. Recon cannot tell the two apart before sending, so it sends such a click and reports success, because it never observes whether the application acted. Middle clicks did not reach a Catalyst application in any run, so Recon refuses them.

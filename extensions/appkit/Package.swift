@@ -10,7 +10,7 @@ let appKitTestSettings: [SwiftSetting] = [.unsafeFlags(["-disable-cross-import-o
 
 let package = Package(
     name: "ReconAppKit",
-    platforms: [.macOS("27.0")],
+    platforms: [.macOS("26.0")],
     products: [
         .library(name: "ReconAppKit", targets: ["ReconAppKit"])
     ],

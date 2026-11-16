@@ -155,6 +155,9 @@ pub(crate) struct HostPreparationStatus {
 
 const RESEARCH_BOOT_ARGS: [&str; 3] =
     ["amfi_get_out_of_my_way=0x1", "-arm64e_preview_abi", "tss_should_crash=0"];
+/// The macOS major versions native inspection has run on. A major joins this list only after the
+/// inspection commands have been exercised on it.
+const SUPPORTED_MACOS_MAJORS: [&str; 2] = ["26", "27"];
 const OPERATOR_STEPS: &str = "To disable SIP: shut down the Mac; press and hold the power button until startup options appear; choose Options > Continue to enter macOS Recovery; from Utilities open Terminal; run `csrutil disable`; reboot normally. Boot-arg changes also require a reboot. To re-enable SIP later, return to Recovery, run `csrutil enable`, and reboot.";
 #[link(name = "proc")]
 unsafe extern "C" {
@@ -557,6 +560,10 @@ fn reject(decision: &mut ModeDecision, reason: &str) {
     decision.reasons.push(reason.into());
 }
 
+fn supported_macos(version: &str) -> bool {
+    version.split('.').next().is_some_and(|major| SUPPORTED_MACOS_MAJORS.contains(&major))
+}
+
 fn supported_architecture(decision: &mut ModeDecision, architecture: &Fact<String>, label: &str) {
     decision.evidence_sources.push(architecture.source.clone());
     match architecture.value.as_deref() {
@@ -605,8 +612,8 @@ pub(crate) fn evaluate_with_authorization(
             };
             decision.evidence_sources.push(host.os_version.source.clone());
             match host.os_version.value.as_deref() {
-                Some(version) if version.split('.').next() == Some("27") => {}
-                Some(_) => reject(&mut decision, "inspection requires macOS 27"),
+                Some(version) if supported_macos(version) => {}
+                Some(_) => reject(&mut decision, "inspection requires macOS 26 or 27"),
                 None => {
                     decision.status = Eligibility::Unknown;
                     decision.reasons.push("macOS version is unknown".into());
