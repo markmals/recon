@@ -1,5 +1,11 @@
 # recon
 
+## 0.3.0
+
+### Minor Changes
+
+- [#98](https://github.com/markmals/recon/pull/98) [`1714d35`](https://github.com/markmals/recon/commit/1714d35607e7786b43351d5f512617131dce1bdc) Thanks [@markmals](https://github.com/markmals)! - Run native inspection on macOS 26 as well as macOS 27. `recon ui session preflight` and `open` no longer refuse a macOS 26 host, and the helper and loader declare macOS 26.0 as their minimum. The inspection commands were verified on macOS 26.6.2 in a virtual machine. Building from source on macOS 26 needs Xcode 27.2, which requires macOS 26.6 or later.
+
 ## 0.2.0
 
 ### Minor Changes

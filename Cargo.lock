@@ -986,7 +986,7 @@ dependencies = [
 
 [[package]]
 name = "recon"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "clap",
  "jsonschema",
@@ -1011,7 +1011,7 @@ dependencies = [
 
 [[package]]
 name = "recon-accessibility-macos"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "jsonschema",
  "libc",
@@ -1029,7 +1029,7 @@ dependencies = [
 
 [[package]]
 name = "recon-applications-macos"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "jsonschema",
  "plist",
@@ -1042,7 +1042,7 @@ dependencies = [
 
 [[package]]
 name = "recon-core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "jsonschema",
  "schemars",
@@ -1052,7 +1052,7 @@ dependencies = [
 
 [[package]]
 name = "recon-input-macos"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "libc",
  "objc2-core-foundation",
@@ -1068,7 +1068,7 @@ dependencies = [
 
 [[package]]
 name = "recon-native-access-macos"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "libc",
  "objc2-core-foundation",
@@ -1086,7 +1086,7 @@ dependencies = [
 
 [[package]]
 name = "recon-privacy-macos"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "jsonschema",
  "libc",
@@ -1102,7 +1102,7 @@ dependencies = [
 
 [[package]]
 name = "recon-ui-guard-macos"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "block2",
  "libc",
@@ -1119,7 +1119,7 @@ dependencies = [
 
 [[package]]
 name = "recon-window-server-macos"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "jsonschema",
  "libc",
