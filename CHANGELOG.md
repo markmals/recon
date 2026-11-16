@@ -1,5 +1,15 @@
 # recon
 
+## 0.2.0
+
+### Minor Changes
+
+- [#91](https://github.com/markmals/recon/pull/91) [`e72c3a4`](https://github.com/markmals/recon/commit/e72c3a4cd6b856e663bc9ecd716b979ef07672c2) Thanks [@markmals](https://github.com/markmals)! - Add window-targeted clicks, scrolling, and physical key chords with interaction guards, balanced releases, and session-backed Mac Catalyst key-window selection.
+
+### Patch Changes
+
+- [#91](https://github.com/markmals/recon/pull/91) [`a29696c`](https://github.com/markmals/recon/commit/a29696cd5bb77eda736f062c6fe04924bf911332) Thanks [@markmals](https://github.com/markmals)! - Building Recon from source, including Homebrew's source build, now requires Apple's Swift 6.4.2 compiler build `swiftlang-6.4.2.1.9`, from Xcode 27.2 or the Command Line Tools, in place of `swiftlang-6.4.0.34.1`. Installing the bottle needs nothing new.
+
 ## 0.1.5
 
 ### Patch Changes
