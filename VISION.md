@@ -1,6 +1,6 @@
 ---
 title: A Vision for Recon
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 # A Vision for Recon
@@ -15,7 +15,7 @@ Controlled experiments, behavioral specifications, and comparison with independe
 
 Recon currently lists discovered and running macOS application bundles, inspects one bundle's metadata and running process IDs without activating it, and explicitly launches the selected bundle through its Rust CLI. It also observes a running macOS application without activating it, changing focus, or sending input: lists its windows, reads the accessibility tree of the application or of one window, including reachable windows on other Spaces, and captures one window to a PNG file. Those observations use Screen Recording and Accessibility permissions that belong to the locally signed `recon` executable rather than to the program that launched it.
 
-Recon can also establish an explicit, process-bound native inspection session and read a macOS application's AppKit windows, views, cells, layers, layout, and observed fonts. Native queries under `ui view`, accessibility queries under `ui ax`, shared WindowServer capture, and native/AX correlation preserve their separate evidence sources and identities. The current native scope is Apple silicon on macOS 27; cooperative and explicitly prepared research access have different prerequisites. Catalyst, UIKit, Simulator, and connected-device inspection remain future work.
+Recon can also establish an explicit, process-bound native inspection session and read a macOS application's AppKit windows, views, cells, layers, layout, and observed fonts. Native queries under `ui view`, accessibility queries under `ui ax`, shared WindowServer capture, and native/AX correlation preserve their separate evidence sources and identities. The current native scope is Apple silicon on macOS 26 and 27; cooperative and explicitly prepared research access have different prerequisites. Catalyst, UIKit, Simulator, and connected-device inspection remain future work.
 
 Recon can also act on a running macOS application without interrupting the person at the Mac. `ui click` presses an element through accessibility or sends window-addressed mouse clicks, `ui scroll` sends wheel input at an element or point, and `ui key` sends one key chord to a selected window after making it key inside the background target, through a session for Mac Catalyst. An interaction-aware guard fails any operation that changes the user's frontmost application, window order, Space, pointer, keyboard focus, or input, and a successful result reports delivery as unverified rather than claiming the application acted.
 
@@ -123,3 +123,4 @@ The minimum proves the behavioral investigation loop on purpose-built macOS fixt
 | 2026-10-29 | Added process-bound native AppKit inspection sessions, native view/cell/layer/layout/font queries, the `ui ax` migration, and native/AX correlation with shared no-focus behavior. | proposal.0005 |
 | 2026-11-01 | Recorded the extension architecture: focused Rust capability crates, a Swift extension SDK, and the AppKit inspector rebuilt on it inside the helper, with no new user-visible capability. | proposal.0006 |
 | 2026-11-15 | Added window-targeted clicks, scrolling, and key chords under an interaction-aware guard, including session-backed Mac Catalyst key chords. | proposal.0007 |
+| 2026-11-16 | Extended the native inspection scope from macOS 27 to macOS 26 and 27. | N/A |
