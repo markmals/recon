@@ -118,7 +118,7 @@ fn an_unconfirmed_close_is_a_typed_cli_failure_not_success_json() {
 }
 
 #[test]
-#[ignore = "requires macOS 27 Apple silicon, signed cooperative ReconFixture.app, signed recon-loader, and built recon-helper.dylib/build-id"]
+#[ignore = "requires macOS 26 or 27 Apple silicon, signed cooperative ReconFixture.app, signed recon-loader, and built recon-helper.dylib/build-id"]
 fn proposal_0005_pending_attach_without_endpoint_refuses_reinjection() {
     let bundle = artifact("fixtures/ReconFixture.app");
     let executable = bundle.join("Contents/MacOS/ReconFixture");
