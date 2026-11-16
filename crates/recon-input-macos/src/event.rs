@@ -72,7 +72,7 @@ impl Event {
         &self,
         target: &Target,
         local: Option<Point>,
-        click: Option<(i64, i64, i64)>,
+        click: Option<(i64, i64)>,
     ) -> Result<(), Failure> {
         // SAFETY: SLEventSetIntegerValueField has the private SkyLight event-field signature.
         let set: unsafe extern "C" fn(*mut c_void, u32, i64) = private_set_field()?;
@@ -81,13 +81,13 @@ impl Event {
             set(self.0, 40, target.pid().0 as i64);
             set(self.0, 51, target.window().id.0 as i64);
         }
-        if let Some((state, button, group)) = click {
+        if let Some((state, button)) = click {
             // SAFETY: the event is live, and these are the mouse fields the WindowServer route reads.
+            // Field 58 is the event's timestamp, so it is left for the system to set when posted.
             unsafe {
                 set(self.0, 1, state);
                 set(self.0, 3, button);
                 set(self.0, 7, 3);
-                set(self.0, 58, group);
             }
         }
         if let Some(local) = local {
@@ -126,7 +126,6 @@ pub(crate) struct MouseEvent {
     pub(crate) down: bool,
     pub(crate) click_state: i64,
     pub(crate) flags: u64,
-    pub(crate) group: i64,
 }
 
 #[derive(Clone, Copy)]
@@ -157,11 +156,7 @@ pub(crate) fn post_mouse(
         event_failure(ActionMechanism::MouseEvents, target, delivery.dispatch, delivery.release)
     })?;
     posted.flags(event.flags);
-    posted.stamp(
-        target,
-        Some(event.point),
-        Some((event.click_state, event.button.number(), event.group)),
-    )?;
+    posted.stamp(target, Some(event.point), Some((event.click_state, event.button.number())))?;
     posted.post(target);
     Ok(())
 }
@@ -297,4 +292,29 @@ unsafe extern "C" {
 #[link(name = "CoreFoundation", kind = "framework")]
 unsafe extern "C" {
     fn CFRelease(object: *mut c_void);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[link(name = "CoreGraphics", kind = "framework")]
+    unsafe extern "C" {
+        fn CGEventGetTimestamp(event: *mut c_void) -> u64;
+    }
+
+    // Field 58 is the event's timestamp. A click posted with it set arrives dated to just after
+    // boot, which Chromium's renderers reject by crashing on a same-document navigation.
+    #[test]
+    fn proposal0007_a_stamped_click_leaves_its_timestamp_for_the_system_to_set() {
+        let source = Source::private().expect("an event source");
+        let point = Point { x: 1.0, y: 1.0 };
+        let event = Event::mouse(&source, MouseButton::Left, true, CGPoint { x: 1.0, y: 1.0 })
+            .expect("a mouse event");
+
+        event.stamp(&Target::exited(), Some(point), Some((1, 0))).expect("stamped fields");
+
+        // SAFETY: the event is live until the end of the test.
+        assert_eq!(unsafe { CGEventGetTimestamp(event.0) }, 0, "the click carries a set timestamp");
+    }
 }

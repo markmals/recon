@@ -1,4 +1,3 @@
-use std::sync::atomic::{AtomicI64, Ordering};
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -10,8 +9,6 @@ use crate::failure::{details, interrupted as interrupted_failure, with_release};
 use crate::request::{MouseButton, Point};
 use crate::target::Target;
 
-static NEXT_CLICK_GROUP: AtomicI64 = AtomicI64::new(1);
-
 pub fn click(
     target: &Target,
     point: Point,
@@ -21,7 +18,6 @@ pub fn click(
     mut interrupted_now: impl FnMut() -> bool,
 ) -> Result<ReleaseState, Failure> {
     Target::validate_point(target.window(), point, ActionMechanism::MouseEvents)?;
-    let group = NEXT_CLICK_GROUP.fetch_add(1, Ordering::Relaxed);
     let source = Source::private().ok_or_else(|| {
         event_failure(
             ActionMechanism::MouseEvents,
@@ -32,14 +28,8 @@ pub fn click(
     })?;
     let mut release = ReleaseState::NotNeeded;
     for click_state in 1..=i64::from(count) {
-        let down = MouseEvent {
-            point,
-            button,
-            down: true,
-            click_state,
-            flags: modifiers.event_flags(),
-            group,
-        };
+        let down =
+            MouseEvent { point, button, down: true, click_state, flags: modifiers.event_flags() };
         let up = MouseEvent { down: false, ..down };
         let dispatch = click_dispatch(click_state);
         if interrupted_now() {
