@@ -1,1 +1,0 @@
-import{t as e}from"./framework.DzDGx3wI.js";var t={root:()=>e(()=>import(`./@localSearchIndexroot.DgAK0ygg.js`),[])};export{t as default};
