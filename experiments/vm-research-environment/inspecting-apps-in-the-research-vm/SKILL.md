@@ -13,6 +13,8 @@ description: Use when inspecting a macOS app with Recon's research profile (nati
 - State: `~/Library/Application Support/ReconResearchVM` (layout in its `README.md`)
 - Snapshots: `research-ready` (clean), `demo` (a fictional person's data in Messages, Photos, Calendar, Contacts, Notes, Reminders), `installed-unbooted`
 
+A second guest runs macOS 26.6.2 with the same account, SIP off and research boot-args. Put `VM_NAME="Recon Research 26"` before any script; its snapshots are `tahoe26-installed-unbooted`, `tahoe26-provisioned` (SIP on) and `tahoe26-research-ready`. It carries no current Recon build: push one with `guest-copy.sh`, grant it, and run `prepare-host` (the experiment `README.md` section "A macOS 26 guest" says how). The one lock covers both guests, so check it before booting either.
+
 ## Workflow
 
 ```sh
